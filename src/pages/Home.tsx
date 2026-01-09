@@ -38,6 +38,17 @@ export function HomePage() {
             color="blue"
           />
           <StatCard
+            icon={<Clock className="text-yellow-500" />}
+            label="Reading Now"
+            value={books?.filter(b => b.readingStatus === 'reading').length || 0}
+            color="yellow"
+          />
+          <StatCard
+            icon={<TrendingUp className="text-green-500" />}
+            label="Completed"
+            value={books?.filter(b => b.readingStatus === 'completed').length || 0}
+            color="green"
+          />
         </div>
         
         {/* Quick Actions */}
