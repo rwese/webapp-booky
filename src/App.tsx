@@ -7,7 +7,6 @@ import { HomePage } from './pages/Home';
 import { LibraryPage } from './pages/Library';
 import { AddBookPage } from './pages/AddBook';
 import { AnalyticsPage } from './pages/Analytics';
-import { HistoryPage } from './pages/History';
 import { SettingsPage } from './pages/Settings';
 import { BookDetailPage } from './pages/BookDetail';
 import { EditBookPage } from './pages/EditBook';
@@ -106,8 +105,6 @@ function App() {
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/add" element={<AddBookPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/book/:id" element={<BookDetailPage />} />
               <Route path="/edit/:id" element={<EditBookPage />} />
             </Routes>

@@ -21,7 +21,6 @@ class BookCollectionDB extends Dexie {
   bookTags!: Table<BookTag>;
   collections!: Table<Collection>;
   collectionBooks!: Table<CollectionBook>;
-  readingLogs!: Table<ReadingLog>;
   syncQueue!: Table<SyncOperation>;
   settings!: Table<UserSettings>;
 
@@ -36,7 +35,6 @@ class BookCollectionDB extends Dexie {
       bookTags: '[bookId+tagId], bookId, tagId',
       collections: 'id, name, isSmart, createdAt, updatedAt',
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
-      readingLogs: 'id, bookId, status, startedAt, finishedAt, hidden',
       syncQueue: 'id, entity, entityId, timestamp, synced',
       settings: 'id'
     });
@@ -259,67 +257,6 @@ export const collectionOperations = {
   }
 };
 
-export const readingLogOperations = {
-  async getCurrentStatus(bookId: string) {
-    return await db.readingLogs
-      .where('bookId')
-      .equals(bookId)
-      .sortBy('createdAt')
-      .then(logs => logs[logs.length - 1]);
-  },
-  
-  async getHistory(bookId: string) {
-    return await db.readingLogs
-      .where('bookId')
-      .equals(bookId)
-      .sortBy('createdAt');
-  },
-  
-  async getAllByStatus(status: string) {
-    return await db.readingLogs
-      .where('status')
-      .equals(status)
-      .toArray();
-  },
-  
-  async logStatus(log: ReadingLog) {
-    return await db.readingLogs.add(log);
-  },
-  
-  async updateStatus(bookId: string, status: string, additionalData?: Partial<ReadingLog>) {
-    const log: ReadingLog = {
-      id: crypto.randomUUID(),
-      bookId,
-      status: status as ReadingStatus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      hidden: false,
-      ...additionalData
-    };
-    
-    return await this.logStatus(log);
-  },
-
-  async softDelete(logId: string) {
-    return await db.readingLogs.update(logId, { 
-      hidden: true,
-      updatedAt: new Date() 
-    });
-  },
-
-  async restore(logId: string) {
-    return await db.readingLogs.update(logId, { 
-      hidden: false,
-      updatedAt: new Date() 
-    });
-  },
-
-  async getHiddenLogs() {
-    return await db.readingLogs
-      .filter(log => log.hidden === true)
-      .toArray();
-  }
-};
 
 export const syncOperations = {
   async queueOperation(operation: Omit<SyncOperation, 'id' | 'timestamp' | 'synced'>) {

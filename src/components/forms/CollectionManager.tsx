@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Plus, Edit, Trash2, Book, MoreVertical, Filter, ChevronDown, X, Settings } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { Plus, Edit, Trash2, Book, MoreVertical, Filter, ChevronDown, X, Settings, Search } from 'lucide-react';
 import { Button, Input, Card, Badge } from '../common/Button';
 import { collectionOperations, bookOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -348,7 +348,7 @@ export function CollectionBadge({ collection, bookCount, className }: Collection
   );
 }
 
-// Collection Selector Component
+// Enhanced Collection Selector Component with search and creation
 interface CollectionSelectorProps {
   selectedCollections: Collection[];
   onCollectionsChange: (collections: Collection[]) => void;
@@ -357,72 +357,201 @@ interface CollectionSelectorProps {
 
 export function CollectionSelector({ selectedCollections, onCollectionsChange, className }: CollectionSelectorProps) {
   const allCollections = useLiveQuery(() => collectionOperations.getAll()) || [];
-  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const toggleCollection = useCallback((collection: Collection) => {
-    const isSelected = selectedCollections.some(c => c.id === collection.id);
-    if (isSelected) {
-      onCollectionsChange(selectedCollections.filter(c => c.id !== collection.id));
-    } else {
-      onCollectionsChange([...selectedCollections, collection]);
+  // Handle click outside to close suggestions
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter collections based on input
+  const filteredCollections = useMemo(() => {
+    if (!inputValue.trim()) return allCollections;
+    return allCollections.filter(collection => 
+      collection.name.toLowerCase().includes(inputValue.toLowerCase())
+    );
+  }, [allCollections, inputValue]);
+
+  // Check if input matches an existing collection
+  const matchingCollection = useMemo(() => {
+    if (!inputValue.trim()) return null;
+    return allCollections.find(c => c.name.toLowerCase() === inputValue.toLowerCase());
+  }, [allCollections, inputValue]);
+
+  const handleCreateCollection = useCallback(async () => {
+    const name = inputValue.trim();
+    if (!name) return;
+
+    setIsCreating(true);
+    try {
+      const newCollection: Collection = {
+        id: crypto.randomUUID(),
+        name,
+        isSmart: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await collectionOperations.add(newCollection);
+      onCollectionsChange([...selectedCollections, newCollection]);
+      setInputValue('');
+      setShowSuggestions(false);
+    } catch (error) {
+      console.error('Failed to create collection:', error);
+    } finally {
+      setIsCreating(false);
     }
+  }, [inputValue, selectedCollections, onCollectionsChange]);
+
+  const handleSelectExistingCollection = useCallback((collection: Collection) => {
+    onCollectionsChange([...selectedCollections, collection]);
+    setInputValue('');
+    setShowSuggestions(false);
   }, [selectedCollections, onCollectionsChange]);
 
-  return (
-    <div className={clsx('relative', className)}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          'input flex items-center justify-between gap-2',
-          selectedCollections.length > 0 && 'bg-primary-50 dark:bg-primary-900'
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <Book size={16} />
-          {selectedCollections.length > 0 
-            ? `${selectedCollections.length} collection${selectedCollections.length > 1 ? 's' : ''}`
-            : 'Add to collection...'
-          }
-        </span>
-        <ChevronDown size={16} className={clsx('transition-transform', isOpen && 'rotate-180')} />
-      </button>
+  const handleRemoveCollection = useCallback((collectionId: string) => {
+    onCollectionsChange(selectedCollections.filter(c => c.id !== collectionId));
+  }, [selectedCollections, onCollectionsChange]);
 
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {allCollections.map(collection => {
-            const isSelected = selectedCollections.some(c => c.id === collection.id);
-            return (
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (matchingCollection) {
+        handleSelectExistingCollection(matchingCollection);
+      } else if (inputValue.trim()) {
+        handleCreateCollection();
+      }
+    } else if (event.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  }, [inputValue, matchingCollection, handleSelectExistingCollection, handleCreateCollection]);
+
+  return (
+    <div ref={wrapperRef} className={className}>
+      {/* Selected Collections Display */}
+      {selectedCollections.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {selectedCollections.map(collection => (
+            <span
+              key={collection.id}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200"
+            >
+              <Book size={12} />
+              {collection.name}
+              {collection.isSmart && <Badge variant="primary" size="sm">Smart</Badge>}
               <button
-                key={collection.id}
                 type="button"
-                onClick={() => toggleCollection(collection)}
-                className={clsx(
-                  'w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700',
-                  isSelected && 'bg-primary-50 dark:bg-primary-900'
-                )}
+                onClick={() => handleRemoveCollection(collection.id)}
+                className="ml-1 hover:opacity-70 transition-opacity"
               >
-                <div className={clsx(
-                  'w-4 h-4 rounded border flex items-center justify-center',
-                  isSelected 
-                    ? 'bg-primary-600 border-primary-600' 
-                    : 'border-gray-300 dark:border-gray-600'
-                )}>
-                  {isSelected && <Book size={10} className="text-white" />}
-                </div>
-                <span className="text-sm text-gray-900 dark:text-white">{collection.name}</span>
-                {collection.isSmart && <Badge variant="info" size="sm">Smart</Badge>}
+                <X size={14} />
               </button>
-            );
-          })}
-          
-          {allCollections.length === 0 && (
-            <div className="px-3 py-2 text-sm text-gray-500 text-center">
-              No collections yet. Create one first!
-            </div>
-          )}
+            </span>
+          ))}
         </div>
       )}
+
+      {/* Input Area */}
+      <div className="relative">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Search or create collection..."
+              className="input pl-9 pr-4"
+            />
+          </div>
+          
+          <Button 
+            onClick={handleCreateCollection} 
+            disabled={!inputValue.trim() || isCreating || !!matchingCollection}
+            size="sm"
+          >
+            <Plus size={16} />
+            Add
+          </Button>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && (filteredCollections.length > 0 || (inputValue.trim() && !matchingCollection)) && (
+          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {/* Existing Collections */}
+            {filteredCollections.length > 0 && (
+              <>
+                <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  Existing Collections
+                </div>
+                {filteredCollections.map(collection => {
+                  const isSelected = selectedCollections.some(c => c.id === collection.id);
+                  return (
+                    <button
+                      key={collection.id}
+                      type="button"
+                      onClick={() => handleSelectExistingCollection(collection)}
+                      disabled={isSelected}
+                      className={clsx(
+                        'w-full px-3 py-2 text-left flex items-center gap-2',
+                        isSelected 
+                          ? 'bg-primary-50 dark:bg-primary-900 opacity-50' 
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                      )}
+                    >
+                      <Book size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-900 dark:text-white">{collection.name}</span>
+                      {collection.isSmart && <Badge variant="primary" size="sm">Smart</Badge>}
+                      {isSelected && <span className="ml-auto text-xs text-primary-600">Selected</span>}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Create New Collection Option */}
+            {inputValue.trim() && !matchingCollection && (
+              <button
+                type="button"
+                onClick={handleCreateCollection}
+                disabled={isCreating}
+                className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-primary-50 dark:hover:bg-primary-900 border-t border-gray-200 dark:border-gray-700"
+              >
+                <Plus size={16} className="text-primary-600" />
+                <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                  Create new collection "{inputValue.trim()}"
+                </span>
+              </button>
+            )}
+
+            {/* Empty State */}
+            {allCollections.length === 0 && (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                No collections yet. Create your first one above!
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

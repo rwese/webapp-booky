@@ -2,13 +2,11 @@ import { Link } from 'react-router-dom';
 import { Book, Plus, ArrowRight, Library, TrendingUp, Clock } from 'lucide-react';
 import { Card, Badge } from '../components/common/Button';
 import { useBooks } from '../hooks/useBooks';
-import { useReadingStats } from '../hooks/useBooks';
 import { useSyncStatus } from '../hooks/useSync';
 import { useNavigate } from 'react-router-dom';
 
 export function HomePage() {
   const books = useBooks();
-  const { totalCompleted, totalInProgress, totalWantToRead } = useReadingStats();
   const { isOnline, pendingCount } = useSyncStatus();
   const navigate = useNavigate();
   
@@ -40,23 +38,6 @@ export function HomePage() {
             color="blue"
           />
           <StatCard
-            icon={<Clock className="text-yellow-500" />}
-            label="Currently Reading"
-            value={totalInProgress}
-            color="yellow"
-          />
-          <StatCard
-            icon={<Book className="text-green-500" />}
-            label="Completed"
-            value={totalCompleted}
-            color="green"
-          />
-          <StatCard
-            icon={<TrendingUp className="text-purple-500" />}
-            label="Want to Read"
-            value={totalWantToRead}
-            color="purple"
-          />
         </div>
         
         {/* Quick Actions */}

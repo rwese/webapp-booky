@@ -6,7 +6,6 @@ import {
   Scan, 
   BarChart2, 
   Settings, 
-  History,
   Menu,
   X,
   Plus,
@@ -168,7 +167,6 @@ export function BottomNavigation() {
     { id: 'library', label: 'Library', icon: <Library size={24} />, path: '/library' },
     { id: 'scan', label: 'Scan', icon: <Scan size={24} />, path: '/add', action: () => openModal('barcodeScanner') },
     { id: 'history', label: 'History', icon: <History size={24} />, path: '/history' },
-    { id: 'more', label: 'More', icon: mobileNavOpen ? <X size={24} /> : <Menu size={24} />, path: '#', action: toggleMobileNav },
   ];
 
   return (
@@ -235,7 +233,6 @@ export function SidebarNavigation() {
     { icon: <Home size={20} />, label: 'Home', path: '/' },
     { icon: <Library size={20} />, label: 'Library', path: '/library' },
     { icon: <History size={20} />, label: 'History', path: '/history' },
-    { icon: <BarChart2 size={20} />, label: 'Analytics', path: '/analytics' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 

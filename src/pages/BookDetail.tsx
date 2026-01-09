@@ -9,12 +9,11 @@ import { StarRating, StarRatingDisplay } from '../components/forms/StarRating';
 import { ReviewEditor, ReviewDisplay } from '../components/forms/ReviewEditor';
 import { TagInput, TagBadge, TagManager } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
-import { ReadingStatusSelector, ReadingHistory, StatusBadge, READING_STATUS_CONFIG } from '../components/forms/ReadingStatusManager';
-import { bookOperations, ratingOperations, tagOperations, collectionOperations, readingLogOperations } from '../lib/db';
+import { bookOperations, ratingOperations, tagOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/api';
 import { useToastStore, useLibraryStore } from '../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Book as BookType, Rating, Tag as TagType, Collection, ReadingStatus } from '../types';
+import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
 import { clsx } from 'clsx';
 
 export function BookDetailPage() {
@@ -32,7 +31,6 @@ export function BookDetailPage() {
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [previousRating, setPreviousRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
-  const [readingStatus, setReadingStatus] = useState<ReadingStatus | undefined>();
 
   // Load book collections helper
   const loadBookCollections = useCallback(async (bookId: string): Promise<Collection[]> => {
@@ -80,10 +78,6 @@ export function BookDetailPage() {
         setPreviousRating(rating?.stars || 0);
         setCurrentRating(rating?.stars || 0);
         setCurrentReview(rating?.review || '');
-        
-        // Get reading status
-        const statusLog = await readingLogOperations.getCurrentStatus(id);
-        setReadingStatus(statusLog?.status);
         
         // Load collections
         await loadBookCollections(id);
@@ -174,33 +168,6 @@ export function BookDetailPage() {
     }
   }, [book, addToast]);
 
-  // Handle reading status change
-  const handleStatusChange = useCallback(async (status: ReadingStatus, additionalData?: { finishedAt?: Date; dnfReason?: string }) => {
-    if (!book) return;
-    
-    try {
-      await readingLogOperations.logStatus({
-        id: crypto.randomUUID(),
-        bookId: book.id,
-        status,
-        startedAt: status === 'currently_reading' ? new Date() : undefined,
-        finishedAt: additionalData?.finishedAt,
-        dnfReason: additionalData?.dnfReason,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        hidden: false
-      });
-      
-      setReadingStatus(status);
-      addToast({ 
-        type: 'success', 
-        message: `Book marked as ${READING_STATUS_CONFIG[status].label.toLowerCase()}` 
-      });
-    } catch (error) {
-      console.error('Failed to update status:', error);
-      addToast({ type: 'error', message: 'Failed to update reading status' });
-    }
-  }, [book, addToast]);
 
   // Handle book deletion
   const handleDelete = useCallback(async () => {
@@ -303,7 +270,7 @@ export function BookDetailPage() {
             </p>
             
             <div className="flex items-center gap-2 mb-4">
-              <StatusBadge status={readingStatus || 'want_to_read'} />
+              
               <Badge variant="neutral">{book.format}</Badge>
             </div>
 
@@ -349,11 +316,6 @@ export function BookDetailPage() {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2">
-              <ReadingStatusSelector
-                bookId={book.id}
-                currentStatus={readingStatus}
-                onStatusChange={handleStatusChange}
-              />
               
               <Button 
                 variant="ghost" 
@@ -533,7 +495,7 @@ export function BookDetailPage() {
 
         {/* Reading History */}
         <Card className="p-6">
-          <ReadingHistory bookId={book.id} />
+          
         </Card>
       </main>
 

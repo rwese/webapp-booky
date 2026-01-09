@@ -8,12 +8,6 @@ export type BookFormat =
   | 'pdf'
   | 'other';
 
-export type ReadingStatus = 
-  | 'want_to_read'
-  | 'currently_reading'
-  | 'read'
-  | 'dnf';
-
 export interface Book {
   id: string;
   title: string;
@@ -81,18 +75,6 @@ export interface SmartRule {
   field: 'rating' | 'format' | 'tags' | 'status' | 'year';
   operator: 'equals' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains';
   value: string | number | string[];
-}
-
-export interface ReadingLog {
-  id: string;
-  bookId: string;
-  status: ReadingStatus;
-  startedAt?: Date;
-  finishedAt?: Date;
-  dnfReason?: string;
-  hidden: boolean;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface User {
@@ -302,8 +284,6 @@ export interface FilterConfig {
   tags?: string[];
   collections?: string[];
   formats?: BookFormat[];
-  statuses?: ReadingStatus[];
-  minRating?: number;
   maxRating?: number;
   dateRange?: {
     start: Date;

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { bookOperations, ratingOperations, tagOperations, readingLogOperations } from '../lib/db';
+import { bookOperations, ratingOperations, tagOperations } from '../lib/db';
 import type { Book, FilterConfig, SortConfig } from '../types';
 
 // Hook for accessing all books with live queries
@@ -7,29 +7,6 @@ export function useBooks() {
   return useLiveQuery(() => bookOperations.getAll());
 }
 
-// Export useReadingStats as well
-export function useReadingStats() {
-  const currentlyReading = useLiveQuery(
-    () => readingLogOperations.getAllByStatus('currently_reading')
-  );
-  
-  const completedBooks = useLiveQuery(
-    () => readingLogOperations.getAllByStatus('read')
-  );
-  
-  const wantToReadBooks = useLiveQuery(
-    () => readingLogOperations.getAllByStatus('want_to_read')
-  );
-  
-  return {
-    currentlyReading: currentlyReading || [],
-    completedBooks: completedBooks || [],
-    wantToReadBooks: wantToReadBooks || [],
-    totalInProgress: (currentlyReading?.length || 0),
-    totalCompleted: (completedBooks?.length || 0),
-    totalWantToRead: (wantToReadBooks?.length || 0),
-  };
-}
 
 // Hook for accessing a single book by ID
 export function useBook(id: string) {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { X, Plus, Tag, Search } from 'lucide-react';
 import { Button, Input } from '../common/Button';
 import { tagOperations } from '../../lib/db';
@@ -30,6 +30,18 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const currentWrapper = wrapperRef.current;
+  
+  // Get all existing tags
+  const allTags = useLiveQuery(() => tagOperations.getAll()) || [];
+  const existingTags = allTags;
+  
+  // Filter suggestions based on input
+  const suggestions = useMemo(() => {
+    if (!inputValue.trim()) return [];
+    return allTags.filter(tag => 
+      tag.name.toLowerCase().includes(inputValue.toLowerCase())
+    );
+  }, [allTags, inputValue]);
 
   // Handle click outside to close suggestions
   useEffect(() => {
@@ -310,16 +322,110 @@ export function TagManager({ onClose, className }: TagManagerProps) {
       </div>
 
       <div className="p-4">
+        {/* Search and Creation Area */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tags..."
-            className="input pl-9"
+            placeholder="Search tags or create new..."
+            className="input pl-9 pr-20"
           />
+          {searchQuery.trim() && !allTags.some(t => t.name.toLowerCase() === searchQuery.toLowerCase()) && (
+            <Button 
+              size="sm" 
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              onClick={() => {
+                if (searchQuery.trim()) {
+                  const handleCreateTag = async () => {
+                    const newTag: TagType = {
+                      id: crypto.randomUUID(),
+                      name: searchQuery.trim(),
+                      color: TAG_COLORS[3].value,
+                      createdAt: new Date()
+                    };
+                    await tagOperations.add(newTag);
+                    setSearchQuery('');
+                  };
+                  handleCreateTag();
+                }
+              }}
+            >
+              <Plus size={14} />
+              Create
+            </Button>
+          )}
         </div>
+
+        {/* Suggestions for existing tags */}
+        {searchQuery.trim() && (
+          <div className="mb-4">
+            {(() => {
+              const matchingTags = allTags.filter(tag => 
+                tag.name.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              
+              if (matchingTags.length > 0) {
+                return (
+                  <div className="space-y-1">
+                    <div className="px-2 py-1 text-xs font-medium text-gray-500">
+                      Existing Tags
+                    </div>
+                    {matchingTags.map(tag => {
+                      const colorObj = TAG_COLORS.find(c => c.value === tag.color) || TAG_COLORS[3];
+                      return (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          onClick={() => setEditTag(tag)}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 rounded"
+                        >
+                          <span 
+                            className={clsx('w-3 h-3 rounded-full', colorObj.bg)} 
+                            style={{ backgroundColor: tag.color }} 
+                          />
+                          <span className="text-sm text-gray-900 dark:text-white">{tag.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              } else if (!allTags.some(t => t.name.toLowerCase() === searchQuery.toLowerCase())) {
+                return (
+                  <div className="space-y-1">
+                    <div className="px-2 py-1 text-xs font-medium text-gray-500">
+                      Create New Tag
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const handleCreateTag = async () => {
+                          const newTag: TagType = {
+                            id: crypto.randomUUID(),
+                            name: searchQuery.trim(),
+                            color: TAG_COLORS[3].value,
+                            createdAt: new Date()
+                          };
+                          await tagOperations.add(newTag);
+                          setSearchQuery('');
+                        };
+                        handleCreateTag();
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-primary-900 flex items-center gap-2 rounded"
+                    >
+                      <Plus size={16} className="text-primary-600" />
+                      <span className="text-sm text-primary-600 dark:text-primary-400">
+                        "{searchQuery}"
+                      </span>
+                    </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
 
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {filteredTags.map(tag => {
