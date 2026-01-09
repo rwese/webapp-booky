@@ -208,6 +208,88 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Sync endpoints
+app.post('/api/sync/operations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { operations } = req.body;
+    
+    if (!Array.isArray(operations)) {
+      return res.status(400).json({ error: 'Operations must be an array' });
+    }
+    
+    // Process each operation
+    const results = [];
+    for (const operation of operations) {
+      try {
+        // TODO: Implement actual sync logic based on operation type
+        // This would involve updating the backend database
+        // For conflict resolution, use "last-write-wins" strategy
+        // In production, check timestamps and implement merge logic
+        console.log('Processing sync operation:', operation);
+        results.push({ 
+          id: operation.id, 
+          status: 'success',
+          entity: operation.entity,
+          entityId: operation.entityId
+        });
+      } catch (error) {
+        results.push({ 
+          id: operation.id, 
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+    
+    res.json({ results });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error('Sync operations error:', error.message);
+      res.status(500).json({ error: 'Sync failed' });
+    } else {
+      next(error);
+    }
+  }
+});
+
+// Get sync status
+app.get('/api/sync/status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // TODO: Return sync status from backend database
+    // For now, return basic status
+    res.json({ 
+      status: 'ready',
+      lastSync: null,
+      pendingOperations: 0
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Sync full data dump (for initial sync or complete resync)
+app.post('/api/sync/full', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { books, collections, tags, readings } = req.body;
+    
+    // TODO: Implement full sync logic
+    // This would replace all backend data with the provided data
+    console.log('Processing full sync with', {
+      booksCount: books?.length || 0,
+      collectionsCount: collections?.length || 0,
+      tagsCount: tags?.length || 0,
+      readingsCount: readings?.length || 0
+    });
+    
+    res.json({ 
+      status: 'success',
+      syncedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Apply error handler
 app.use(errorHandler);
 

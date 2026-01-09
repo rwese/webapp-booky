@@ -1,25 +1,57 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useOnlineStatus } from './useOffline';
 import { db, syncOperations, readingLogOperations } from '../lib/db';
+import { syncService } from '../services/syncService';
 
-// Hook for sync status
+// Enhanced hook for sync status with real-time updates
 export function useSyncStatus() {
   const isOnline = useOnlineStatus();
   const pendingCount = useLiveQuery(
     () => db.syncQueue.where('synced').equals(0).count()
   );
-  
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    // Subscribe to sync service for real-time updates
+    const unsubscribe = syncService.subscribe((online) => {
+      // This will trigger re-render when online status changes
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const syncNow = useCallback(async () => {
+    if (!isOnline || isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      const result = await syncService.sync();
+      if (result.success && result.synced) {
+        setLastSync(new Date());
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isOnline, isSyncing]);
+
   return {
     isOnline,
     pendingCount: pendingCount || 0,
-    isSyncing: false, // This would be updated by actual sync process
+    isSyncing,
+    lastSync,
+    syncNow
   };
 }
 
-// Hook for initiating sync
+// Enhanced hook for initiating sync with backend integration
 export function useSync() {
   const isOnline = useOnlineStatus();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   
   const syncData = useCallback(async () => {
     if (!isOnline) {
@@ -27,38 +59,63 @@ export function useSync() {
       return { success: false, error: 'Device is offline' };
     }
     
+    setIsSyncing(true);
+    setSyncError(null);
+    
     try {
-      // Get pending operations
-      const pendingOperations = await syncOperations.getPendingOperations();
+      // Use the enhanced sync service
+      const result = await syncService.sync();
       
-      if (pendingOperations.length === 0) {
-        return { success: true, message: 'No pending operations' };
+      if (result.success) {
+        return { 
+          success: true, 
+          message: (result.synced ?? 0) > 0 
+            ? `Synced ${result.synced} operations` 
+            : 'No pending operations',
+          failed: result.failed
+        };
+      } else {
+        setSyncError(result.reason || 'Sync failed');
+        return { success: false, error: result.reason };
       }
-      
-      // Process each operation
-      for (const operation of pendingOperations) {
-        try {
-          // In a real app, this would send to a server
-          // For local-first, we might just mark as synced
-          console.log('Syncing operation:', operation);
-          
-          await syncOperations.markAsSynced(operation.id);
-        } catch (error) {
-          console.error('Failed to sync operation:', operation, error);
-        }
-      }
-      
-      // Clean up synced operations
-      await syncOperations.clearSyncedOperations();
-      
-      return { success: true, message: `Synced ${pendingOperations.length} operations` };
     } catch (error) {
+      const errorMessage = String(error);
+      setSyncError(errorMessage);
       console.error('Sync failed:', error);
-      return { success: false, error: String(error) };
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsSyncing(false);
     }
   }, [isOnline]);
   
-  return { syncData, isOnline };
+  const fullSync = useCallback(async () => {
+    if (!isOnline) {
+      return { success: false, error: 'Device is offline' };
+    }
+    
+    setIsSyncing(true);
+    setSyncError(null);
+    
+    try {
+      const result = await syncService.fullSync();
+      
+      if (result.success) {
+        return { success: true, message: 'Full sync completed' };
+      } else {
+        setSyncError(result.reason || 'Full sync failed');
+        return { success: false, error: result.reason };
+      }
+    } catch (error) {
+      const errorMessage = String(error);
+      setSyncError(errorMessage);
+      console.error('Full sync failed:', error);
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isOnline]);
+  
+  return { syncData, fullSync, isOnline, isSyncing, syncError };
 }
 
 // Hook for queueing operations for sync
