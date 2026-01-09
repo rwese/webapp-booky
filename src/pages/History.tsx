@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useReadingHistory } from '../hooks/useAnalytics';
-import { useToastStore } from '../store/useStore';
+import { useToastStore, useSettingsStore } from '../store/useStore';
+import { readingLogOperations } from '../lib/db';
 import type { FilterConfig, SortConfig, BookFormat, ReadingStatus } from '../types';
 import { format } from 'date-fns';
 
@@ -31,6 +32,7 @@ export function HistoryPage() {
   
   const readingHistory = useReadingHistory(filterConfig, sortConfig);
   const { addToast } = useToastStore();
+  const { settings } = useSettingsStore();
   
   // Pagination
   const totalPages = Math.ceil((readingHistory?.length || 0) / itemsPerPage);
@@ -434,9 +436,13 @@ interface HistoryEntryCardProps {
 function HistoryEntryCard({ log, dateFormat }: HistoryEntryCardProps) {
   const { addToast } = useToastStore();
   
-  const handleSoftDelete = () => {
-    // In a real implementation, this would mark the entry as deleted
-    addToast({ type: 'info', message: 'Entry removed from history view' });
+  const handleSoftDelete = async () => {
+    try {
+      await readingLogOperations.softDelete(log.id);
+      addToast({ type: 'success', message: 'Entry removed from history view' });
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to remove entry from history' });
+    }
   };
   
   return (
@@ -568,19 +574,14 @@ function StatCard({ icon, label, value }: StatCardProps) {
 }
 
 // Status Badge Helper
-function getStatusBadge(status: string) {
-  const statusConfig: Record<string, { color: string; label: string }> = {
-    read: { color: 'green', label: 'Read' },
-    dnf: { color: 'red', label: 'DNF' },
-    currently_reading: { color: 'yellow', label: 'Reading' },
-    want_to_read: { color: 'blue', label: 'Want to Read' }
+function getStatusBadge(status: ReadingStatus) {
+  const statusConfig: Record<ReadingStatus, { variant: 'success' | 'danger' | 'warning' | 'primary' | 'neutral'; label: string }> = {
+    read: { variant: 'success', label: 'Read' },
+    dnf: { variant: 'danger', label: 'DNF' },
+    currently_reading: { variant: 'warning', label: 'Reading' },
+    want_to_read: { variant: 'primary', label: 'Want to Read' }
   };
   
-  const config = statusConfig[status] || { color: 'gray', label: status };
-  
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-800 dark:bg-${config.color}-900/30 dark:text-${config.color}-300`}>
-      {config.label}
-    </span>
-  );
+  const config = statusConfig[status] || { variant: 'neutral', label: status };
+  return <Badge variant={config.variant}>{config.label}</Badge>;
 }

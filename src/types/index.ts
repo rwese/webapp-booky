@@ -90,6 +90,7 @@ export interface ReadingLog {
   startedAt?: Date;
   finishedAt?: Date;
   dnfReason?: string;
+  hidden: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -428,6 +429,7 @@ export interface ScanState {
   cameraDevices: MediaDeviceInfo[];
   selectedDevice: string | null;
   flashEnabled: boolean;
+  cameraStatus?: 'initializing' | 'ready' | 'streaming' | 'active' | 'error';
 }
 
 export interface ManualEntryConfig {

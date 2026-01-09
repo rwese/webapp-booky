@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
@@ -12,6 +12,7 @@ import { clsx } from 'clsx';
 export function LibraryPage() {
   const { viewMode, setViewMode, sortConfig, setSortConfig, filterConfig, setFilterConfig, clearFilters } = useLibraryStore();
   const { addToast } = useToastStore();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -131,6 +132,7 @@ export function LibraryPage() {
                   book={book}
                   viewMode={viewMode}
                   onDelete={() => handleDeleteBook(book.id)}
+                  navigate={navigate}
                 />
               ))}
             </div>
@@ -225,9 +227,10 @@ interface BookCardProps {
   book: BookType;
   viewMode: 'grid' | 'list';
   onDelete: () => void;
+  navigate: ReturnType<typeof useNavigate>;
 }
 
-function BookCard({ book, viewMode, onDelete }: BookCardProps) {
+function BookCard({ book, viewMode, onDelete, navigate }: BookCardProps) {
   if (viewMode === 'list') {
     return (
       <Card hover className="overflow-hidden">
@@ -275,7 +278,7 @@ function BookCard({ book, viewMode, onDelete }: BookCardProps) {
   }
   
   return (
-    <Card hover className="overflow-hidden cursor-pointer" onClick={() => window.location.href = `/book/${book.id}`}>
+    <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700">
         {book.coverUrl ? (
           <img 

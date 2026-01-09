@@ -24,6 +24,58 @@ export function BarcodeScannerModal() {
   const batchScan = useBatchScanning();
   const bookLookup = useBookLookup();
 
+  // Camera status indicator
+  const getCameraStatusIndicator = () => {
+    switch (scanState.cameraStatus) {
+      case 'initializing':
+        return (
+          <div className="absolute top-4 left-4 bg-yellow-500/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            Initializing camera...
+          </div>
+        );
+      case 'ready':
+        return (
+          <div className="absolute top-4 left-4 bg-blue-500/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full" />
+            Camera ready
+          </div>
+        );
+      case 'streaming':
+        return (
+          <div className="absolute top-4 left-4 bg-green-500/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            Streaming
+          </div>
+        );
+      case 'active':
+        return (
+          <div className="absolute top-4 left-4 bg-green-500/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full" />
+            Active
+          </div>
+        );
+      case 'error':
+        return (
+          <div className="absolute top-4 left-4 bg-red-500/80 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full" />
+            Camera error
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Loading overlay component
+  const LoadingOverlay = () => (
+    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-10">
+      <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-white text-lg font-medium">Initializing camera...</p>
+      <p className="text-white/60 text-sm mt-2">Please allow camera access when prompted</p>
+    </div>
+  );
+
   // Handle successful scan
   useEffect(() => {
     if (scanState.lastScan) {
@@ -70,6 +122,7 @@ export function BarcodeScannerModal() {
       <div className="flex items-center justify-between p-4 bg-black/50 text-white">
         <h2 className="text-lg font-semibold">Scan ISBN Barcode</h2>
         <button
+          type="button"
           onClick={handleClose}
           className="p-2 hover:bg-white/20 rounded-full transition-colors"
           aria-label="Close scanner"
@@ -80,12 +133,18 @@ export function BarcodeScannerModal() {
 
       {/* Camera View */}
       <div className="flex-1 relative overflow-hidden">
+        {/* Loading overlay during initialization */}
+        {scanState.cameraStatus === 'initializing' && <LoadingOverlay />}
+        
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
           playsInline
           muted
         />
+
+        {/* Camera status indicator */}
+        {getCameraStatusIndicator()}
 
         {/* Scanning Overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -151,6 +210,7 @@ export function BarcodeScannerModal() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => bookLookup.clearBookData()}
                   className="mt-4 w-full py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                 >
@@ -163,6 +223,7 @@ export function BarcodeScannerModal() {
               <div className="bg-red-500/90 text-white rounded-lg p-4 max-w-sm w-full">
                 <p className="font-medium">{bookLookup.error}</p>
                 <button
+                  type="button"
                   onClick={() => bookLookup.clearBookData()}
                   className="mt-3 w-full py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
                 >
@@ -179,6 +240,7 @@ export function BarcodeScannerModal() {
         {/* Mode Tabs */}
         <div className="flex gap-2 justify-center">
           <button
+            type="button"
             onClick={() => setShowManualEntry(false)}
             className={clsx(
               'px-4 py-2 rounded-full text-sm font-medium transition-colors',
@@ -188,6 +250,7 @@ export function BarcodeScannerModal() {
             Camera
           </button>
           <button
+            type="button"
             onClick={() => setShowManualEntry(true)}
             className={clsx(
               'px-4 py-2 rounded-full text-sm font-medium transition-colors',
@@ -197,6 +260,7 @@ export function BarcodeScannerModal() {
             Manual
           </button>
           <button
+            type="button"
             onClick={() => setShowBatchMode(!showBatchMode)}
             className={clsx(
               'px-4 py-2 rounded-full text-sm font-medium transition-colors',
@@ -211,6 +275,7 @@ export function BarcodeScannerModal() {
         {!showManualEntry && !showBatchMode && (
           <div className="flex justify-center gap-4">
             <button
+              type="button"
               onClick={toggleFlash}
               className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
               aria-label={scanState.flashEnabled ? 'Turn off flashlight' : 'Turn on flashlight'}
@@ -219,6 +284,7 @@ export function BarcodeScannerModal() {
             </button>
             
             <button
+              type="button"
               onClick={switchCamera}
               className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
               aria-label="Switch camera"
@@ -232,7 +298,7 @@ export function BarcodeScannerModal() {
         {showManualEntry && !showBatchMode && (
           <ManualISBNEntry 
             {...manualISBN}
-            onSubmit={(isbn) => {
+            onSubmit={(isbn: string) => {
               window.dispatchEvent(new CustomEvent('book:lookup', { detail: { isbn } }));
             }}
           />
@@ -242,7 +308,7 @@ export function BarcodeScannerModal() {
         {showBatchMode && (
           <BatchScanQueue 
             batchScan={batchScan}
-            onAddIsbn={(isbn) => {
+            onAddIsbn={(isbn: string) => {
               if (batchScan.addToQueue(isbn)) {
                 addToast({ type: 'success', message: 'Added to queue' });
               }
@@ -282,6 +348,7 @@ function ManualISBNEntry({
           aria-label="ISBN input"
         />
         <button
+          type="button"
           onClick={clearInput}
           className="px-3 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
           aria-label="Clear input"
@@ -293,6 +360,7 @@ function ManualISBNEntry({
       {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <button
+        type="button"
         onClick={handleSubmit}
         disabled={!isValid}
         className={clsx(
@@ -338,6 +406,7 @@ function BatchScanQueue({
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
         />
         <button
+          type="button"
           onClick={handleAdd}
           className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
         >
@@ -363,6 +432,7 @@ function BatchScanQueue({
               <span className="text-sm text-white">{item.isbn}</span>
             </div>
             <button
+              type="button"
               onClick={() => batchScan.removeFromQueue(item.id)}
               className="p-1 hover:bg-white/20 rounded"
             >
@@ -376,6 +446,7 @@ function BatchScanQueue({
       {batchScan.state.queue.length > 0 && (
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => batchScan.processQueue()}
             disabled={batchScan.state.isProcessing}
             className={clsx(
@@ -391,6 +462,7 @@ function BatchScanQueue({
             }
           </button>
           <button
+            type="button"
             onClick={() => batchScan.clearQueue()}
             className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
           >

@@ -36,7 +36,7 @@ class BookCollectionDB extends Dexie {
       bookTags: '[bookId+tagId], bookId, tagId',
       collections: 'id, name, isSmart, createdAt, updatedAt',
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
-      readingLogs: 'id, bookId, status, startedAt, finishedAt',
+      readingLogs: 'id, bookId, status, startedAt, finishedAt, hidden',
       syncQueue: 'id, entity, entityId, timestamp, synced',
       settings: 'id'
     });
@@ -293,10 +293,31 @@ export const readingLogOperations = {
       status: status as ReadingStatus,
       createdAt: new Date(),
       updatedAt: new Date(),
+      hidden: false,
       ...additionalData
     };
     
     return await this.logStatus(log);
+  },
+
+  async softDelete(logId: string) {
+    return await db.readingLogs.update(logId, { 
+      hidden: true,
+      updatedAt: new Date() 
+    });
+  },
+
+  async restore(logId: string) {
+    return await db.readingLogs.update(logId, { 
+      hidden: false,
+      updatedAt: new Date() 
+    });
+  },
+
+  async getHiddenLogs() {
+    return await db.readingLogs
+      .filter(log => log.hidden === true)
+      .toArray();
   }
 };
 

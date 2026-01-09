@@ -104,7 +104,7 @@ export function HomePage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentBooks.map((book) => (
-                <BookCard key={book.id} book={book} />
+                <BookCard key={book.id} book={book} navigate={navigate} />
               ))}
             </div>
           </div>
@@ -229,11 +229,12 @@ interface BookCardProps {
     coverUrl?: string;
     format: string;
   };
+  navigate: ReturnType<typeof useNavigate>;
 }
 
-function BookCard({ book }: BookCardProps) {
+function BookCard({ book, navigate }: BookCardProps) {
   return (
-    <Card hover className="overflow-hidden" onClick={() => window.location.href = `/book/${book.id}`}>
+    <Card hover className="overflow-hidden" onClick={() => navigate(`/book/${book.id}`)}>
       <div className="flex p-4 gap-4">
         <div className="flex-shrink-0 w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
           {book.coverUrl ? (

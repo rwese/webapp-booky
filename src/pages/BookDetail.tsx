@@ -187,7 +187,8 @@ export function BookDetailPage() {
         finishedAt: additionalData?.finishedAt,
         dnfReason: additionalData?.dnfReason,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        hidden: false
       });
       
       setReadingStatus(status);
