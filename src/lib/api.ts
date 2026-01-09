@@ -1,7 +1,7 @@
 import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat } from '../types';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
-const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
+const BACKEND_API = process.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
 
 // Search Open Library
 export async function searchOpenLibrary(query: string): Promise<Book[]> {
@@ -80,45 +80,14 @@ export async function searchByISBN(isbn: string): Promise<Book | null> {
 export async function searchGoogleBooks(query: string): Promise<Book[]> {
   try {
     const response = await fetch(
-      `${GOOGLE_BOOKS_API}/volumes?q=${encodeURIComponent(query)}&maxResults=20`
+      `${BACKEND_API}/search?q=${encodeURIComponent(query)}`
     );
     
     if (!response.ok) {
       throw new Error('Google Books search failed');
     }
     
-    const data = await response.json();
-    
-    if (!data.items) {
-      return [];
-    }
-    
-    return data.items.map((volume: GoogleBooksVolume) => {
-      const info = volume.volumeInfo;
-      const isbn = info.industryIdentifiers?.find(
-        (id) => id.type === 'ISBN_13'
-      )?.identifier || 
-      info.industryIdentifiers?.find(
-        (id) => id.type === 'ISBN_10'
-      )?.identifier;
-      
-      return {
-        id: crypto.randomUUID(),
-        title: info.title,
-        authors: info.authors || [],
-        isbn,
-        coverUrl: info.imageLinks?.large || info.imageLinks?.thumbnail?.replace('http:', 'https:'),
-        description: info.description,
-        publishedYear: info.publishedDate ? parseInt(info.publishedDate) : undefined,
-        pageCount: info.pageCount,
-        publisher: info.publisher,
-        format: 'physical' as BookFormat,
-        addedAt: new Date(),
-        externalIds: {
-          googleBooks: volume.id
-        }
-      };
-    });
+    return await response.json();
   } catch (error) {
     console.error('Google Books search error:', error);
     throw error;
@@ -129,38 +98,17 @@ export async function searchGoogleBooks(query: string): Promise<Book[]> {
 export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null> {
   try {
     const response = await fetch(
-      `${GOOGLE_BOOKS_API}/volumes?q=isbn:${isbn}`
+      `${BACKEND_API}/isbn/${isbn}`
     );
     
     if (!response.ok) {
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    if (!data.items || data.items.length === 0) {
-      return null;
-    }
-    
-    const volume = data.items[0] as GoogleBooksVolume;
-    const info = volume.volumeInfo;
-    
-    return {
-      id: crypto.randomUUID(),
-      title: info.title,
-      authors: info.authors || [],
-      isbn,
-      coverUrl: info.imageLinks?.large || info.imageLinks?.thumbnail?.replace('http:', 'https:'),
-      description: info.description,
-      publishedYear: info.publishedDate ? parseInt(info.publishedDate) : undefined,
-      pageCount: info.pageCount,
-      publisher: info.publisher,
-      format: 'physical' as BookFormat,
-      addedAt: new Date(),
-      externalIds: {
-        googleBooks: volume.id
+      if (response.status === 404) {
+        return null;
       }
-    };
+      throw new Error('Google Books ISBN lookup failed');
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error('Google Books ISBN lookup error:', error);
     return null;
