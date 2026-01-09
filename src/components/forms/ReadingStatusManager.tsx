@@ -260,28 +260,10 @@ export function CurrentlyReadingSection({ limit = 5, className }: CurrentlyReadi
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-gray-900 dark:text-white truncate">{book.title}</h4>
               <p className="text-sm text-gray-500 truncate">{book.authors.join(', ')}</p>
-              <ReadingProgress />
             </div>
           </div>
         </Card>
       ))}
-    </div>
-  );
-}
-
-
-function ReadingProgress() {
-  // This would typically connect to actual reading progress data
-  // For now, show a simple indicator
-  return (
-    <div className="mt-2">
-      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-        <div 
-          className="bg-primary-600 h-1.5 rounded-full" 
-          style={{ width: '25%' }} // Placeholder - would come from actual data
-        />
-      </div>
-      <span className="text-xs text-gray-500 mt-1">Started reading...</span>
     </div>
   );
 }

@@ -109,12 +109,6 @@ export interface UserSettings {
   defaultFormat: BookFormat;
   ratingDisplay: 'stars' | 'numbers';
   dateFormat: string;
-  animationsEnabled: boolean;
-  reducedMotion: boolean;
-  highContrast: boolean;
-  fontSize: 'small' | 'medium' | 'large';
-  analyticsEnabled: boolean;
-  analyticsPreferences: AnalyticsConfig;
   notificationPreferences: NotificationConfig;
 }
 
@@ -122,12 +116,6 @@ export interface NotificationConfig {
   readingReminders: boolean;
   newRecommendations: boolean;
   weeklyDigest: boolean;
-}
-
-export interface AnalyticsConfig {
-  showCharts: boolean;
-  defaultTimeRange: 'month' | 'year' | 'all';
-  trackPagesRead: boolean;
 }
 
 // Sync Operation Types

@@ -284,26 +284,6 @@ export function useCopyToClipboard(): [
   return [copied, copy];
 }
 
-// Reduced motion preference hook
-export function useReducedMotion(): boolean {
-  const prefersReducedMotion = useMediaQuery(
-    '(prefers-reduced-motion: reduce)'
-  );
-  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setReducedMotion(e.matches);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  return reducedMotion;
-}
-
 // Touch device detection hook
 export function useIsTouchDevice(): boolean {
   const [isTouch, setIsTouch] = useState(false);

@@ -80,16 +80,6 @@ export const useSettingsStore = create<SettingsState>()(
         defaultFormat: 'physical',
         ratingDisplay: 'stars',
         dateFormat: 'MM/dd/yyyy',
-        animationsEnabled: true,
-        reducedMotion: false,
-        highContrast: false,
-        fontSize: 'medium',
-        analyticsEnabled: true,
-        analyticsPreferences: {
-          showCharts: true,
-          defaultTimeRange: 'year',
-          trackPagesRead: true
-        },
         notificationPreferences: {
           readingReminders: true,
           newRecommendations: true,
@@ -114,16 +104,6 @@ export const useSettingsStore = create<SettingsState>()(
             defaultFormat: 'physical',
             ratingDisplay: 'stars',
             dateFormat: 'MM/dd/yyyy',
-            animationsEnabled: true,
-            reducedMotion: false,
-            highContrast: false,
-            fontSize: 'medium',
-            analyticsEnabled: true,
-            analyticsPreferences: {
-              showCharts: true,
-              defaultTimeRange: 'year',
-              trackPagesRead: true
-            },
             notificationPreferences: {
               readingReminders: true,
               newRecommendations: true,

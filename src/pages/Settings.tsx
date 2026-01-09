@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Shield, Download, Trash2, Palette, Eye, Type, Zap, Volume2, VolumeX, Accessibility } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Shield, Download, Trash2, Palette, Eye, Type, Zap, Volume2, VolumeX } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore, useUIStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
@@ -7,14 +7,12 @@ import { useToastStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
-import { useReducedMotion } from '../hooks/usePerformance';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
   const theme = settings.theme;
   const { addToast } = useToastStore();
   const isOnline = useOnlineStatus();
-  const reducedMotion = useReducedMotion();
   
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
@@ -97,96 +95,6 @@ export function SettingsPage() {
                   </div>
                 </AccessibleField>
               </div>
-
-              <div>
-                <AccessibleField
-                  label="Animations"
-                  hint="Reduce motion for better performance or accessibility"
-                  required={false}
-                >
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ animationsEnabled: !settings.animationsEnabled })}
-                    className={clsx(
-                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                      settings.animationsEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'
-                    )}
-                    aria-pressed={settings.animationsEnabled}
-                    role="switch"
-                    aria-checked={settings.animationsEnabled}
-                  >
-                    <span
-                      className={clsx(
-                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                        settings.animationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                      )}
-                    />
-                  </button>
-                </AccessibleField>
-              </div>
-
-              <div>
-                <AccessibleField
-                  label="Reduced Motion"
-                  hint="Minimize animations and transitions"
-                  required={false}
-                >
-                  <button
-                    type="button"
-                    onClick={() => updateSettings({ reducedMotion: !settings.reducedMotion })}
-                    className={clsx(
-                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                      settings.reducedMotion ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'
-                    )}
-                    aria-pressed={settings.reducedMotion}
-                    role="switch"
-                    aria-checked={settings.reducedMotion}
-                  >
-                    <span
-                      className={clsx(
-                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                        settings.reducedMotion ? 'translate-x-6' : 'translate-x-1'
-                      )}
-                    />
-                  </button>
-                </AccessibleField>
-              </div>
-            </div>
-          </Card>
-        </section>
-        
-        {/* Accessibility */}
-        <section aria-labelledby="accessibility-heading">
-          <h2 id="accessibility-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Accessibility size={20} />
-            Accessibility
-          </h2>
-          <Card className="p-4">
-            <div className="space-y-6">
-              <ToggleSetting
-                label="High Contrast"
-                description="Increase color contrast for better visibility"
-                checked={settings.highContrast}
-                onChange={() => updateSettings({ highContrast: !settings.highContrast })}
-              />
-              
-              <div>
-                <AccessibleField
-                  label="Font Size"
-                  required={false}
-                >
-                  <select
-                    id="font-size"
-                    value={settings.fontSize}
-                    onChange={(e) => updateSettings({ fontSize: e.target.value as any })}
-                    className="input"
-                  >
-                    <option value="small">Small</option>
-                    <option value="medium">Medium (Default)</option>
-                    <option value="large">Large</option>
-                  </select>
-                </AccessibleField>
-              </div>
             </div>
           </Card>
         </section>
@@ -229,40 +137,6 @@ export function SettingsPage() {
                   notificationPreferences: {
                     ...settings.notificationPreferences,
                     weeklyDigest: !settings.notificationPreferences.weeklyDigest
-                  }
-                })}
-              />
-            </div>
-          </Card>
-        </section>
-        
-        {/* Data & Privacy */}
-        <section aria-labelledby="privacy-heading">
-          <h2 id="privacy-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Shield size={20} />
-            Data & Privacy
-          </h2>
-          <Card className="p-4">
-            <div className="space-y-4">
-              <ToggleSetting
-                label="Track Reading Progress"
-                description="Automatically track pages read (requires book metadata)"
-                checked={settings.analyticsPreferences.trackPagesRead}
-                onChange={() => updateSettings({
-                  analyticsPreferences: {
-                    ...settings.analyticsPreferences,
-                    trackPagesRead: !settings.analyticsPreferences.trackPagesRead
-                  }
-                })}
-              />
-              <ToggleSetting
-                label="Anonymous Analytics"
-                description="Help improve the app with anonymous usage data"
-                checked={settings.analyticsPreferences.anonymousData}
-                onChange={() => updateSettings({
-                  analyticsPreferences: {
-                    ...settings.analyticsPreferences,
-                    anonymousData: !settings.analyticsPreferences.anonymousData
                   }
                 })}
               />
@@ -377,10 +251,6 @@ export function SettingsPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Status</span>
                 <Badge variant="success">{isOnline ? 'Online' : 'Offline'}</Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Reduced Motion</span>
-                <Badge variant={reducedMotion ? 'warning' : 'neutral'}>{reducedMotion ? 'Enabled' : 'Disabled'}</Badge>
               </div>
             </div>
           </Card>

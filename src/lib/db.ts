@@ -9,9 +9,7 @@ import type {
   ReadingLog,
   UserSettings,
   SyncOperation,
-  ReadingStatus,
-  AnalyticsEvent,
-  ReadingSession
+  ReadingStatus
 } from '../types';
 
 // IndexedDB Database Setup with Dexie.js
@@ -26,8 +24,6 @@ class BookCollectionDB extends Dexie {
   readingLogs!: Table<ReadingLog>;
   syncQueue!: Table<SyncOperation>;
   settings!: Table<UserSettings>;
-  analyticsEvents!: Table<AnalyticsEvent>;
-  readingSessions!: Table<ReadingSession>;
 
   constructor() {
     super('BookCollectionDB');
@@ -42,9 +38,7 @@ class BookCollectionDB extends Dexie {
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
       readingLogs: 'id, bookId, status, startedAt, finishedAt',
       syncQueue: 'id, entity, entityId, timestamp, synced',
-      settings: 'id',
-      analyticsEvents: 'id, eventType, bookId, timestamp, synced',
-      readingSessions: 'id, bookId, startTime, endTime'
+      settings: 'id'
     });
   }
 }
@@ -65,13 +59,7 @@ export async function initializeDatabase() {
         theme: 'system',
         defaultFormat: 'physical',
         ratingDisplay: 'stars',
-        dateFormat: 'MM/dd/yyyy',
-        analyticsEnabled: true,
-        analyticsPreferences: {
-          showCharts: true,
-          defaultTimeRange: 'year',
-          trackPagesRead: true
-        }
+        dateFormat: 'MM/dd/yyyy'
       } as UserSettings & { id: string });
     }
     
@@ -349,100 +337,5 @@ export const settingsOperations = {
       return await db.settings.update('userSettings', changes);
     }
     return await db.settings.put({ id: 'userSettings', ...changes } as UserSettings);
-  }
-};
-
-// Analytics operations for book-centric tracking
-export const analyticsOperations = {
-  async trackEvent(event: AnalyticsEvent): Promise<string> {
-    await db.analyticsEvents.add(event);
-    return event.id;
-  },
-
-  async getEventsByBookId(bookId: string): Promise<AnalyticsEvent[]> {
-    return await db.analyticsEvents
-      .where('bookId')
-      .equals(bookId)
-      .sortBy('timestamp');
-  },
-
-  async getSessionsByBookId(bookId: string): Promise<ReadingSession[]> {
-    return await db.readingSessions
-      .where('bookId')
-      .equals(bookId)
-      .sortBy('startTime');
-  },
-
-  async getEvents(filters?: {
-    eventTypes?: string[];
-    bookIds?: string[];
-    startDate?: Date;
-    endDate?: Date;
-  }): Promise<AnalyticsEvent[]> {
-    let events = await db.analyticsEvents.toArray();
-    
-    if (filters?.eventTypes && filters.eventTypes.length > 0) {
-      events = events.filter(e => filters.eventTypes!.includes(e.eventType));
-    }
-    
-    if (filters?.bookIds && filters.bookIds.length > 0) {
-      events = events.filter(e => filters.bookIds!.includes(e.bookId));
-    }
-    
-    if (filters?.startDate) {
-      events = events.filter(e => e.timestamp >= filters.startDate!);
-    }
-    
-    if (filters?.endDate) {
-      events = events.filter(e => e.timestamp <= filters.endDate!);
-    }
-    
-    return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  },
-
-  async startSession(bookId: string): Promise<string> {
-    const session: ReadingSession = {
-      id: crypto.randomUUID(),
-      bookId,
-      startTime: new Date(),
-      createdAt: new Date()
-    };
-    
-    await db.readingSessions.add(session);
-    return session.id;
-  },
-
-  async endSession(sessionId: string): Promise<void> {
-    const session = await db.readingSessions.get(sessionId);
-    if (session) {
-      const endTime = new Date();
-      const duration = endTime.getTime() - session.startTime.getTime();
-      
-      await db.readingSessions.update(sessionId, {
-        endTime,
-        duration
-      });
-    }
-  },
-
-  async getActiveSession(bookId: string): Promise<ReadingSession | undefined> {
-    return await db.readingSessions
-      .where('bookId')
-      .equals(bookId)
-      .filter(session => !session.endTime)
-      .first();
-  },
-
-  async getEventById(id: string): Promise<AnalyticsEvent | undefined> {
-    return await db.analyticsEvents.get(id);
-  },
-
-  async deleteEventsByBookId(bookId: string): Promise<void> {
-    const events = await this.getEventsByBookId(bookId);
-    await db.analyticsEvents.bulkDelete(events.map(e => e.id));
-  },
-
-  async clearAllEvents(): Promise<void> {
-    await db.analyticsEvents.clear();
   }
 };
