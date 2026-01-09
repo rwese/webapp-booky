@@ -91,7 +91,9 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const playPromiseRef = useRef<Promise<void> | null>(null);
   const videoReadyRef = useRef(false);
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
-  const errorTimeoutRef = useRef<number | null>(null);
+  const canPlayTimeoutRef = useRef<number | null>(null);
+  const loadedMetadataTimeoutRef = useRef<number | null>(null);
+  const playTimeoutRef = useRef<number | null>(null);
 
   // Video track state monitoring
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
@@ -288,231 +290,279 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configState.scanInterval, configState.autoScan, isVideoReady]);
 
-  // Start camera and scanning
+  // Start camera and scanning with retry logic
   const startScanning = useCallback(async (videoElement: HTMLVideoElement) => {
     if (isScanningRef.current) return;
 
-    try {
-      setState(prev => ({ ...prev, isScanning: true, error: null, cameraStatus: 'initializing' }));
-      videoRef.current = videoElement;
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY = 1000; // 1 second between retries
+    let attempts = 0;
 
-      if (!readerRef.current) {
-        await initializeReader();
-      }
-
-      // Request camera permission and get stream
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: configState.cameraFacing,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-
-      // Get user media with proper error handling
-      let mediaStream: MediaStream;
+    const attemptStart = async (): Promise<boolean> => {
+      attempts++;
+      
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (mediaError) {
-        if (mediaError instanceof Error && mediaError.name === 'NotAllowedError') {
-          setState(prev => ({ 
-            ...prev, 
-            isScanning: false,
-            error: 'Camera permission denied. Please allow camera access to scan barcodes.'
-          }));
-          return;
-        } else if (mediaError instanceof Error && mediaError.name === 'NotFoundError') {
-          setState(prev => ({ 
-            ...prev, 
-            isScanning: false,
-            error: 'No camera found. Please connect a camera to scan barcodes.'
-          }));
-          return;
-        } else {
-          throw mediaError; // Re-throw for generic handling
+        setState(prev => ({ ...prev, isScanning: true, error: null, cameraStatus: 'initializing' }));
+        videoRef.current = videoElement;
+
+        if (!readerRef.current) {
+          await initializeReader();
         }
-      }
-      
-      streamRef.current = mediaStream;
-      setState(prev => ({ ...prev, cameraStatus: 'ready' }));
-      
-      // Setup video track monitoring
-      const cleanupTrackMonitoring = setupVideoTrackMonitoring(mediaStream);
-      
-      // Setup video error handler
-      const cleanupErrorHandler = setupVideoErrorHandler(videoElement, (errorMessage) => {
-        setState(prev => ({ ...prev, error: errorMessage }));
-      });
-      
-      // Properly handle video element state before setting srcObject
-      if (videoElement.srcObject) {
-        // If there's an existing stream, stop all tracks first
-        const existingStream = videoElement.srcObject as MediaStream;
-        existingStream.getTracks().forEach((track: MediaStreamTrack) => {
-          track.stop();
-        });
-      }
-      
-      // Reset video element state to prevent play() interruption
-      videoElement.pause();
-      videoElement.currentTime = 0;
-      videoElement.srcObject = null;
-      videoElement.load(); // Reset the media element
-      
-      // Wait for the video element to be ready with timeout
-      const CANPLAY_TIMEOUT = 5000; // 5 seconds timeout
-      let canPlayResolved = false;
-      
-      const canPlayPromise = new Promise<void>((resolve, reject) => {
-        const onCanPlay = () => {
-          canPlayResolved = true;
-          videoElement.removeEventListener('canplay', onCanPlay);
-          resolve();
-        };
-        videoElement.addEventListener('canplay', onCanPlay);
-        
-        // Timeout handler
-        errorTimeoutRef.current = window.setTimeout(() => {
-          if (!canPlayResolved) {
-            videoElement.removeEventListener('canplay', onCanPlay);
-            reject(new Error('Video canplay timeout'));
+
+        // Request camera permission and get stream
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: configState.cameraFacing,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
-        }, CANPLAY_TIMEOUT);
-      });
-
-      try {
-        await canPlayPromise;
-      } catch (timeoutError) {
-        if (cleanupTrackMonitoring) cleanupTrackMonitoring();
-        if (cleanupErrorHandler) cleanupErrorHandler();
-        setState(prev => ({ 
-          ...prev, 
-          isScanning: false,
-          error: 'Camera initialization timed out. Please try again.',
-          cameraStatus: 'error'
-        }));
-        return;
-      } finally {
-        if (errorTimeoutRef.current) {
-          clearTimeout(errorTimeoutRef.current);
-          errorTimeoutRef.current = null;
-        }
-      }
-      
-      setState(prev => ({ ...prev, cameraStatus: 'streaming' }));
-
-      // Set the new stream
-      videoElement.srcObject = streamRef.current;
-      
-      // Wait for loadedmetadata to ensure the stream is properly attached with timeout
-      const LOADEDMETADATA_TIMEOUT = 5000; // 5 seconds timeout
-      let loadedMetadataResolved = false;
-      
-      const loadedMetadataPromise = new Promise<void>((resolve, reject) => {
-        const onLoadedMetadata = () => {
-          loadedMetadataResolved = true;
-          videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
-          resolve();
         };
-        videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
-        
-        // Timeout handler
-        errorTimeoutRef.current = window.setTimeout(() => {
-          if (!loadedMetadataResolved) {
-            videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
-            reject(new Error('Video loadedmetadata timeout'));
-          }
-        }, LOADEDMETADATA_TIMEOUT);
-      });
 
-      try {
-        await loadedMetadataPromise;
-      } catch (timeoutError) {
-        if (cleanupTrackMonitoring) cleanupTrackMonitoring();
-        if (cleanupErrorHandler) cleanupErrorHandler();
-        setState(prev => ({ 
-          ...prev, 
-          isScanning: false,
-          error: 'Camera stream attachment timed out. Please try again.',
-          cameraStatus: 'error'
-        }));
-        return;
-      } finally {
-        if (errorTimeoutRef.current) {
-          clearTimeout(errorTimeoutRef.current);
-          errorTimeoutRef.current = null;
-        }
-      }
-
-      // Handle any existing play promise to prevent interruption
-      if (playPromiseRef.current) {
+        // Get user media with proper error handling
+        let mediaStream: MediaStream;
         try {
-          await playPromiseRef.current;
-        } catch (e) {
-          // Ignore errors from interrupted play requests
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (mediaError) {
+          if (mediaError instanceof Error && mediaError.name === 'NotAllowedError') {
+            setState(prev => ({ 
+              ...prev, 
+              isScanning: false,
+              error: 'Camera permission denied. Please allow camera access to scan barcodes.'
+            }));
+            return false;
+          } else if (mediaError instanceof Error && mediaError.name === 'NotFoundError') {
+            setState(prev => ({ 
+              ...prev, 
+              isScanning: false,
+              error: 'No camera found. Please connect a camera to scan barcodes.'
+            }));
+            return false;
+          } else {
+            throw mediaError; // Re-throw for generic handling
+          }
         }
-        playPromiseRef.current = null;
-      }
-
-      // Start playing the video with timeout
-      const PLAY_TIMEOUT = 5000; // 5 seconds timeout
-      const currentPlayPromise = videoElement.play();
-      playPromiseRef.current = currentPlayPromise;
-      
-      // Create a timeout promise
-      const playTimeoutPromise = new Promise<never>((_, reject) => {
-        errorTimeoutRef.current = window.setTimeout(() => {
-          reject(new Error('Video play timeout'));
-        }, PLAY_TIMEOUT);
-      });
-      
-      // Race between play and timeout
-      await Promise.race([
-        currentPlayPromise.then(() => 'success' as const),
-        playTimeoutPromise
-      ]);
-      
-      // Clear the timeout if play succeeded
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-        errorTimeoutRef.current = null;
-      }
-
-      videoReadyRef.current = true;
-      isScanningRef.current = true;
-      setState(prev => ({ ...prev, cameraStatus: 'active', isScanning: true }));
-
-      // Start continuous scanning
-      scanFrame();
-
-    } catch (error) {
-      // Cleanup on error
-      if (errorTimeoutRef.current) {
-        clearTimeout(errorTimeoutRef.current);
-        errorTimeoutRef.current = null;
-      }
-      
-      let errorMessage = 'Failed to start camera';
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          errorMessage = 'Camera permission denied. Please allow camera access.';
-        } else if (error.name === 'NotFoundError') {
-          errorMessage = 'No camera found. Please connect a camera.';
-        } else if (error.message.includes('play') || error.message.includes('timeout')) {
-          errorMessage = 'Camera play failed. Please try again.';
-        } else {
-          errorMessage = error.message;
+        
+        streamRef.current = mediaStream;
+        setState(prev => ({ ...prev, cameraStatus: 'ready' }));
+        
+        // Setup video track monitoring
+        const cleanupTrackMonitoring = setupVideoTrackMonitoring(mediaStream);
+        
+        // Setup video error handler
+        const cleanupErrorHandler = setupVideoErrorHandler(videoElement, (errorMessage) => {
+          setState(prev => ({ ...prev, error: errorMessage }));
+        });
+        
+        // Properly handle video element state before setting srcObject
+        if (videoElement.srcObject) {
+          // If there's an existing stream, stop all tracks first
+          const existingStream = videoElement.srcObject as MediaStream;
+          existingStream.getTracks().forEach((track: MediaStreamTrack) => {
+            track.stop();
+          });
         }
+        
+        // Reset video element state to prevent play() interruption
+        videoElement.pause();
+        videoElement.currentTime = 0;
+        videoElement.srcObject = null;
+        videoElement.load(); // Reset the media element
+        
+        // Wait for the video element to be ready with extended timeout
+        const CANPLAY_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        let canPlayResolved = false;
+        
+        const canPlayPromise = new Promise<void>((resolve, reject) => {
+          const onCanPlay = () => {
+            canPlayResolved = true;
+            videoElement.removeEventListener('canplay', onCanPlay);
+            resolve();
+          };
+          videoElement.addEventListener('canplay', onCanPlay);
+          
+          // Timeout handler
+          canPlayTimeoutRef.current = window.setTimeout(() => {
+            if (!canPlayResolved) {
+              videoElement.removeEventListener('canplay', onCanPlay);
+              reject(new Error('Video canplay timeout'));
+            }
+          }, CANPLAY_TIMEOUT);
+        });
+
+        try {
+          await canPlayPromise;
+        } catch (timeoutError) {
+          if (cleanupTrackMonitoring) cleanupTrackMonitoring();
+          if (cleanupErrorHandler) cleanupErrorHandler();
+          // Clean up stream if it was created
+          if (streamRef.current) {
+            const tracks = streamRef.current.getTracks();
+            for (const track of tracks) {
+              track.stop();
+            }
+            streamRef.current = null;
+          }
+          throw timeoutError; // Re-throw for retry logic
+        } finally {
+          if (canPlayTimeoutRef.current) {
+            clearTimeout(canPlayTimeoutRef.current);
+            canPlayTimeoutRef.current = null;
+          }
+        }
+        
+        setState(prev => ({ ...prev, cameraStatus: 'streaming' }));
+
+        // Set the new stream
+        videoElement.srcObject = streamRef.current;
+        
+        // Wait for loadedmetadata to ensure the stream is properly attached with extended timeout
+        const LOADEDMETADATA_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        let loadedMetadataResolved = false;
+        
+        const loadedMetadataPromise = new Promise<void>((resolve, reject) => {
+          const onLoadedMetadata = () => {
+            loadedMetadataResolved = true;
+            videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+            resolve();
+          };
+          videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
+          
+          // Timeout handler
+          loadedMetadataTimeoutRef.current = window.setTimeout(() => {
+            if (!loadedMetadataResolved) {
+              videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+              reject(new Error('Video loadedmetadata timeout'));
+            }
+          }, LOADEDMETADATA_TIMEOUT);
+        });
+
+        try {
+          await loadedMetadataPromise;
+        } catch (timeoutError) {
+          if (cleanupTrackMonitoring) cleanupTrackMonitoring();
+          if (cleanupErrorHandler) cleanupErrorHandler();
+          // Clean up stream if it was created
+          if (streamRef.current) {
+            const tracks = streamRef.current.getTracks();
+            for (const track of tracks) {
+              track.stop();
+            }
+            streamRef.current = null;
+          }
+          throw timeoutError; // Re-throw for retry logic
+        } finally {
+          if (loadedMetadataTimeoutRef.current) {
+            clearTimeout(loadedMetadataTimeoutRef.current);
+            loadedMetadataTimeoutRef.current = null;
+          }
+        }
+
+        // Handle any existing play promise to prevent interruption
+        if (playPromiseRef.current) {
+          try {
+            await playPromiseRef.current;
+          } catch (e) {
+            // Ignore errors from interrupted play requests
+          }
+          playPromiseRef.current = null;
+        }
+
+        // Start playing the video with extended timeout
+        const PLAY_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        const currentPlayPromise = videoElement.play();
+        playPromiseRef.current = currentPlayPromise;
+        
+        // Create a timeout promise
+        const playTimeoutPromise = new Promise<never>((_, reject) => {
+          playTimeoutRef.current = window.setTimeout(() => {
+            reject(new Error('Video play timeout'));
+          }, PLAY_TIMEOUT);
+        });
+        
+        // Race between play and timeout
+        await Promise.race([
+          currentPlayPromise.then(() => 'success' as const),
+          playTimeoutPromise
+        ]);
+        
+        // Clear the timeout if play succeeded
+        if (playTimeoutRef.current) {
+          clearTimeout(playTimeoutRef.current);
+          playTimeoutRef.current = null;
+        }
+
+        videoReadyRef.current = true;
+        isScanningRef.current = true;
+        setState(prev => ({ ...prev, cameraStatus: 'active', isScanning: true }));
+
+        // Start continuous scanning
+        scanFrame();
+        return true;
+
+      } catch (error) {
+        // Cleanup on error - clear all timeout refs
+        if (canPlayTimeoutRef.current) {
+          clearTimeout(canPlayTimeoutRef.current);
+          canPlayTimeoutRef.current = null;
+        }
+        if (loadedMetadataTimeoutRef.current) {
+          clearTimeout(loadedMetadataTimeoutRef.current);
+          loadedMetadataTimeoutRef.current = null;
+        }
+        if (playTimeoutRef.current) {
+          clearTimeout(playTimeoutRef.current);
+          playTimeoutRef.current = null;
+        }
+        
+        // Clean up stream if it was created
+        if (streamRef.current) {
+          const tracks = streamRef.current.getTracks();
+          for (const track of tracks) {
+            track.stop();
+          }
+          streamRef.current = null;
+        }
+        
+        let errorMessage = 'Failed to start camera';
+        if (error instanceof Error) {
+          if (error.name === 'NotAllowedError') {
+            errorMessage = 'Camera permission denied. Please allow camera access.';
+          } else if (error.name === 'NotFoundError') {
+            errorMessage = 'No camera found. Please connect a camera.';
+          } else if (error.message.includes('play') || error.message.includes('timeout')) {
+            errorMessage = 'Camera initialization failed. Please try again.';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+        
+        // Retry logic for timeout errors
+        if (attempts < MAX_RETRIES && (
+          error instanceof Error && (
+            error.message.includes('timeout') ||
+            error.message.includes('Video canplay timeout') ||
+            error.message.includes('Video loadedmetadata timeout') ||
+            error.message.includes('Video play timeout')
+          )
+        )) {
+          console.log(`Camera initialization attempt ${attempts} failed, retrying...`);
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          return attemptStart(); // Recursive retry
+        }
+        
+        setState(prev => ({ 
+          ...prev, 
+          isScanning: false,
+          error: errorMessage,
+          cameraStatus: 'error'
+        }));
+        isScanningRef.current = false;
+        return false;
       }
-      
-      setState(prev => ({ 
-        ...prev, 
-        isScanning: false,
-        error: errorMessage,
-        cameraStatus: 'error'
-      }));
-      isScanningRef.current = false;
-    }
+    };
+
+    await attemptStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configState.cameraFacing, initializeReader, scanFrame, setupVideoTrackMonitoring, setupVideoErrorHandler]);
 
@@ -521,10 +571,18 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     isScanningRef.current = false;
     videoReadyRef.current = false;
 
-    // Clear any pending timeout
-    if (errorTimeoutRef.current) {
-      clearTimeout(errorTimeoutRef.current);
-      errorTimeoutRef.current = null;
+    // Clear all pending timeouts
+    if (canPlayTimeoutRef.current) {
+      clearTimeout(canPlayTimeoutRef.current);
+      canPlayTimeoutRef.current = null;
+    }
+    if (loadedMetadataTimeoutRef.current) {
+      clearTimeout(loadedMetadataTimeoutRef.current);
+      loadedMetadataTimeoutRef.current = null;
+    }
+    if (playTimeoutRef.current) {
+      clearTimeout(playTimeoutRef.current);
+      playTimeoutRef.current = null;
     }
 
     // Cancel any pending play request
