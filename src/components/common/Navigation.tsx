@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Library, 
@@ -65,6 +65,7 @@ function SyncStatusIndicator({ isOnline, pendingCount, isSyncing }: {
 
 // Floating Action Buttons Component
 export function FloatingActionButtons() {
+  const navigate = useNavigate();
   const { openModal } = useModalStore();
   const isOnline = useOnlineStatus();
   const syncStatus = useSyncStatus();
@@ -73,7 +74,8 @@ export function FloatingActionButtons() {
     <>
       {/* Main FAB - Add Book */}
       <button
-        onClick={() => openModal('barcodeScanner')}
+        type="button"
+        onClick={() => navigate('/add?mode=manual')}
         className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors p-4 group"
         aria-label="Add new book"
       >
@@ -82,6 +84,7 @@ export function FloatingActionButtons() {
 
       {/* Secondary FAB - Scan Barcode (appears on hover or can be separate) */}
       <button
+        type="button"
         onClick={() => openModal('barcodeScanner')}
         className="fixed bottom-6 right-20 z-50 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors p-3"
         aria-label="Scan barcode"
@@ -222,6 +225,7 @@ export function BottomNavigation() {
 // Sidebar Navigation Component
 export function SidebarNavigation() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { openModal } = useModalStore();
   const isOnline = useOnlineStatus();
@@ -312,8 +316,9 @@ export function SidebarNavigation() {
         {/* Sidebar Footer - Add Book Button */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
           <button
+            type="button"
             onClick={() => {
-              openModal('barcodeScanner');
+              navigate('/add?mode=manual');
               setSidebarOpen(false);
             }}
             className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"

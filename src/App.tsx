@@ -10,6 +10,7 @@ import { AnalyticsPage } from './pages/Analytics';
 import { HistoryPage } from './pages/History';
 import { SettingsPage } from './pages/Settings';
 import { BookDetailPage } from './pages/BookDetail';
+import { EditBookPage } from './pages/EditBook';
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
 import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';
@@ -108,6 +109,7 @@ function App() {
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/book/:id" element={<BookDetailPage />} />
+              <Route path="/edit/:id" element={<EditBookPage />} />
             </Routes>
           </Suspense>
         </div>

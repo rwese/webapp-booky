@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
@@ -42,6 +42,10 @@ export function LibraryPage() {
     }
   };
   
+  const handleEditBook = (bookId: string) => {
+    navigate(`/edit/${bookId}`);
+  };
+  
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
@@ -65,6 +69,7 @@ export function LibraryPage() {
               
               <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg">
                 <button
+                  type="button"
                   onClick={() => setViewMode('grid')}
                   className={clsx(
                     'p-2 transition-colors',
@@ -76,6 +81,7 @@ export function LibraryPage() {
                   <Grid size={20} />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode('list')}
                   className={clsx(
                     'p-2 transition-colors',
@@ -132,6 +138,7 @@ export function LibraryPage() {
                   book={book}
                   viewMode={viewMode}
                   onDelete={() => handleDeleteBook(book.id)}
+                  onEdit={() => handleEditBook(book.id)}
                   navigate={navigate}
                 />
               ))}
@@ -170,12 +177,13 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
       <div className="flex flex-wrap gap-4">
         {/* Format Filter */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Format</label>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Format</span>
           <div className="flex flex-wrap gap-2">
             {formats.map((format) => (
               <button
                 key={format}
                 type="button"
+                aria-label={`Filter by ${format} format`}
                 onClick={() => {
                   const currentFormats = filterConfig.formats || [];
                   const newFormats = currentFormats.includes(format as any)
@@ -227,13 +235,14 @@ interface BookCardProps {
   book: BookType;
   viewMode: 'grid' | 'list';
   onDelete: () => void;
+  onEdit: () => void;
   navigate: ReturnType<typeof useNavigate>;
 }
 
-function BookCard({ book, viewMode, onDelete, navigate }: BookCardProps) {
+function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps) {
   if (viewMode === 'list') {
     return (
-      <Card hover className="overflow-hidden">
+      <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
         <div className="flex p-4 gap-4">
           <div className="flex-shrink-0 w-20 h-28 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
             {book.coverUrl ? (
@@ -267,6 +276,10 @@ function BookCard({ book, viewMode, onDelete, navigate }: BookCardProps) {
               <Link to={`/book/${book.id}`} className="btn-secondary text-sm">
                 View Details
               </Link>
+              <Button variant="ghost" size="sm" onClick={onEdit}>
+                <Edit size={14} />
+                Edit
+              </Button>
               <Button variant="ghost" size="sm" onClick={onDelete}>
                 Remove
               </Button>
@@ -299,6 +312,18 @@ function BookCard({ book, viewMode, onDelete, navigate }: BookCardProps) {
         <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
           {book.authors.join(', ')}
         </p>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mt-2 w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Edit size={14} />
+          Edit
+        </Button>
       </div>
     </Card>
   );
@@ -324,7 +349,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
       
       <div className="flex items-center gap-1">
         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-          let pageNum;
+          let pageNum: number;
           if (totalPages <= 5) {
             pageNum = i + 1;
           } else if (currentPage <= 3) {
@@ -337,6 +362,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
           
           return (
             <button
+              type="button"
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
               className={clsx(

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';
 import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
@@ -12,6 +12,7 @@ import { clsx } from 'clsx';
 export function AddBookPage() {
   const navigate = useNavigate();
   const { addToast } = useToastStore();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BookType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,15 @@ export function AddBookPage() {
   });
   
   const debouncedQuery = useDebounce(searchQuery, 500);
+  
+  // Check for mode parameter in URL to auto-open manual entry
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'manual') {
+      setManualEntry(true);
+      setSearchType('search');
+    }
+  }, [searchParams]);
   
   // Search when query changes
   const handleSearch = async () => {
@@ -117,7 +127,9 @@ export function AddBookPage() {
       pageCount: newBook.pageCount,
       format: newBook.format as BookType['format'],
       addedAt: new Date(),
-      externalIds: {}
+      externalIds: {},
+      needsSync: true,
+      localOnly: true
     };
     
     await handleAddBook(book);
@@ -139,6 +151,7 @@ export function AddBookPage() {
         {/* Search Type Tabs */}
         <div className="flex gap-2 mb-6">
           <button
+            type="button"
             onClick={() => { setSearchType('search'); setManualEntry(false); }}
             className={clsx(
               'flex-1 py-3 rounded-lg font-medium transition-colors',
@@ -151,6 +164,7 @@ export function AddBookPage() {
             Search
           </button>
           <button
+            type="button"
             onClick={() => { setSearchType('isbn'); setManualEntry(false); }}
             className={clsx(
               'flex-1 py-3 rounded-lg font-medium transition-colors',
@@ -163,6 +177,7 @@ export function AddBookPage() {
             ISBN / Barcode
           </button>
           <button
+            type="button"
             onClick={() => { setManualEntry(true); setSearchType('search'); }}
             className={clsx(
               'flex-1 py-3 rounded-lg font-medium transition-colors',

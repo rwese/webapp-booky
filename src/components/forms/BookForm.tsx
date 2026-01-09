@@ -1,0 +1,200 @@
+import { useState, type FormEvent } from 'react';
+import { Plus, Loader2 } from 'lucide-react';
+import { Button, Input, Card } from '../common/Button';
+import type { Book as BookType, BookFormat } from '../../types';
+
+interface BookFormProps {
+  initialData?: Partial<BookType>;
+  onSubmit: (book: BookType) => Promise<void>;
+  onCancel?: () => void;
+  isLoading?: boolean;
+  submitLabel?: string;
+}
+
+export function BookForm({ 
+  initialData, 
+  onSubmit, 
+  onCancel, 
+  isLoading = false,
+  submitLabel = 'Add Book' 
+}: BookFormProps) {
+  const [formData, setFormData] = useState<Partial<BookType>>({
+    title: initialData?.title || '',
+    authors: initialData?.authors || [],
+    isbn: initialData?.isbn || '',
+    isbn13: initialData?.isbn13 || '',
+    coverUrl: initialData?.coverUrl || '',
+    description: initialData?.description || '',
+    publisher: initialData?.publisher || '',
+    publishedYear: initialData?.publishedYear || undefined,
+    pageCount: initialData?.pageCount || undefined,
+    format: initialData?.format || 'physical',
+  });
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.title) {
+      // Show error - title is required
+      return;
+    }
+
+    const book: BookType = {
+      id: initialData?.id || crypto.randomUUID(),
+      title: formData.title!,
+      authors: formData.authors || [],
+      isbn: formData.isbn,
+      isbn13: formData.isbn13,
+      coverUrl: formData.coverUrl,
+      description: formData.description,
+      publisher: formData.publisher,
+      publishedYear: formData.publishedYear,
+      pageCount: formData.pageCount,
+      format: formData.format as BookFormat,
+      addedAt: initialData?.addedAt || new Date(),
+      externalIds: initialData?.externalIds || {},
+      needsSync: true,
+      localOnly: true
+    };
+
+    await onSubmit(book);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">
+          {initialData?.id ? 'Edit Book' : 'Manual Entry'}
+        </h2>
+        
+        <div className="space-y-4">
+          <Input
+            label="Title *"
+            value={formData.title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Enter book title"
+            required
+          />
+          
+          <Input
+            label="Author"
+            value={formData.authors?.join(', ') || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+              ...formData, 
+              authors: e.target.value.split(',').map((a: string) => a.trim()).filter(Boolean) 
+            })}
+            placeholder="Enter author name(s), separated by commas"
+          />
+          
+          <Input
+            label="ISBN"
+            value={formData.isbn || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isbn: e.target.value })}
+            placeholder="Enter ISBN (optional)"
+          />
+          
+          <Input
+            label="ISBN13"
+            value={formData.isbn13 || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isbn13: e.target.value })}
+            placeholder="Enter ISBN13 (optional)"
+          />
+          
+          <Input
+            label="Cover URL"
+            value={formData.coverUrl || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, coverUrl: e.target.value })}
+            placeholder="Enter cover image URL (optional)"
+          />
+          
+          <Input
+            label="Publisher"
+            value={formData.publisher || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, publisher: e.target.value })}
+            placeholder="Enter publisher (optional)"
+          />
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Published Year"
+              type="number"
+              value={formData.publishedYear || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+                ...formData, 
+                publishedYear: e.target.value ? parseInt(e.target.value) : undefined 
+              })}
+              placeholder="Year"
+              min="1800"
+              max={new Date().getFullYear() + 1}
+            />
+            
+            <Input
+              label="Page Count"
+              type="number"
+              value={formData.pageCount || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+                ...formData, 
+                pageCount: e.target.value ? parseInt(e.target.value) : undefined 
+              })}
+              placeholder="Pages"
+              min="1"
+            />
+          </div>
+          
+          <div className="space-y-1">
+            <label htmlFor="book-format" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Format
+            </label>
+            <select
+              id="book-format"
+              value={formData.format}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, format: e.target.value as BookFormat })}
+              className="input"
+            >
+              <option value="physical">Physical Book</option>
+              <option value="kindle">Kindle</option>
+              <option value="kobo">Kobo</option>
+              <option value="audible">Audible</option>
+              <option value="audiobook">Audiobook</option>
+              <option value="pdf">PDF</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div className="space-y-1">
+            <label htmlFor="book-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Description
+            </label>
+            <textarea
+              id="book-description"
+              value={formData.description || ''}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Enter book description (optional)"
+              className="input min-h-[100px] resize-y"
+              rows={4}
+            />
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mt-6">
+          <Button type="submit" loading={isLoading} className="flex-1">
+            {isLoading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <>
+                <Plus size={20} />
+                {submitLabel}
+              </>
+            )}
+          </Button>
+          
+          {onCancel && (
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </Card>
+    </form>
+  );
+}

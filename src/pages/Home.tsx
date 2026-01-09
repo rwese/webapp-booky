@@ -69,7 +69,7 @@ export function HomePage() {
               icon={<Plus className="text-primary-600" size={24} />}
               title="Add New Book"
               description="Search or scan a book to add to your collection"
-              onClick={() => navigate('/add')}
+              onClick={() => navigate('/add?mode=manual')}
             />
             <ActionCard
               icon={<Library className="text-primary-600" size={24} />}
@@ -119,7 +119,7 @@ export function HomePage() {
             action={
               <button
                 type="button"
-                onClick={() => navigate('/add')}
+                onClick={() => navigate('/add?mode=manual')}
                 className="btn-primary"
               >
                 <Plus size={20} />

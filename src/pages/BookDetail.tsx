@@ -46,7 +46,7 @@ export function BookDetailPage() {
         bookInCollections.push(collection);
       } else {
         const booksInCollection = await collectionOperations.getBooksInCollection(collection.id);
-        if (booksInCollection.some(b => b.id === bookId)) {
+        if (booksInCollection.some((b) => b?.id === bookId)) {
           bookInCollections.push(collection);
         }
       }
@@ -122,7 +122,7 @@ export function BookDetailPage() {
       console.error('Failed to save rating:', error);
       addToast({ type: 'error', message: 'Failed to save rating' });
     }
-  }, [book, currentReview, addToast, previousRating]);
+  }, [book, currentReview, addToast]);
 
   // Handle review save
   const handleReviewSave = useCallback(async (review: string) => {
@@ -200,7 +200,7 @@ export function BookDetailPage() {
       console.error('Failed to update status:', error);
       addToast({ type: 'error', message: 'Failed to update reading status' });
     }
-  }, [book, readingStatus, addToast]);
+  }, [book, addToast]);
 
   // Handle book deletion
   const handleDelete = useCallback(async () => {
@@ -247,6 +247,7 @@ export function BookDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
@@ -256,6 +257,9 @@ export function BookDetailPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate(`/edit/${book.id}`)}>
+                <Edit size={16} />
+              </Button>
               <Button variant="ghost" size="sm">
                 <Share2 size={16} />
               </Button>
@@ -332,14 +336,14 @@ export function BookDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-3"
-                  onClick={() => setShowReviewEditor(true)}
-                >
-                  Write a Review
-                </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="mt-3"
+                onClick={() => setShowReviewEditor(true)}
+              >
+                Write a Review
+              </Button>
               )}
             </div>
 
@@ -352,7 +356,7 @@ export function BookDetailPage() {
               />
               
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
                 onClick={() => setShowCollectionSelector(!showCollectionSelector)}
               >
@@ -361,7 +365,7 @@ export function BookDetailPage() {
               </Button>
               
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
                 onClick={() => setShowTagManager(true)}
               >
