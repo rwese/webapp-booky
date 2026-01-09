@@ -42,7 +42,7 @@ export function LibraryPage() {
   };
   
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
+    <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4 lg:px-8 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto">

@@ -15,7 +15,7 @@ export function HomePage() {
   const recentBooks = books?.slice(0, 3) || [];
   
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
+    <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -28,8 +28,10 @@ export function HomePage() {
         </div>
       </header>
       
-      {/* Stats Grid */}
+      {/* Main Content Container */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
+        
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             icon={<Library className="text-blue-500" />}
@@ -116,6 +118,7 @@ export function HomePage() {
             description="Start building your collection by adding your first book"
             action={
               <button
+                type="button"
                 onClick={() => navigate('/add')}
                 className="btn-primary"
               >

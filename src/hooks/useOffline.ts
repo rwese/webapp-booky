@@ -146,8 +146,10 @@ export function useSyncStatus(): SyncStatus {
       isSyncing: false, 
       lastSyncTime: new Date() 
     }));
-    const handleSyncError = (error: CustomEvent) => 
-      setStatus(prev => ({ ...prev, syncError: error.detail }));
+    const handleSyncError = (event: Event) => {
+      const customEvent = event as CustomEvent<{error: string}>;
+      setStatus(prev => ({ ...prev, syncError: customEvent.detail?.error || 'Sync failed' }));
+    };
 
     window.addEventListener('sync:start', handleSyncStart);
     window.addEventListener('sync:end', handleSyncEnd);
@@ -412,25 +414,46 @@ export function useConnectivityHandler() {
   const isOnline = useOnlineStatus();
   const { syncInBackground } = useBackgroundSync();
   const { addToast } = useToastStore();
+  const wasOffline = useRef(false);
+  const lastNotificationTime = useRef(0);
+  const hasPendingSync = useRef(false);
 
   useEffect(() => {
-    if (isOnline) {
-      // Show "back online" notification
-      addToast({
-        type: 'info',
-        message: 'You\'re back online. Syncing your changes...',
-        duration: 3000
-      });
-      
-      // Trigger background sync
-      syncInBackground();
-    } else {
-      // Show "offline" notification
-      addToast({
-        type: 'warning',
-        message: 'You\'re offline. Changes will be saved locally.',
-        duration: 4000
-      });
+    // Check if there are pending operations to sync
+    const checkPendingSync = async () => {
+      try {
+        const pendingOps = await syncOperations.getPendingOperations();
+        hasPendingSync.current = pendingOps.length > 0;
+      } catch {
+        hasPendingSync.current = false;
+      }
+    };
+
+    // Track offline/online transitions
+    if (!isOnline) {
+      wasOffline.current = true;
+      checkPendingSync();
+    } else if (wasOffline.current && isOnline) {
+      // Only show notification when transitioning from offline to online
+      // and only if there's actually something to sync
+      const now = Date.now();
+      const cooldown = 30000; // 30 seconds cooldown between notifications
+
+      if (hasPendingSync.current && now - lastNotificationTime.current > cooldown) {
+        // Show "back online" notification only if there are pending operations
+        addToast({
+          type: 'info',
+          message: 'You\'re back online. Syncing your changes...',
+          duration: 3000
+        });
+        
+        lastNotificationTime.current = now;
+        
+        // Trigger background sync
+        syncInBackground();
+      }
+
+      wasOffline.current = false;
     }
   }, [isOnline, syncInBackground, addToast]);
 

@@ -348,12 +348,22 @@ export function usePerformanceMetrics() {
         fcpObserver.observe({ type: 'paint', buffered: true });
 
         // Largest Contentful Paint
-        const lcpObserver = new PerformanceObserver((entryList) => {
-          const entries = entryList.getEntries();
-          const lastEntry = entries[entries.length - 1];
-          setMetrics((prev) => ({ ...prev, lcp: lastEntry.startTime }));
-        });
-        lcpObserver.observe({ type: 'lcp', buffered: true });
+        let lcpObserver: PerformanceObserver | null = null;
+        if ('PerformanceObserver' in window && PerformanceObserver.supportedEntryTypes?.includes('lcp')) {
+          try {
+            lcpObserver = new PerformanceObserver((entryList) => {
+              const entries = entryList.getEntries();
+              const lastEntry = entries[entries.length - 1];
+              setMetrics((prev) => ({ ...prev, lcp: lastEntry.startTime }));
+            });
+            lcpObserver.observe({ type: 'lcp', buffered: true });
+          } catch (error) {
+            console.debug('LCP observation failed:', error);
+            lcpObserver = null;
+          }
+        } else {
+          console.debug('LCP entry type not supported in this browser');
+        }
 
         // Cumulative Layout Shift
         let clsValue = 0;
@@ -377,7 +387,7 @@ export function usePerformanceMetrics() {
 
         return () => {
           fcpObserver.disconnect();
-          lcpObserver.disconnect();
+          if (lcpObserver) lcpObserver.disconnect();
           clsObserver.disconnect();
           fidObserver.disconnect();
         };

@@ -33,16 +33,6 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
-          },
-          {
-            src: '/icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
           }
         ],
         shortcuts: [
@@ -76,8 +66,21 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
               },
-              cacheUpdatePeriod: 60 * 60 * 24 // 24 hours
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
             }
           },
           {
@@ -91,8 +94,22 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/www\.googleapis\.com\/books\/.*$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'google-books-api-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
               },
-              cacheUpdatePeriod: 60 * 60 * 24 // 24 hours
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              networkTimeoutSeconds: 10
             }
           },
           {
@@ -106,15 +123,14 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
-              },
-              // Optimize for images
-              networkTimeoutSeconds: 10
+              }
             }
           }
         ]
       },
       devOptions: {
-        enabled: true
+        enabled: true,
+        type: 'module'
       }
     })
   ],
@@ -145,12 +161,12 @@ export default defineConfig({
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.');
-          const ext = info[info.length - 1];
-          if (/\.(png|jpe?g|gif|svg|webp)$/.test(assetInfo.name)) {
+          const info = assetInfo.name?.split('.');
+          const ext = info?.[info.length - 1];
+          if (/\.(png|jpe?g|gif|svg|webp)$/.test(assetInfo.name ?? '')) {
             return `images/[name]-[hash].${ext}`;
           }
-          if (/\.(css)$/.test(assetInfo.name)) {
+          if (/\.(css)$/.test(assetInfo.name ?? '')) {
             return `css/[name]-[hash].${ext}`;
           }
           return `[name]-[hash].${ext}`;

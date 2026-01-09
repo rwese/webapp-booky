@@ -1,6 +1,67 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType, BarcodeDetector } from '@zxing/library';
+import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library';
 import type { ScanResult, ScanState, ScanConfig, ManualEntryConfig, BatchScanState, ScanQueueItem } from '../types';
+import { searchByISBN, searchGoogleBooksByISBN } from '../lib/api';
+
+// Book lookup hook that listens for barcode scanner events
+export function useBookLookup() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [bookData, setBookData] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBookLookup = async (event: CustomEvent) => {
+      const { isbn } = event.detail;
+      
+      if (!isbn) return;
+
+      setIsLoading(true);
+      setError(null);
+      setBookData(null);
+
+      try {
+        // Search both Open Library and Google Books
+        const [openLibraryBook, googleBooksBook] = await Promise.all([
+          searchByISBN(isbn),
+          searchGoogleBooksByISBN(isbn)
+        ]);
+
+        // Prefer Open Library result, fall back to Google Books
+        const book = openLibraryBook || googleBooksBook;
+
+        if (book) {
+          setBookData(book);
+          window.dispatchEvent(new CustomEvent('book:found', { detail: book }));
+        } else {
+          setError('Book not found for this ISBN');
+          window.dispatchEvent(new CustomEvent('book:notfound', { detail: { isbn } }));
+        }
+      } catch (err) {
+        setError('Failed to lookup book');
+        console.error('Book lookup error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleEvent = (event: Event) => {
+      handleBookLookup(event as CustomEvent);
+    };
+
+    window.addEventListener('book:lookup', handleEvent);
+
+    return () => {
+      window.removeEventListener('book:lookup', handleEvent);
+    };
+  }, []);
+
+  return {
+    isLoading,
+    error,
+    bookData,
+    clearBookData: () => setBookData(null)
+  };
+}
 
 // Single barcode scanning hook
 export function useBarcodeScanner(config?: Partial<ScanConfig>) {
@@ -27,6 +88,8 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const streamRef = useRef<MediaStream | null>(null);
   const isScanningRef = useRef(false);
   const lastScanTimeRef = useRef(0);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
+  const videoReadyRef = useRef(false);
 
   // Initialize barcode reader
   const initializeReader = useCallback(async () => {
@@ -65,11 +128,22 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     const now = Date.now();
     if (now - lastScanTimeRef.current < configState.scanInterval) {
-      requestAnimationFrame(() => scanFrame());
+      if (isScanningRef.current) {
+        requestAnimationFrame(() => scanFrame());
+      }
       return;
     }
 
     try {
+      // Check if video element is ready and has a valid source
+      if (!videoRef.current || videoRef.current.readyState < 2) {
+        // Video not ready, try again later
+        if (isScanningRef.current) {
+          requestAnimationFrame(() => scanFrame());
+        }
+        return;
+      }
+
       const result = await readerRef.current.decodeFromVideoElement(videoRef.current);
       
       if (result) {
@@ -124,8 +198,56 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       };
 
       streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Properly handle video element state before setting srcObject
+      if (videoElement.srcObject) {
+        // If there's an existing stream, stop all tracks first
+        const existingStream = videoElement.srcObject as MediaStream;
+        existingStream.getTracks().forEach((track: MediaStreamTrack) => {
+          track.stop();
+        });
+      }
+      
+      // Reset video element state to prevent play() interruption
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      videoElement.srcObject = null;
+      videoElement.load(); // Reset the media element
+      
+      // Wait for the video element to be ready
+      await new Promise<void>((resolve) => {
+        const onCanPlay = () => {
+          videoElement.removeEventListener('canplay', onCanPlay);
+          resolve();
+        };
+        videoElement.addEventListener('canplay', onCanPlay);
+      });
+
+      // Set the new stream
       videoElement.srcObject = streamRef.current;
-      await videoElement.play();
+      
+      // Wait for loadedmetadata to ensure the stream is properly attached
+      await new Promise<void>((resolve) => {
+        const onLoadedMetadata = () => {
+          videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+          resolve();
+        };
+        videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
+      });
+
+      // Handle any existing play promise to prevent interruption
+      if (playPromiseRef.current) {
+        try {
+          await playPromiseRef.current;
+        } catch (e) {
+          // Ignore errors from interrupted play requests
+        }
+        playPromiseRef.current = null;
+      }
+
+      // Start playing the video
+      playPromiseRef.current = videoElement.play();
+      await playPromiseRef.current;
 
       isScanningRef.current = true;
 
@@ -138,6 +260,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         isScanning: false,
         error: error instanceof Error ? error.message : 'Failed to start camera' 
       }));
+      isScanningRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configState.cameraFacing, initializeReader, scanFrame]);
@@ -145,6 +268,17 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   // Stop scanning
   const stopScanning = useCallback(() => {
     isScanningRef.current = false;
+
+    // Cancel any pending play request
+    if (playPromiseRef.current) {
+      playPromiseRef.current.then(() => {
+        // Play completed successfully, nothing to do
+      }).catch((e) => {
+        // Play was interrupted or failed, ignore the error
+        console.debug('Play interrupted:', e);
+      });
+      playPromiseRef.current = null;
+    }
 
     if (streamRef.current) {
       const tracks = streamRef.current.getTracks();
@@ -155,6 +289,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     }
 
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
       videoRef.current = null;
     }
@@ -196,6 +331,16 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Cancel any pending play request
+      if (playPromiseRef.current) {
+        playPromiseRef.current.then(() => {
+          // Play completed successfully, nothing to do
+        }).catch((e) => {
+          // Play was interrupted or failed, ignore the error
+          console.debug('Play interrupted during cleanup:', e);
+        });
+        playPromiseRef.current = null;
+      }
       stopScanning();
     };
   }, [stopScanning]);
@@ -410,10 +555,15 @@ export function useBatchScanning() {
 
     for (const item of pendingItems) {
       try {
-        // Simulate API lookup
+        // Emit event for each book lookup
+        window.dispatchEvent(new CustomEvent('book:lookup', { 
+          detail: { isbn: item.isbn, isbn13: item.isbn13 } 
+        }));
+
+        // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Update item status (in real implementation, this would be actual book lookup)
+        // Update item status
         setState(prev => ({
           ...prev,
           currentProgress: completed + 1,

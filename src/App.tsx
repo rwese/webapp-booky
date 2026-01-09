@@ -1,7 +1,6 @@
 import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { SidebarNavigation } from './components/common/Navigation';
-import { BottomNavigation } from './components/common/BottomNavigation';
+import { SidebarNavigation, FloatingActionButtons } from './components/common/Navigation';
 import { ToastContainer } from './components/common/Toast';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { HomePage } from './pages/Home';
@@ -13,9 +12,9 @@ import { SettingsPage } from './pages/Settings';
 import { BookDetailPage } from './pages/BookDetail';
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
-import { useConnectivityHandler, useSyncStatus, useBackgroundSync } from './hooks/useOffline';
+import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';
 import { registerServiceWorker } from './lib/serviceWorker';
-import { useModalStore } from './store/useStore';
+import { useModalStore, useUIStore } from './store/useStore';
 import { clsx } from 'clsx';
 import { SkipLink, announce } from './components/common/Accessibility';
 import { usePerformanceMetrics } from './hooks/usePerformance';
@@ -71,6 +70,9 @@ function App() {
     announce(`Navigated to ${path}`);
   }, []);
 
+  // Get sidebar state
+  const { sidebarOpen } = useUIStore();
+
   return (
     <div className={clsx(
       'min-h-screen bg-gray-50 dark:bg-gray-900',
@@ -80,15 +82,23 @@ function App() {
       <SkipLink targetId="main-content">Skip to main content</SkipLink>
       <SkipLink targetId="main-navigation">Skip to navigation</SkipLink>
       
-      {/* Navigation - Sidebar for desktop, Bottom for mobile */}
+      {/* Navigation - Unified sidebar with floating action buttons */}
       <nav id="main-navigation" aria-label="Main navigation">
         <SidebarNavigation />
-        <BottomNavigation />
       </nav>
       
+      {/* Floating Action Buttons */}
+      <FloatingActionButtons />
+      
       {/* Main Content Area */}
-      <main id="main-content" tabIndex={-1} className="pt-16 lg:pl-64 pb-20 lg:pb-0">
-        <div className="px-4 lg:px-8">
+      <main 
+        id="main-content" 
+        tabIndex={-1} 
+        className={clsx(
+          'pt-16'
+        )}
+      >
+        <div className="px-4 lg:px-8 max-w-7xl mx-auto">
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -117,7 +127,7 @@ function App() {
 
 // Offline Indicator Component
 function OfflineIndicator() {
-  const isOnline = useConnectivityHandler();
+  const isOnline = useOnlineStatus();
   const syncStatus = useSyncStatus();
   
   if (isOnline && syncStatus.pendingOperations === 0) return null;

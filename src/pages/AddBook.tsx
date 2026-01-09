@@ -124,7 +124,7 @@ export function AddBookPage() {
   };
   
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
+    <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-6 lg:px-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

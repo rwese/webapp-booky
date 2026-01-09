@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { BookOpen, Check, Clock, XCircle, Calendar, ChevronDown } from 'lucide-react';
-import { Button } from '../common/Button';
+import { Button, Card, Badge } from '../common/Button';
 import { readingLogOperations, bookOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { ReadingStatus, ReadingLog, Book as BookType } from '../../types';
+import type { ReadingStatus, Book as BookType } from '../../types';
 import { clsx } from 'clsx';
 
 // Reading status configurations
@@ -52,7 +52,6 @@ interface ReadingStatusSelectorProps {
 }
 
 export function ReadingStatusSelector({ 
-  bookId, 
   currentStatus, 
   onStatusChange,
   className 
@@ -206,7 +205,7 @@ export function ReadingHistory({ bookId, className }: ReadingHistoryProps) {
                 {new Date(log.createdAt).toLocaleDateString()}
               </div>
             </div>
-            {isLatest && <Badge variant="primary" size="sm">Latest</Badge>}
+            {isLatest && <Badge variant="primary">Latest</Badge>}
           </div>
         );
       })}
@@ -261,7 +260,7 @@ export function CurrentlyReadingSection({ limit = 5, className }: CurrentlyReadi
             <div className="flex-1 min-w-0">
               <h4 className="font-medium text-gray-900 dark:text-white truncate">{book.title}</h4>
               <p className="text-sm text-gray-500 truncate">{book.authors.join(', ')}</p>
-              <ReadingProgress bookId={book.id} />
+              <ReadingProgress />
             </div>
           </div>
         </Card>
@@ -270,12 +269,8 @@ export function CurrentlyReadingSection({ limit = 5, className }: CurrentlyReadi
   );
 }
 
-// Simple reading progress component
-interface ReadingProgressProps {
-  bookId: string;
-}
 
-function ReadingProgress({ bookId }: ReadingProgressProps) {
+function ReadingProgress() {
   // This would typically connect to actual reading progress data
   // For now, show a simple indicator
   return (
@@ -323,6 +318,3 @@ export function StatusBadge({ status, size = 'md', className }: StatusBadgeProps
     </span>
   );
 }
-
-// Badge component import fix - use Button.Badge instead
-import { Badge as ButtonBadge } from '../common/Button';

@@ -161,7 +161,7 @@ export function AnalyticsPage() {
   }, []);
   
   return (
-    <div className="min-h-screen pb-20 lg:pb-0 lg:pl-64">
+    <div className="min-h-screen pb-20 lg:pb-0">
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

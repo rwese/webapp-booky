@@ -2,7 +2,9 @@
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // Use Vite PWA plugin's generated service worker path
+      const swPath = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
+      navigator.serviceWorker.register(swPath)
         .then(registration => {
           console.log('ServiceWorker registered:', registration.scope);
           

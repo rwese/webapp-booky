@@ -355,3 +355,52 @@ export function IconButton({
     </button>
   );
 }
+
+// Accessible form field wrapper
+interface AccessibleFieldProps {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function AccessibleField({
+  label,
+  required = false,
+  hint,
+  children,
+  className,
+}: AccessibleFieldProps) {
+  const labelId = useMemo(() => `field-label-${Math.random().toString(36).substr(2, 9)}`, []);
+  const hintId = useMemo(() => `field-hint-${Math.random().toString(36).substr(2, 9)}`, []);
+
+  return (
+    <div className={clsx('space-y-1', className)}>
+      <div className="flex items-center gap-2">
+        <label
+          id={labelId}
+          className="block text-sm font-medium text-gray-900 dark:text-white"
+        >
+          {label}
+          {required && (
+            <span className="text-red-500 ml-1" aria-hidden="true">
+              *
+            </span>
+          )}
+        </label>
+        {required && (
+          <span className="sr-only">(required)</span>
+        )}
+      </div>
+      {hint && (
+        <p id={hintId} className="text-sm text-gray-600 dark:text-gray-400">
+          {hint}
+        </p>
+      )}
+      <div aria-labelledby={labelId} aria-describedby={hint ? hintId : undefined}>
+        {children}
+      </div>
+    </div>
+  );
+}
