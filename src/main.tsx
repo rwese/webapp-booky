@@ -12,7 +12,6 @@ const HomePage = lazy(() => import('./pages/Home'));
 const LibraryPage = lazy(() => import('./pages/Library'));
 const AddBookPage = lazy(() => import('./pages/AddBook'));
 const AnalyticsPage = lazy(() => import('./pages/Analytics'));
-const HistoryPage = lazy(() => import('./pages/History'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const BookDetailPage = lazy(() => import('./pages/BookDetail'));
 

@@ -5,9 +5,9 @@
 
 import { test, expect } from '@playwright/test';
 
-describe('Book Collection App - Core Regression Tests', () => {
+test.describe('Book Collection App - Core Regression Tests', () => {
   
-  describe('Library View', () => {
+  test.describe('Library View', () => {
     test('should load library page successfully', async ({ page }) => {
       await page.goto('/library');
       
@@ -25,7 +25,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Book Creation', () => {
+  test.describe('Book Creation', () => {
     test('should navigate to add book page', async ({ page }) => {
       await page.goto('/library');
       await page.click('text=Add Your First Book');
@@ -61,7 +61,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Book Detail View', () => {
+  test.describe('Book Detail View', () => {
     test('should navigate to book detail page', async ({ page }) => {
       await page.goto('/library');
       
@@ -91,7 +91,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Book Editing', () => {
+  test.describe('Book Editing', () => {
     test('should navigate to edit page', async ({ page }) => {
       await page.goto('/library');
       await page.click('h3:has-text("Test Book for Regression")');
@@ -131,7 +131,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Collections Management', () => {
+  test.describe('Collections Management', () => {
     test('should open collections selector', async ({ page }) => {
       await page.goto('/library');
       await page.click('h3:has-text("Test Book for Regression")');
@@ -172,7 +172,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Tags Management', () => {
+  test.describe('Tags Management', () => {
     test('should open tags manager', async ({ page }) => {
       await page.goto('/library');
       await page.click('h3:has-text("Test Book for Regression")');
@@ -213,7 +213,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Navigation', () => {
+  test.describe('Navigation', () => {
     test('should have working navigation elements', async ({ page }) => {
       await page.goto('/library');
       
@@ -234,7 +234,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Responsive Design', () => {
+  test.describe('Responsive Design', () => {
     test('should work on mobile viewport', async ({ page }) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
@@ -247,7 +247,7 @@ describe('Book Collection App - Core Regression Tests', () => {
     });
   });
 
-  describe('Accessibility', () => {
+  test.describe('Accessibility', () => {
     test('should have proper heading structure', async ({ page }) => {
       await page.goto('/library');
       
@@ -280,9 +280,9 @@ describe('Book Collection App - Core Regression Tests', () => {
   });
 });
 
-describe('Book Collection App - Edge Cases', () => {
+test.describe('Book Collection App - Edge Cases', () => {
   
-  describe('Error Handling', () => {
+  test.describe('Error Handling', () => {
     test('should handle non-existent book page gracefully', async ({ page }) => {
       await page.goto('/book/non-existent-id');
       
@@ -297,7 +297,7 @@ describe('Book Collection App - Edge Cases', () => {
     });
   });
 
-  describe('Form Validation', () => {
+  test.describe('Form Validation', () => {
     test('should require title when adding book', async ({ page }) => {
       await page.goto('/add');
       await page.click('button:has-text("Manual Entry")');
@@ -324,7 +324,7 @@ describe('Book Collection App - Edge Cases', () => {
     });
   });
 
-  describe('Database Operations', () => {
+  test.describe('Database Operations', () => {
     test('should persist data across page reloads', async ({ page }) => {
       // Create a book
       await page.goto('/add');
