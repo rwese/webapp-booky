@@ -10,17 +10,19 @@ import { ReviewEditor, ReviewDisplay } from '../components/forms/ReviewEditor';
 import { TagInput, TagBadge, TagManager } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { ReadingStatusSelector, ReadingHistory, StatusBadge, READING_STATUS_CONFIG } from '../components/forms/ReadingStatusManager';
-import { bookOperations, ratingOperations, tagOperations, collectionOperations, readingLogOperations } from '../lib/db';
+import { bookOperations, ratingOperations, tagOperations, collectionOperations, readingLogOperations, analyticsOperations } from '../lib/db';
 import { formatISBN } from '../lib/api';
 import { useToastStore, useLibraryStore } from '../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Book as BookType, Rating, Tag as TagType, Collection, ReadingStatus } from '../types';
 import { clsx } from 'clsx';
+import { useAnalyticsTracking } from '../hooks/useAnalyticsTracking';
 
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToast } = useToastStore();
+  const { trackBookView, trackRatingAdded, trackReviewAdded, startReadingSession, trackBookCompleted } = useAnalyticsTracking();
   
   const [book, setBook] = useState<BookType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,7 @@ export function BookDetailPage() {
   const [bookTags, setBookTags] = useState<TagType[]>([]);
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
+  const [previousRating, setPreviousRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
   const [readingStatus, setReadingStatus] = useState<ReadingStatus | undefined>();
 
@@ -69,6 +72,9 @@ export function BookDetailPage() {
         }
         setBook(loadedBook);
         
+        // Track book view
+        trackBookView(id);
+        
         // Load related data
         const [tags, rating] = await Promise.all([
           tagOperations.getBookTags(id),
@@ -76,6 +82,7 @@ export function BookDetailPage() {
         ]);
         
         setBookTags(tags);
+        setPreviousRating(rating?.stars || 0);
         setCurrentRating(rating?.stars || 0);
         setCurrentReview(rating?.review || '');
         
@@ -95,7 +102,7 @@ export function BookDetailPage() {
     };
 
     loadBook();
-  }, [id, navigate, addToast, loadBookCollections]);
+  }, [id, navigate, addToast, loadBookCollections, trackBookView]);
 
   // Handle rating change
   const handleRatingChange = useCallback(async (rating: number) => {
@@ -113,12 +120,17 @@ export function BookDetailPage() {
       
       await ratingOperations.upsert(ratingRecord);
       setCurrentRating(rating);
+      
+      // Track rating event
+      trackRatingAdded(book.id, rating, previousRating);
+      setPreviousRating(rating);
+      
       addToast({ type: 'success', message: 'Rating saved!' });
     } catch (error) {
       console.error('Failed to save rating:', error);
       addToast({ type: 'error', message: 'Failed to save rating' });
     }
-  }, [book, currentReview, addToast]);
+  }, [book, currentReview, addToast, previousRating, trackRatingAdded]);
 
   // Handle review save
   const handleReviewSave = useCallback(async (review: string) => {
@@ -138,12 +150,16 @@ export function BookDetailPage() {
       await ratingOperations.upsert(ratingRecord);
       setCurrentReview(review);
       setShowReviewEditor(false);
+      
+      // Track review event
+      trackReviewAdded(book.id, review.length, false);
+      
       addToast({ type: 'success', message: 'Review saved!' });
     } catch (error) {
       console.error('Failed to save review:', error);
       addToast({ type: 'error', message: 'Failed to save review' });
     }
-  }, [book, currentRating, currentReview, addToast]);
+  }, [book, currentRating, currentReview, addToast, trackReviewAdded]);
 
   // Handle tags change
   const handleTagsChange = useCallback(async (tags: TagType[]) => {
@@ -174,6 +190,16 @@ export function BookDetailPage() {
     if (!book) return;
     
     try {
+      // Track reading session start for currently_reading
+      if (status === 'currently_reading' && readingStatus !== 'currently_reading') {
+        await startReadingSession(book.id);
+      }
+      
+      // Track book completion
+      if (status === 'read' && readingStatus !== 'read') {
+        await trackBookCompleted(book.id);
+      }
+      
       await readingLogOperations.logStatus({
         id: crypto.randomUUID(),
         bookId: book.id,
@@ -194,7 +220,7 @@ export function BookDetailPage() {
       console.error('Failed to update status:', error);
       addToast({ type: 'error', message: 'Failed to update reading status' });
     }
-  }, [book, addToast]);
+  }, [book, readingStatus, addToast, startReadingSession, trackBookCompleted]);
 
   // Handle book deletion
   const handleDelete = useCallback(async () => {

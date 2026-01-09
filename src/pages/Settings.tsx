@@ -11,7 +11,7 @@ import { useReducedMotion } from '../hooks/usePerformance';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
-  const { theme, setTheme } = useUIStore();
+  const theme = settings.theme;
   const { addToast } = useToastStore();
   const isOnline = useOnlineStatus();
   const reducedMotion = useReducedMotion();
@@ -79,7 +79,7 @@ export function SettingsPage() {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setTheme(option.value as any)}
+                        onClick={() => updateSettings({ theme: option.value as any })}
                         className={clsx(
                           'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
                           'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',

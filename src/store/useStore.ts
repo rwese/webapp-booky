@@ -84,6 +84,7 @@ export const useSettingsStore = create<SettingsState>()(
         reducedMotion: false,
         highContrast: false,
         fontSize: 'medium',
+        analyticsEnabled: true,
         analyticsPreferences: {
           showCharts: true,
           defaultTimeRange: 'year',
@@ -100,6 +101,11 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({
           settings: { ...state.settings, ...newSettings }
         })),
+
+      setTheme: (theme: 'light' | 'dark' | 'system') =>
+        set((state) => ({
+          settings: { ...state.settings, theme }
+        })),
       
       resetSettings: () =>
         set({
@@ -108,10 +114,20 @@ export const useSettingsStore = create<SettingsState>()(
             defaultFormat: 'physical',
             ratingDisplay: 'stars',
             dateFormat: 'MM/dd/yyyy',
+            animationsEnabled: true,
+            reducedMotion: false,
+            highContrast: false,
+            fontSize: 'medium',
+            analyticsEnabled: true,
             analyticsPreferences: {
               showCharts: true,
               defaultTimeRange: 'year',
               trackPagesRead: true
+            },
+            notificationPreferences: {
+              readingReminders: true,
+              newRecommendations: true,
+              weeklyDigest: false
             }
           }
         })
@@ -167,7 +183,15 @@ export const useToastStore = create<ToastState>((set) => ({
 
 // Hook for theme management with system preference support
 export function useTheme() {
-  const { theme, setTheme } = useUIStore();
+  const { settings: { theme: settingsTheme }, updateSettings } = useSettingsStore();
+  const { theme: uiTheme, setTheme: setUITheme } = useUIStore();
+  
+  // Sync UI store with settings store on initial load
+  React.useEffect(() => {
+    if (uiTheme !== settingsTheme) {
+      setUITheme(settingsTheme);
+    }
+  }, [uiTheme, settingsTheme, setUITheme]);
   
   // Apply theme to document
   const applyTheme = React.useCallback((theme: 'light' | 'dark' | 'system') => {
@@ -187,22 +211,28 @@ export function useTheme() {
   
   // Listen for system theme changes
   const handleSystemThemeChange = React.useCallback(() => {
-    if (theme === 'system') {
+    if (settingsTheme === 'system') {
       applyTheme('system');
     }
-  }, [theme, applyTheme]);
+  }, [settingsTheme, applyTheme]);
   
   // Apply theme on change
   React.useEffect(() => {
-    applyTheme(theme);
+    applyTheme(settingsTheme);
     
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', handleSystemThemeChange);
     
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
-  }, [theme, applyTheme, handleSystemThemeChange]);
+  }, [settingsTheme, applyTheme, handleSystemThemeChange]);
   
-  return { theme, setTheme };
+  // Return theme setter that updates both stores for compatibility
+  const setTheme = (theme: 'light' | 'dark' | 'system') => {
+    updateSettings({ theme });
+    setUITheme(theme);
+  };
+  
+  return { theme: settingsTheme, setTheme };
 }
 
 import React from 'react';

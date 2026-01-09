@@ -113,6 +113,7 @@ export interface UserSettings {
   reducedMotion: boolean;
   highContrast: boolean;
   fontSize: 'small' | 'medium' | 'large';
+  analyticsEnabled: boolean;
   analyticsPreferences: AnalyticsConfig;
   notificationPreferences: NotificationConfig;
 }
@@ -462,4 +463,66 @@ export interface BatchScanActions {
   clearQueue: () => void;
   processQueue: () => Promise<void>;
   retryItem: (id: string) => void;
+}
+
+// Analytics Event Types - Book-centric tracking (no page tracking)
+export type AnalyticsEventType = 
+  | 'book_viewed'
+  | 'reading_session_start'
+  | 'reading_session_end'
+  | 'book_completed'
+  | 'rating_added'
+  | 'review_added';
+
+export interface AnalyticsEvent {
+  id: string;
+  eventType: AnalyticsEventType;
+  bookId: string;
+  timestamp: Date;
+  eventData: AnalyticsEventData;
+  synced: boolean;
+}
+
+export interface AnalyticsEventData {
+  // Common fields
+  sessionDuration?: number; // in milliseconds
+  pageCount?: number;
+  
+  // Rating specific
+  rating?: number;
+  previousRating?: number;
+  
+  // Review specific
+  reviewLength?: number;
+  containsSpoilers?: boolean;
+  
+  // Session specific
+  sessionStart?: Date;
+  sessionEnd?: Date;
+  
+  // Completion specific
+  completionTime?: number; // days to complete
+  reRead?: boolean;
+}
+
+export interface ReadingSession {
+  id: string;
+  bookId: string;
+  startTime: Date;
+  endTime?: Date;
+  duration?: number; // in milliseconds
+  createdAt: Date;
+}
+
+export interface BookAnalytics {
+  bookId: string;
+  totalViews: number;
+  totalReadingTime: number; // milliseconds
+  totalSessions: number;
+  averageSessionDuration: number;
+  lastViewedAt?: Date;
+  lastReadAt?: Date;
+  completionCount: number;
+  averageRating: number;
+  totalReviews: number;
 }

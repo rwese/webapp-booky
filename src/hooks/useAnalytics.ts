@@ -3,7 +3,7 @@ import {
   bookOperations, 
   ratingOperations, 
   readingLogOperations,
-  collectionOperations 
+  collectionOperations
 } from '../lib/db';
 import type { 
   Book, 
@@ -13,6 +13,7 @@ import type {
   SortConfig,
   BookFormat 
 } from '../types';
+import { db } from '../lib/db';
 
 // Re-export useBooks from existing hook for compatibility
 export { useBooks } from './useBooks';
@@ -20,7 +21,7 @@ import { format, startOfYear, endOfYear, subMonths, startOfMonth, endOfMonth, is
 
 // Comprehensive reading statistics hook
 export function useReadingAnalytics() {
-  const readingLogs = useLiveQuery(() => readingLogOperations.getAll());
+  const readingLogs = useLiveQuery(() => db.readingLogs.toArray());
   const books = useLiveQuery(() => bookOperations.getAll());
   const ratings = useLiveQuery(() => db.ratings.toArray());
 
@@ -123,7 +124,7 @@ export function useReadingHistory(
   sortConfig: SortConfig = { field: 'finishedAt', direction: 'desc' }
 ) {
   const readingLogs = useLiveQuery(async () => {
-    let logs = await readingLogOperations.getAll();
+    let logs = await db.readingLogs.toArray();
     
     // Apply status filter
     if (filters.statuses && filters.statuses.length > 0) {
@@ -241,7 +242,7 @@ export function useRatingDistribution() {
 
 // Hook for reading streak calculation
 export function useReadingStreak() {
-  const readingLogs = useLiveQuery(() => readingLogOperations.getAll());
+  const readingLogs = useLiveQuery(() => db.readingLogs.toArray());
   
   return calculateReadingStreak(readingLogs || []);
 }
@@ -311,6 +312,3 @@ function calculateReadingStreak(logs: ReadingLog[]) {
     totalReadingDays: uniqueDates.length
   };
 }
-
-// Export database reference for hooks
-import { db } from '../lib/db';

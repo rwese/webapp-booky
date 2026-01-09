@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { useUIStore } from './useStore';
+import { useSettingsStore, useUIStore } from '../store/useStore';
 import type { ThemeMode } from '../types';
 
 interface ThemeContextType {
@@ -25,7 +25,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const { theme, setTheme } = useUIStore();
+  const { settings: { theme }, updateSettings } = useSettingsStore();
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark' | null>(null);
 
@@ -82,13 +82,17 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const toggleTheme = useCallback(() => {
     if (theme === 'light') {
-      setTheme('dark');
+      updateSettings({ theme: 'dark' });
     } else if (theme === 'dark') {
-      setTheme('system');
+      updateSettings({ theme: 'system' });
     } else {
-      setTheme('light');
+      updateSettings({ theme: 'light' });
     }
-  }, [theme, setTheme]);
+  }, [theme, updateSettings]);
+
+  const setTheme = useCallback((newTheme: ThemeMode) => {
+    updateSettings({ theme: newTheme });
+  }, [updateSettings]);
 
   const value: ThemeContextType = {
     theme,
