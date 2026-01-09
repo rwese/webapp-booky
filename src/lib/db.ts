@@ -29,7 +29,7 @@ class BookCollectionDB extends Dexie {
     super('BookCollectionDB');
     
     // Define schema and indexes
-    this.version(1).stores({
+    this.version(2).stores({
       books: 'id, title, isbn, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name, color',
