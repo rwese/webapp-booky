@@ -1,7 +1,7 @@
 import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat } from '../types';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
-const BACKEND_API = process.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
+const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
 
 // Search Open Library
 export async function searchOpenLibrary(query: string): Promise<Book[]> {
@@ -32,7 +32,9 @@ export async function searchOpenLibrary(query: string): Promise<Book[]> {
       addedAt: new Date(),
       externalIds: {
         openLibrary: book.key
-      }
+      },
+      needsSync: true,
+      localOnly: true
     }));
   } catch (error) {
     console.error('Open Library search error:', error);
@@ -68,7 +70,9 @@ export async function searchByISBN(isbn: string): Promise<Book | null> {
       addedAt: new Date(),
       externalIds: {
         openLibrary: data.key
-      }
+      },
+      needsSync: true,
+      localOnly: true
     };
   } catch (error) {
     console.error('ISBN lookup error:', error);
