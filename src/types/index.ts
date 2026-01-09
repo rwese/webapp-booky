@@ -29,6 +29,9 @@ export interface Book {
   lastSyncedAt?: Date;
   needsSync: boolean;
   localOnly: boolean;
+  // Optional fields for import data
+  genre?: string;
+  language?: string;
 }
 
 export interface Rating {
@@ -495,4 +498,71 @@ export interface BookAnalytics {
   completionCount: number;
   averageRating: number;
   totalReviews: number;
+}
+
+// Reading Status Types
+export type ReadingStatus = 'want_to_read' | 'currently_reading' | 'read';
+
+export interface ReadingLog {
+  id: string;
+  bookId: string;
+  status: ReadingStatus;
+  startedAt?: Date;
+  finishedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Import Data Types (from booknotes-export)
+export interface ImportBookData {
+  id: string;
+  title: string;
+  author: string;
+  isbn?: string;
+  isbnSource?: string;
+  pageCount?: number;
+  publicationYear?: number;
+  publisher?: string;
+  genre?: string;
+  language?: string;
+  rating?: number;
+  readingStatus: 'Want to Read' | 'Read' | 'Currently Reading';
+  tags: string[];
+  coverKey?: string;
+  coverFilename?: string;
+  createdAt: string;
+  updatedAt: string;
+  categoryIds: string[];
+  readingSessionIds: string[];
+  noteId?: string;
+}
+
+export interface ImportMetadata {
+  books: ImportBookData[];
+  exportedAt: string;
+  source: string;
+  version: string;
+}
+
+export interface ImportResult {
+  success: boolean;
+  imported: number;
+  skipped: number;
+  failed: number;
+  errors: ImportError[];
+}
+
+export interface ImportError {
+  bookId: string;
+  title: string;
+  error: string;
+  field?: string;
+}
+
+export interface ImportProgress {
+  total: number;
+  current: number;
+  status: 'idle' | 'reading' | 'processing' | 'importing' | 'completed' | 'error';
+  currentBook?: string;
+  errors: ImportError[];
 }

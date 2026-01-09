@@ -23,6 +23,7 @@ class BookCollectionDB extends Dexie {
   collectionBooks!: Table<CollectionBook>;
   syncQueue!: Table<SyncOperation>;
   settings!: Table<UserSettings>;
+  readingLogs!: Table<ReadingLog>;
 
   constructor() {
     super('BookCollectionDB');
@@ -36,7 +37,8 @@ class BookCollectionDB extends Dexie {
       collections: 'id, name, isSmart, createdAt, updatedAt',
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
       syncQueue: 'id, entity, entityId, timestamp, synced',
-      settings: 'id'
+      settings: 'id',
+      readingLogs: 'id, bookId, status, createdAt'
     });
   }
 }
@@ -295,5 +297,31 @@ export const settingsOperations = {
       return await db.settings.update('userSettings', changes);
     }
     return await db.settings.put({ id: 'userSettings', ...changes } as UserSettings);
+  }
+};
+
+export const readingLogOperations = {
+  async getByBookId(bookId: string): Promise<ReadingLog | undefined> {
+    return await db.readingLogs.where('bookId').equals(bookId).first();
+  },
+  
+  async getByBookIds(bookIds: string[]): Promise<ReadingLog[]> {
+    return await db.readingLogs
+      .filter((rl: ReadingLog) => bookIds.includes(rl.bookId))
+      .toArray();
+  },
+  
+  async upsert(readingLog: ReadingLog): Promise<string> {
+    const existing = await db.readingLogs.where('bookId').equals(readingLog.bookId).first();
+    if (existing) {
+      await db.readingLogs.update(existing.id, readingLog);
+      return existing.id;
+    }
+    const id = await db.readingLogs.add(readingLog);
+    return id as string;
+  },
+  
+  async deleteByBookId(bookId: string): Promise<number> {
+    return await db.readingLogs.where('bookId').equals(bookId).delete();
   }
 };

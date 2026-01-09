@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Shield, Download, Trash2, Palette, Eye, Type, Zap, Volume2, VolumeX } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Shield, Download, Trash2, Palette, Eye, Type, Zap, Volume2, VolumeX, Upload } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore, useUIStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
@@ -7,12 +7,14 @@ import { useToastStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
+import { ImportModal } from '../components/import/ImportModal';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
   const theme = settings.theme;
   const { addToast } = useToastStore();
   const isOnline = useOnlineStatus();
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
@@ -25,6 +27,11 @@ export function SettingsPage() {
       }
     }
   };
+
+  const handleImportSuccess = useCallback(() => {
+    addToast({ type: 'success', message: 'Books imported successfully!' });
+    setIsImportModalOpen(false);
+  }, [addToast]);
   
   const handleExportData = () => {
     // Export data as JSON
@@ -154,12 +161,24 @@ export function SettingsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="font-medium text-gray-900 dark:text-white">Import Books</p>
+                  <p className="text-sm text-gray-500">Import from booknotes-export</p>
+                </div>
+                <Button type="button" variant="secondary" onClick={() => setIsImportModalOpen(true)}>
+                  <Upload size={16} />
+                  Import
+                </Button>
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="font-medium text-gray-900 dark:text-white">Export Data</p>
                   <p className="text-sm text-gray-500">Download your library as JSON</p>
                 </div>
                 <Button type="button" variant="secondary" onClick={handleExportData}>
                   Export
                 </Button>
+              </div>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="flex items-center justify-between">
@@ -256,6 +275,12 @@ export function SettingsPage() {
           </Card>
         </section>
       </main>
+      
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 }

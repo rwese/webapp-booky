@@ -100,3 +100,87 @@ export function useBookTags(bookId: string) {
     [bookId]
   );
 }
+
+// Import functionality
+import { bookImportService } from '../lib/importService';
+import type { ImportBookData, ImportProgress, ImportResult } from '../types';
+import { useState, useCallback } from 'react';
+
+// Hook for import progress and status
+export function useBookImport() {
+  const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState<ImportProgress>({
+    total: 0,
+    current: 0,
+    status: 'idle',
+    errors: []
+  });
+  const [result, setResult] = useState<ImportResult | undefined>();
+
+  const importBooks = useCallback(async (
+    importData: ImportBookData[],
+    options?: { skipDuplicates?: boolean }
+  ) => {
+    setIsImporting(true);
+    setProgress({
+      total: importData.length,
+      current: 0,
+      status: 'reading',
+      errors: []
+    });
+
+    try {
+      const importResult = await bookImportService.importBooks(importData, {
+        skipDuplicates: options?.skipDuplicates ?? true,
+        onProgress: setProgress
+      });
+
+      setResult(importResult);
+      setProgress(prev => ({
+        ...prev,
+        status: 'completed',
+        current: importData.length
+      }));
+
+      return importResult;
+    } catch (error) {
+      console.error('Import failed:', error);
+      setProgress(prev => ({
+        ...prev,
+        status: 'error',
+        errors: [{ 
+          bookId: 'unknown', 
+          title: 'Import failed', 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        }]
+      }));
+      throw error;
+    } finally {
+      setIsImporting(false);
+    }
+  }, []);
+
+  const resetImport = useCallback(() => {
+    setIsImporting(false);
+    setProgress({
+      total: 0,
+      current: 0,
+      status: 'idle',
+      errors: []
+    });
+    setResult(undefined);
+  }, []);
+
+  return {
+    isImporting,
+    progress,
+    result,
+    importBooks,
+    resetImport
+  };
+}
+
+// Preview import data
+export async function previewImportData(importData: ImportBookData[]) {
+  return await bookImportService.previewImport(importData);
+}
