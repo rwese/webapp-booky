@@ -294,9 +294,43 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const startScanning = useCallback(async (videoElement: HTMLVideoElement) => {
     if (isScanningRef.current) return;
 
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY = 1000; // 1 second between retries
+    const MAX_RETRIES = 3; // Increased retries
+    const RETRY_DELAY = 1500; // 1.5 seconds between retries for better device recovery
     let attempts = 0;
+
+    // Comprehensive cleanup function
+    const cleanupAll = () => {
+      // Clear all timeout refs
+      if (canPlayTimeoutRef.current) {
+        clearTimeout(canPlayTimeoutRef.current);
+        canPlayTimeoutRef.current = null;
+      }
+      if (loadedMetadataTimeoutRef.current) {
+        clearTimeout(loadedMetadataTimeoutRef.current);
+        loadedMetadataTimeoutRef.current = null;
+      }
+      if (playTimeoutRef.current) {
+        clearTimeout(playTimeoutRef.current);
+        playTimeoutRef.current = null;
+      }
+
+      // Clean up stream if it was created
+      if (streamRef.current) {
+        const tracks = streamRef.current.getTracks();
+        for (const track of tracks) {
+          track.stop();
+        }
+        streamRef.current = null;
+      }
+
+      // Reset video element state
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.currentTime = 0;
+        videoElement.srcObject = null;
+        videoElement.load();
+      }
+    };
 
     const attemptStart = async (): Promise<boolean> => {
       attempts++;
@@ -369,7 +403,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         videoElement.load(); // Reset the media element
         
         // Wait for the video element to be ready with extended timeout
-        const CANPLAY_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        const CANPLAY_TIMEOUT = 10000; // 10 seconds timeout for slower devices
         let canPlayResolved = false;
         
         const canPlayPromise = new Promise<void>((resolve, reject) => {
@@ -394,14 +428,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         } catch (timeoutError) {
           if (cleanupTrackMonitoring) cleanupTrackMonitoring();
           if (cleanupErrorHandler) cleanupErrorHandler();
-          // Clean up stream if it was created
-          if (streamRef.current) {
-            const tracks = streamRef.current.getTracks();
-            for (const track of tracks) {
-              track.stop();
-            }
-            streamRef.current = null;
-          }
           throw timeoutError; // Re-throw for retry logic
         } finally {
           if (canPlayTimeoutRef.current) {
@@ -416,7 +442,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         videoElement.srcObject = streamRef.current;
         
         // Wait for loadedmetadata to ensure the stream is properly attached with extended timeout
-        const LOADEDMETADATA_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        const LOADEDMETADATA_TIMEOUT = 10000; // 10 seconds timeout for slower devices
         let loadedMetadataResolved = false;
         
         const loadedMetadataPromise = new Promise<void>((resolve, reject) => {
@@ -441,14 +467,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         } catch (timeoutError) {
           if (cleanupTrackMonitoring) cleanupTrackMonitoring();
           if (cleanupErrorHandler) cleanupErrorHandler();
-          // Clean up stream if it was created
-          if (streamRef.current) {
-            const tracks = streamRef.current.getTracks();
-            for (const track of tracks) {
-              track.stop();
-            }
-            streamRef.current = null;
-          }
           throw timeoutError; // Re-throw for retry logic
         } finally {
           if (loadedMetadataTimeoutRef.current) {
@@ -468,7 +486,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         }
 
         // Start playing the video with extended timeout
-        const PLAY_TIMEOUT = 8000; // 8 seconds timeout for slower devices
+        const PLAY_TIMEOUT = 10000; // 10 seconds timeout for slower devices
         const currentPlayPromise = videoElement.play();
         playPromiseRef.current = currentPlayPromise;
         
@@ -500,56 +518,39 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         return true;
 
       } catch (error) {
-        // Cleanup on error - clear all timeout refs
-        if (canPlayTimeoutRef.current) {
-          clearTimeout(canPlayTimeoutRef.current);
-          canPlayTimeoutRef.current = null;
-        }
-        if (loadedMetadataTimeoutRef.current) {
-          clearTimeout(loadedMetadataTimeoutRef.current);
-          loadedMetadataTimeoutRef.current = null;
-        }
-        if (playTimeoutRef.current) {
-          clearTimeout(playTimeoutRef.current);
-          playTimeoutRef.current = null;
-        }
-        
-        // Clean up stream if it was created
-        if (streamRef.current) {
-          const tracks = streamRef.current.getTracks();
-          for (const track of tracks) {
-            track.stop();
-          }
-          streamRef.current = null;
-        }
-        
         let errorMessage = 'Failed to start camera';
+        let shouldRetry = false;
+
         if (error instanceof Error) {
           if (error.name === 'NotAllowedError') {
             errorMessage = 'Camera permission denied. Please allow camera access.';
           } else if (error.name === 'NotFoundError') {
             errorMessage = 'No camera found. Please connect a camera.';
-          } else if (error.message.includes('play') || error.message.includes('timeout')) {
+          } else if (
+            error.message.includes('timeout') ||
+            error.message.includes('play') ||
+            error.message.includes('canplay') ||
+            error.message.includes('loadedmetadata')
+          ) {
             errorMessage = 'Camera initialization failed. Please try again.';
+            shouldRetry = true;
           } else {
             errorMessage = error.message;
           }
         }
         
-        // Retry logic for timeout errors
-        if (attempts < MAX_RETRIES && (
-          error instanceof Error && (
-            error.message.includes('timeout') ||
-            error.message.includes('Video canplay timeout') ||
-            error.message.includes('Video loadedmetadata timeout') ||
-            error.message.includes('Video play timeout')
-          )
-        )) {
-          console.log(`Camera initialization attempt ${attempts} failed, retrying...`);
+        // Enhanced retry logic with better timeout detection
+        if (shouldRetry && attempts < MAX_RETRIES) {
+          console.log(`Camera initialization attempt ${attempts} failed (${error instanceof Error ? error.message : 'unknown error'}), retrying...`);
+          // Comprehensive cleanup before retry
+          cleanupAll();
           // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
           return attemptStart(); // Recursive retry
         }
+        
+        // Final cleanup on failure
+        cleanupAll();
         
         setState(prev => ({ 
           ...prev, 
