@@ -15,6 +15,8 @@ import sys
 import json
 import time
 import re
+import fcntl
+import os
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
@@ -32,6 +34,62 @@ Created at: {{created_at}}
 Updated at: {{updated_at}}
 === END TICKET ===
 """
+
+
+class DatabaseLock:
+    """Handle database locking to prevent race conditions."""
+
+    def __init__(self, lock_file_path: str):
+        self.lock_file_path = lock_file_path
+        self.lock_file = None
+
+    def acquire(self, timeout: int = 10) -> bool:
+        """Acquire a file lock with timeout.
+
+        Args:
+            timeout: Maximum seconds to wait for lock acquisition
+
+        Returns:
+            True if lock acquired successfully, False otherwise
+        """
+        try:
+            # Create parent directory if it doesn't exist
+            Path(self.lock_file_path).parent.mkdir(parents=True, exist_ok=True)
+
+            # Open lock file for writing
+            self.lock_file = open(self.lock_file_path, "w")
+
+            start_time = time.time()
+            while True:
+                try:
+                    # Try to acquire exclusive lock (non-blocking)
+                    fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    # Write PID to lock file for debugging
+                    self.lock_file.write(str(os.getpid()))
+                    self.lock_file.flush()
+                    return True
+                except (IOError, OSError):
+                    if time.time() - start_time > timeout:
+                        print(
+                            f"⚠️  Could not acquire lock within {timeout} seconds",
+                            file=sys.stderr,
+                        )
+                        return False
+                    time.sleep(0.1)  # Wait 100ms before retrying
+
+        except Exception as e:
+            print(f"❌ Error acquiring lock: {e}", file=sys.stderr)
+            return False
+
+    def release(self):
+        """Release the file lock and close the file."""
+        if self.lock_file:
+            try:
+                fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_UN)
+                self.lock_file.close()
+                self.lock_file = None
+            except Exception as e:
+                print(f"❌ Error releasing lock: {e}", file=sys.stderr)
 
 
 class Ticket:
