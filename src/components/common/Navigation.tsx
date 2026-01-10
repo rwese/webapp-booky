@@ -166,7 +166,6 @@ export function BottomNavigation() {
     { id: 'home', label: 'Home', icon: <Home size={24} />, path: '/' },
     { id: 'library', label: 'Library', icon: <Library size={24} />, path: '/library' },
     { id: 'scan', label: 'Scan', icon: <Scan size={24} />, path: '/add', action: () => openModal('barcodeScanner') },
-    { id: 'history', label: 'History', icon: <History size={24} />, path: '/history' },
   ];
 
   return (
@@ -232,7 +231,6 @@ export function SidebarNavigation() {
   const navItems = [
     { icon: <Home size={20} />, label: 'Home', path: '/' },
     { icon: <Library size={20} />, label: 'Library', path: '/library' },
-    { icon: <History size={20} />, label: 'History', path: '/history' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 
