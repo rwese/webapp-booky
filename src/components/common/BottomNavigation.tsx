@@ -6,7 +6,6 @@ import {
   Scan, 
   BarChart2, 
   Settings, 
-  History,
   Menu,
   X
 } from 'lucide-react';
@@ -127,7 +126,6 @@ export function BottomNavigation() {
     { id: 'home', label: 'Home', icon: <Home size={24} />, path: '/' },
     { id: 'library', label: 'Library', icon: <Library size={24} />, path: '/library' },
     { id: 'scan', label: 'Scan', icon: <Scan size={24} />, path: '/add', action: () => openModal('barcodeScanner') },
-    { id: 'history', label: 'History', icon: <History size={24} />, path: '/history' },
     { id: 'more', label: 'More', icon: mobileNavOpen ? <X size={24} /> : <Menu size={24} />, path: '#', action: toggleMobileNav },
   ];
 

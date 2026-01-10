@@ -189,7 +189,7 @@ class SyncService {
       const books = await bookOperations.getAll();
       const collections = await collectionOperations.getAll();
       const tags = await tagOperations.getAll();
-      const readings = await readingLogOperations.getAllByStatus('reading');
+      const readings = await readingLogOperations.getAllByStatus('currently_reading');
 
       const response = await fetch(`${BACKEND_API}/sync/full`, {
         method: 'POST',

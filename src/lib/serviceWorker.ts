@@ -46,15 +46,17 @@ export function registerServiceWorker() {
 
 // Background Sync Request
 export function requestBackgroundSync(tag: string) {
-  if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+  if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(registration => {
-      return registration.sync.register(tag)
-        .then(() => {
-          console.log('Background sync registered for:', tag);
-        })
-        .catch(error => {
-          console.error('Background sync registration failed:', error);
-        });
+      if ('sync' in registration) {
+        return (registration as any).sync.register(tag)
+          .then(() => {
+            console.log('Background sync registered for:', tag);
+          })
+          .catch((error: Error) => {
+            console.error('Background sync registration failed:', error);
+          });
+      }
     });
   }
 }

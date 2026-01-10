@@ -323,5 +323,9 @@ export const readingLogOperations = {
   
   async deleteByBookId(bookId: string): Promise<number> {
     return await db.readingLogs.where('bookId').equals(bookId).delete();
+  },
+
+  async getAllByStatus(status: ReadingStatus): Promise<ReadingLog[]> {
+    return await db.readingLogs.where('status').equals(status).toArray();
   }
 };

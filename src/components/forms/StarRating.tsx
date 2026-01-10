@@ -65,7 +65,7 @@ function StarRatingInteractive({
 }: StarRatingProps) {
   const [hoverRating, setHoverRating] = useState<number | null>(null);
 
-  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const width = rect.width / maxRating;
@@ -83,7 +83,7 @@ function StarRatingInteractive({
     setHoverRating(null);
   }, []);
 
-  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const width = rect.width / maxRating;
@@ -99,7 +99,7 @@ function StarRatingInteractive({
     
     // Clamp to valid range
     finalRating = Math.max(0.5, Math.min(maxRating, finalRating));
-    onRatingChange(finalRating);
+    onRatingChange?.(finalRating);
   }, [onRatingChange, maxRating]);
 
   const currentRating = hoverRating !== null ? hoverRating : rating;

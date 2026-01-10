@@ -177,7 +177,7 @@ export function CollectionManager({ onClose, className }: CollectionManagerProps
                       <div>
                         <span className="font-medium text-gray-900 dark:text-white">{collection.name}</span>
                         {collection.isSmart && (
-                          <Badge variant="info" size="sm" className="ml-2">Smart</Badge>
+                          <Badge variant="primary" className="ml-2">Smart</Badge>
                         )}
                       </div>
                     </div>
@@ -451,7 +451,7 @@ export function CollectionSelector({ selectedCollections, onCollectionsChange, c
             >
               <Book size={12} />
               {collection.name}
-              {collection.isSmart && <Badge variant="primary" size="sm">Smart</Badge>}
+              {collection.isSmart && <Badge variant="primary">Smart</Badge>}
               <button
                 type="button"
                 onClick={() => handleRemoveCollection(collection.id)}
@@ -520,7 +520,7 @@ export function CollectionSelector({ selectedCollections, onCollectionsChange, c
                     >
                       <Book size={16} className="text-gray-400" />
                       <span className="text-sm text-gray-900 dark:text-white">{collection.name}</span>
-                      {collection.isSmart && <Badge variant="primary" size="sm">Smart</Badge>}
+              {collection.isSmart && <Badge variant="primary">Smart</Badge>}
                       {isSelected && <span className="ml-auto text-xs text-primary-600">Selected</span>}
                     </button>
                   );

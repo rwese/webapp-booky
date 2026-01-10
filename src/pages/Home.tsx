@@ -40,13 +40,13 @@ export function HomePage() {
           <StatCard
             icon={<Clock className="text-yellow-500" />}
             label="Reading Now"
-            value={books?.filter(b => b.readingStatus === 'reading').length || 0}
+            value={books?.filter(b => b.readingStatus === 'currently_reading').length || 0}
             color="yellow"
           />
           <StatCard
             icon={<TrendingUp className="text-green-500" />}
             label="Completed"
-            value={books?.filter(b => b.readingStatus === 'completed').length || 0}
+            value={books?.filter(b => b.readingStatus === 'read').length || 0}
             color="green"
           />
         </div>
@@ -220,6 +220,7 @@ interface BookCardProps {
     authors: string[];
     coverUrl?: string;
     format: string;
+    readingStatus?: string;
   };
   navigate: ReturnType<typeof useNavigate>;
 }

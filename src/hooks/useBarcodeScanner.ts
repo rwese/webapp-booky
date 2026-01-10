@@ -402,43 +402,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         videoElement.srcObject = null;
         videoElement.load(); // Reset the media element
         
-        // Wait for the video element to be ready with extended timeout
-        const CANPLAY_TIMEOUT = 10000; // 10 seconds timeout for slower devices
-        let canPlayResolved = false;
-        
-        const canPlayPromise = new Promise<void>((resolve, reject) => {
-          const onCanPlay = () => {
-            canPlayResolved = true;
-            videoElement.removeEventListener('canplay', onCanPlay);
-            resolve();
-          };
-          videoElement.addEventListener('canplay', onCanPlay);
-          
-          // Timeout handler
-          canPlayTimeoutRef.current = window.setTimeout(() => {
-            if (!canPlayResolved) {
-              videoElement.removeEventListener('canplay', onCanPlay);
-              reject(new Error('Video canplay timeout'));
-            }
-          }, CANPLAY_TIMEOUT);
-        });
-
-        try {
-          await canPlayPromise;
-        } catch (timeoutError) {
-          if (cleanupTrackMonitoring) cleanupTrackMonitoring();
-          if (cleanupErrorHandler) cleanupErrorHandler();
-          throw timeoutError; // Re-throw for retry logic
-        } finally {
-          if (canPlayTimeoutRef.current) {
-            clearTimeout(canPlayTimeoutRef.current);
-            canPlayTimeoutRef.current = null;
-          }
-        }
-        
-        setState(prev => ({ ...prev, cameraStatus: 'streaming' }));
-
-        // Set the new stream
+        // Set the new stream FIRST, then wait for events
         videoElement.srcObject = streamRef.current;
         
         // Wait for loadedmetadata to ensure the stream is properly attached with extended timeout

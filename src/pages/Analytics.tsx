@@ -125,7 +125,7 @@ export function AnalyticsPage() {
     
     return Object.entries(formatDistribution).map(([name, value], index) => ({
       name: name.charAt(0).toUpperCase() + name.slice(1),
-      value,
+      value: value as number,
       color: colors[name] || '#6b7280'
     }));
   }, [formatDistribution]);
@@ -410,13 +410,11 @@ export function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-10" />
                   <XAxis 
                     dataKey="dayOfWeek" 
-                    data={readingHeatmapData} 
                     name="Day" 
                     tick={{ fontSize: 12 }}
                   />
                   <YAxis 
                     dataKey="month" 
-                    data={readingHeatmapData} 
                     name="Month" 
                     tick={{ fontSize: 12 }}
                     interval={0}
@@ -427,20 +425,7 @@ export function AnalyticsPage() {
                     name="Books Read" 
                   />
                   <Tooltip 
-                    content={({ active, payload }: { active?: boolean; payload?: Array<{ payload: { date: string; value: number } }> }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                            <p className="font-medium">{data.date}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Books read: {data.value}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
+                    content={<CustomTooltip />}
                   />
                   <Scatter 
                     data={readingHeatmapData} 
@@ -582,4 +567,20 @@ function RotateCcwIcon({ className }: { className?: string }) {
       <path d="M8 16H3v5" />
     </svg>
   );
+}
+
+// Custom Tooltip Component for ScatterChart
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { date: string; value: number } }> }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="font-medium">{data.date}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Books read: {data.value}
+        </p>
+      </div>
+    );
+  }
+  return null;
 }

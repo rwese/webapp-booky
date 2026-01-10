@@ -495,7 +495,7 @@ export function BookDetailPage() {
 
         {/* Reading History */}
         <Card className="p-6">
-          
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Reading History</h3>
         </Card>
       </main>
 

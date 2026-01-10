@@ -1,3 +1,11 @@
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { createRequire } from 'module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
 export default [
   {
     files: ['**/*.{ts,tsx}'],
@@ -8,6 +16,7 @@ export default [
         browser: true,
         es2022: true,
       },
+      parser: require('@typescript-eslint/parser'),
       parserOptions: {
         project: ['./tsconfig.json'],
         tsconfigRootDir: __dirname,
@@ -25,7 +34,7 @@ export default [
     },
     rules: {
       ...require('eslint-plugin-react').configs.recommended.rules,
-      ...require('eslint-plugin-react-hooks').rules,
+      ...require('eslint-plugin-react-hooks').configs.recommended.rules,
       ...require('@typescript-eslint/eslint-plugin').configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',

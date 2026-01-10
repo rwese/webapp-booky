@@ -32,6 +32,8 @@ export interface Book {
   // Optional fields for import data
   genre?: string;
   language?: string;
+  // Reading status (computed from reading logs)
+  readingStatus?: ReadingStatus;
 }
 
 export interface Rating {
@@ -287,6 +289,8 @@ export interface FilterConfig {
   tags?: string[];
   collections?: string[];
   formats?: BookFormat[];
+  statuses?: ReadingStatus[];
+  minRating?: number;
   maxRating?: number;
   dateRange?: {
     start: Date;
@@ -501,7 +505,7 @@ export interface BookAnalytics {
 }
 
 // Reading Status Types
-export type ReadingStatus = 'want_to_read' | 'currently_reading' | 'read';
+export type ReadingStatus = 'want_to_read' | 'currently_reading' | 'read' | 'dnf';
 
 export interface ReadingLog {
   id: string;

@@ -9,7 +9,8 @@ import type {
   ReadingStatus, 
   FilterConfig, 
   SortConfig,
-  BookFormat 
+  BookFormat,
+  ReadingLog
 } from '../types';
 import { db } from '../lib/db';
 
@@ -173,12 +174,14 @@ export function useReadingHistory(
       let comparison = 0;
       
       if (sortConfig.field === 'finishedAt' || sortConfig.field === 'startedAt' || sortConfig.field === 'createdAt') {
-        const aDate = a[sortConfig.field] instanceof Date 
-          ? a[sortConfig.field] 
-          : (a[sortConfig.field] ? parseISO(a[sortConfig.field] as unknown as string) : new Date(0));
-        const bDate = b[sortConfig.field] instanceof Date 
-          ? b[sortConfig.field] 
-          : (b[sortConfig.field] ? parseISO(b[sortConfig.field] as unknown as string) : new Date(0));
+        const aField = a[sortConfig.field];
+        const bField = b[sortConfig.field];
+        const aDate = aField instanceof Date 
+          ? aField 
+          : (aField ? parseISO(aField as unknown as string) : new Date(0));
+        const bDate = bField instanceof Date 
+          ? bField 
+          : (bField ? parseISO(bField as unknown as string) : new Date(0));
         
         comparison = aDate.getTime() - bDate.getTime();
       } else if (sortConfig.field === 'rating') {

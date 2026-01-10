@@ -8,12 +8,12 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { SkeletonBookDetail } from './components/common/Skeleton';
 
 // Lazy load pages for better performance
-const HomePage = lazy(() => import('./pages/Home'));
-const LibraryPage = lazy(() => import('./pages/Library'));
-const AddBookPage = lazy(() => import('./pages/AddBook'));
-const AnalyticsPage = lazy(() => import('./pages/Analytics'));
-const SettingsPage = lazy(() => import('./pages/Settings'));
-const BookDetailPage = lazy(() => import('./pages/BookDetail'));
+const HomePage = lazy(() => import('./pages/Home').then(module => ({ default: module.HomePage })) as Promise<{ default: React.ComponentType<any> }>);
+const LibraryPage = lazy(() => import('./pages/Library').then(module => ({ default: module.LibraryPage })) as Promise<{ default: React.ComponentType<any> }>);
+const AddBookPage = lazy(() => import('./pages/AddBook').then(module => ({ default: module.AddBookPage })) as Promise<{ default: React.ComponentType<any> }>);
+const AnalyticsPage = lazy(() => import('./pages/Analytics').then(module => ({ default: module.AnalyticsPage })) as Promise<{ default: React.ComponentType<any> }>);
+const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage })) as Promise<{ default: React.ComponentType<any> }>);
+const BookDetailPage = lazy(() => import('./pages/BookDetail').then(module => ({ default: module.BookDetailPage })) as Promise<{ default: React.ComponentType<any> }>);
 
 // Loading fallback component
 function PageLoading() {
