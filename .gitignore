@@ -38,3 +38,6 @@ coverage/
 # PWA
 **/sw.js
 **/workbox-*.js
+
+# Tickteer (separate git repository)
+tools/tickteer/
