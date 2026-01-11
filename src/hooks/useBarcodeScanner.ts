@@ -95,6 +95,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const recoveryInProgressRef = useRef(false); // Prevent concurrent recovery attempts
   const maxRecoveryAttempts = 3; // Maximum recovery attempts to prevent infinite loops
   const recoveryAttemptsRef = useRef(0); // Track current recovery attempt count
+  const zxingDecodeStartedRef = useRef(false); // Prevent multiple ZXing decodeFromVideoElement calls
 
   // Simple recovery state validation
   const validateRecoveryState = useCallback(async (): Promise<boolean> => {
@@ -571,6 +572,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const stopScanning = useCallback(() => {
     isScanningRef.current = false;
     videoReadyRef.current = false;
+    zxingDecodeStartedRef.current = false; // Reset ZXing decode flag
 
     // Cancel any pending play request
     if (playPromiseRef.current) {
