@@ -94,6 +94,8 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const scanFrameRef = useRef<() => void>(() => {});
   const hasUserInteractionRef = useRef(false); // Track user interaction for browser requirements
   const recoveryInProgressRef = useRef(false); // Prevent concurrent recovery attempts
+  const lastMuteEventRef = useRef(0); // Track last mute event time for debouncing
+  const muteDebounceTimerRef = useRef<number | null>(null); // Timer for debouncing mute events
 
   // Video track state monitoring
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
@@ -115,16 +117,26 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     const handleTrackMute = () => {
       console.warn('Video track muted - attempting recovery');
       
+      // Clear any pending debounce timer
+      if (muteDebounceTimerRef.current !== null) {
+        clearTimeout(muteDebounceTimerRef.current);
+        muteDebounceTimerRef.current = null;
+      }
+      
       // Check if recovery is already in progress
       if (recoveryInProgressRef.current) {
         console.debug('Recovery already in progress, ignoring mute event');
         return;
       }
       
-      // Add trackEnded handler to detect when tracks are actually ended
-      const handleTrackEnded = () => {
-        console.warn('Video track ended during recovery attempt');
-      };
+      // Debounce: ignore mute events that happen too quickly after the last one
+      const now = Date.now();
+      const MUTE_DEBOUNCE_MS = 1000; // 1 second debounce period
+      if (now - lastMuteEventRef.current < MUTE_DEBOUNCE_MS) {
+        console.debug('Mute event ignored - too soon after last mute event');
+        return;
+      }
+      lastMuteEventRef.current = now;
       
       // Simplified recovery with single attempt
       const attemptRecovery = async () => {
@@ -135,7 +147,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         if (streamRef.current) {
           const oldTracks = streamRef.current.getVideoTracks();
           for (const track of oldTracks) {
-            track.removeEventListener('ended', handleTrackEnded);
             track.stop();
           }
         }
@@ -201,11 +212,18 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
               videoRef.current!.addEventListener('loadedmetadata', onLoadedMetadata);
             });
             
-            // Check if video is already playing before calling play()
-            if (videoRef.current && !videoRef.current.paused && videoRef.current.readyState >= 3) {
-              console.debug('Video already playing, skipping play() call');
-            } else if (videoRef.current) {
-              await videoRef.current.play();
+            // Check if video is already playing before calling play() with proper guards
+            if (videoRef.current) {
+              const video = videoRef.current;
+              // Guard against calling play() when already playing or not ready
+              if (!video.paused && video.readyState >= 3) {
+                console.debug('Video already playing, skipping play() call');
+              } else if (video.readyState >= 3 && !video.ended) {
+                // Only call play() if video is ready and not already playing
+                await video.play();
+              } else {
+                console.debug('Video not ready for play(), readyState:', video.readyState);
+              }
             }
           }
           
@@ -243,7 +261,8 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       };
       
       // Execute recovery with debouncing to allow transient states to settle
-      setTimeout(() => {
+      muteDebounceTimerRef.current = window.setTimeout(() => {
+        muteDebounceTimerRef.current = null;
         if (!recoveryInProgressRef.current) {
           attemptRecovery();
         }
@@ -252,6 +271,11 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     const handleTrackUnmute = () => {
       console.warn('Video track unmuted');
+      // Clear any pending debounce timer when track unmutes
+      if (muteDebounceTimerRef.current !== null) {
+        clearTimeout(muteDebounceTimerRef.current);
+        muteDebounceTimerRef.current = null;
+      }
     };
 
     videoTrack.addEventListener('ended', handleTrackEnded);
