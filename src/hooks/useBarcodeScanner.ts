@@ -138,6 +138,8 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     }
   }, []);
 
+  const cleanupTrackMonitoringRef = useRef<(() => void) | null>(null);
+
   // Video track state monitoring - simplified version
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
     const videoTrack = stream.getVideoTracks()[0];
@@ -248,10 +250,12 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     videoTrack.addEventListener('mute', handleTrackMute);
 
     // Return cleanup function
-    return () => {
+    const cleanup = () => {
       videoTrack.removeEventListener('ended', handleTrackEnded);
       videoTrack.removeEventListener('mute', handleTrackMute);
     };
+
+    return cleanup;
   }, [validateRecoveryState]);
 
   // Simple video readiness check
@@ -377,8 +381,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const startScanning = useCallback(async (videoElement: HTMLVideoElement) => {
     if (isScanningRef.current) return;
 
-    let attempts = 0;
-
     // Simple cleanup function
     const cleanupAll = () => {
       if (streamRef.current) {
@@ -395,8 +397,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     };
 
     const attemptStart = async (): Promise<boolean> => {
-      attempts++;
-      
       try {
         setState(prev => ({ ...prev, isScanning: true, error: null, cameraStatus: 'initializing' }));
         videoRef.current = videoElement;
@@ -443,6 +443,9 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
         
         // Setup video track monitoring
         const cleanupTrackMonitoring = setupVideoTrackMonitoring(mediaStream);
+        if (cleanupTrackMonitoring) {
+          cleanupTrackMonitoringRef.current = cleanupTrackMonitoring;
+        }
         
         // Set the video stream with POC-style event handling
         videoElement.srcObject = streamRef.current;
@@ -578,6 +581,12 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     if (playPromiseRef.current) {
       playPromiseRef.current.then(() => {}).catch(() => {});
       playPromiseRef.current = null;
+    }
+
+    // Clean up video track monitoring
+    if (cleanupTrackMonitoringRef.current) {
+      cleanupTrackMonitoringRef.current();
+      cleanupTrackMonitoringRef.current = null;
     }
 
     // Stop all tracks
