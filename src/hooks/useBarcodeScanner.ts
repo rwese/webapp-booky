@@ -94,6 +94,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const canPlayTimeoutRef = useRef<number | null>(null);
   const loadedMetadataTimeoutRef = useRef<number | null>(null);
   const playTimeoutRef = useRef<number | null>(null);
+  const scanFrameRef = useRef<() => void>(() => {});
 
   // Video track state monitoring
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
@@ -115,22 +116,170 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     const handleTrackMute = () => {
       console.warn('Video track muted - attempting recovery');
       
-      // Attempt automatic recovery
-      if (streamRef.current) {
-        const videoTrack = streamRef.current.getVideoTracks()[0];
-        if (videoTrack) {
-          // Try to restart the track
-          videoTrack.stop();
-        }
+      // Track recovery attempts to prevent infinite loops
+      const recoveryAttempts = (videoTrackRef.current as any)?.recoveryAttempts || 0;
+      if (recoveryAttempts >= 3) {
+        console.error('Video track recovery failed after 3 attempts');
+        setState(prev => ({ 
+          ...prev, 
+          error: 'Camera stream recovery failed. Please restart the scanner.',
+          isScanning: false,
+          cameraStatus: 'error'
+        }));
+        isScanningRef.current = false;
+        return;
       }
+
+      // Mark that we're attempting recovery
+      (videoTrackRef.current as any).recoveryAttempts = recoveryAttempts + 1;
       
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Camera stream was interrupted. Attempting to reconnect...',
-        isScanning: false,
-        cameraStatus: 'error'
-      }));
-      isScanningRef.current = false;
+      console.log(`Recovery attempt ${recoveryAttempts + 1} for video track`);
+      
+      // Attempt automatic recovery with proper cleanup and restart
+      const attemptRecovery = async () => {
+        try {
+          // Update state to show recovery in progress
+          setState(prev => ({ 
+            ...prev, 
+            error: 'Camera stream interrupted. Attempting to reconnect...',
+            isScanning: false,
+            cameraStatus: 'initializing'
+          }));
+          
+          // Stop the problematic track
+          if (streamRef.current) {
+            const tracks = streamRef.current.getVideoTracks();
+            for (const track of tracks) {
+              track.stop();
+            }
+            streamRef.current = null;
+          }
+          
+          // Clear video element state
+          if (videoRef.current) {
+            videoRef.current.pause();
+            videoRef.current.srcObject = null;
+            videoRef.current.load();
+          }
+          
+          // Small delay to allow device to reset
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Request new camera stream with flexible constraints
+          // Try environment camera first, then fallback to any available camera
+          let mediaStream: MediaStream | null = null;
+          
+          // Get available devices for fallback logic
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(device => device.kind === 'videoinput');
+          
+          // Priority 1: Try environment camera first
+          try {
+            const envConstraints: MediaStreamConstraints = {
+              video: {
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              }
+            };
+            mediaStream = await navigator.mediaDevices.getUserMedia(envConstraints);
+            console.log('Successfully acquired environment camera');
+          } catch (envError) {
+            console.warn('Environment camera not available, trying any available camera');
+            
+            // Priority 2: Try any available camera with specific device selection
+            if (videoDevices.length > 0) {
+              const deviceId = videoDevices[0].deviceId;
+              const fallbackConstraints: MediaStreamConstraints = {
+                video: {
+                  deviceId: { exact: deviceId },
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }
+              };
+              mediaStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+              console.log('Successfully acquired fallback camera');
+            } else {
+              throw new Error('No camera devices available');
+            }
+          }
+          
+          if (!mediaStream) {
+            throw new Error('Failed to acquire camera stream');
+          }
+          
+          // Update stream reference
+          streamRef.current = mediaStream;
+          
+          // Reset recovery attempts on successful recovery
+          (videoTrackRef.current as any).recoveryAttempts = 0;
+          
+          // Setup video track monitoring for the new stream
+          setupVideoTrackMonitoring(mediaStream);
+          
+          // Attach new stream to video element
+          if (videoRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            
+            // Wait for video to be ready
+            await new Promise<void>((resolve, reject) => {
+              const onLoadedMetadata = () => {
+                videoRef.current!.removeEventListener('loadedmetadata', onLoadedMetadata);
+                resolve();
+              };
+              const onCanPlay = () => {
+                videoRef.current!.removeEventListener('canplay', onCanPlay);
+                resolve();
+              };
+              
+              videoRef.current!.addEventListener('loadedmetadata', onLoadedMetadata);
+              videoRef.current!.addEventListener('canplay', onCanPlay);
+              
+              // Timeout after 10 seconds
+              setTimeout(() => {
+                videoRef.current!.removeEventListener('loadedmetadata', onLoadedMetadata);
+                videoRef.current!.removeEventListener('canplay', onCanPlay);
+                reject(new Error('Video recovery timeout'));
+              }, 10000);
+            });
+            
+            // Start playing the video
+            await videoRef.current.play();
+          }
+          
+          // Update state to show successful recovery
+          setState(prev => ({ 
+            ...prev, 
+            error: null,
+            isScanning: true,
+            cameraStatus: 'active'
+          }));
+          
+          isScanningRef.current = true;
+          videoReadyRef.current = true;
+          
+          console.log('Video track recovery successful');
+          
+          // Restart scanning
+          scanFrameRef.current();
+          
+        } catch (error) {
+          console.error('Video track recovery failed:', error);
+          
+          // Update state to show recovery failure
+          setState(prev => ({ 
+            ...prev, 
+            error: 'Failed to recover camera stream. Please restart the scanner.',
+            isScanning: false,
+            cameraStatus: 'error'
+          }));
+          
+          isScanningRef.current = false;
+        }
+      };
+      
+      // Execute recovery
+      attemptRecovery();
     };
 
     const handleTrackUnmute = () => {
@@ -255,6 +404,9 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
   // Scan individual frame
   const scanFrame = useCallback(async () => {
+    // Update the ref so recovery logic can access the latest function
+    scanFrameRef.current = scanFrame;
+    
     if (!isScanningRef.current || !videoRef.current || !readerRef.current) return;
 
     const now = Date.now();
