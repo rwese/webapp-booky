@@ -476,37 +476,70 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           await initializeReader();
         }
 
-        // Request camera permission and get stream
-        const constraints: MediaStreamConstraints = {
-          video: {
-            facingMode: configState.cameraFacing,
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+        // Request camera permission and get stream with fallback constraints
+        const constraintsArray: MediaStreamConstraints[] = [
+          {
+            video: {
+              facingMode: configState.cameraFacing,
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          },
+          {
+            video: {
+              facingMode: configState.cameraFacing,
+              width: { ideal: 640 },
+              height: { ideal: 480 }
+            }
+          },
+          {
+            video: {
+              facingMode: configState.cameraFacing,
+              width: { ideal: 320 },
+              height: { ideal: 240 }
+            }
+          },
+          {
+            video: {
+              facingMode: configState.cameraFacing
+            }
+          },
+          {
+            video: true
           }
-        };
+        ];
 
-        // Get user media with proper error handling
-        let mediaStream: MediaStream;
-        try {
-          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (mediaError) {
-          if (mediaError instanceof Error && mediaError.name === 'NotAllowedError') {
-            setState(prev => ({ 
-              ...prev, 
-              isScanning: false,
-              error: 'Camera permission denied. Please allow camera access to scan barcodes.'
-            }));
-            return false;
-          } else if (mediaError instanceof Error && mediaError.name === 'NotFoundError') {
-            setState(prev => ({ 
-              ...prev, 
-              isScanning: false,
-              error: 'No camera found. Please connect a camera to scan barcodes.'
-            }));
-            return false;
-          } else {
-            throw mediaError; // Re-throw for generic handling
+        let mediaStream: MediaStream | null = null;
+        let lastError: Error | null = null;
+
+        for (const constraints of constraintsArray) {
+          try {
+            console.debug('Attempting camera with constraints:', JSON.stringify(constraints));
+            mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            console.debug('Successfully acquired camera stream with fallback level');
+            break;
+          } catch (error) {
+            lastError = error as Error;
+            console.debug(`Camera constraint failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            if (error instanceof Error && error.name === 'NotAllowedError') {
+              setState(prev => ({
+                ...prev,
+                isScanning: false,
+                error: 'Camera permission denied. Please allow camera access to scan barcodes.'
+              }));
+              return false;
+            }
+            // Continue to next fallback constraint
           }
+        }
+
+        if (!mediaStream) {
+          setState(prev => ({
+            ...prev,
+            isScanning: false,
+            error: 'Unable to access camera. Please check permissions and try again.'
+          }));
+          return false;
         }
         
         streamRef.current = mediaStream;
@@ -520,21 +553,129 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           setState(prev => ({ ...prev, error: errorMessage }));
         });
         
-        // Set the new stream using simple POC pattern
+        // Set the new stream with comprehensive video readiness management
         videoElement.srcObject = streamRef.current;
-        
-        // Simple await for loadedmetadata event
-        await new Promise<void>((resolve) => {
-          const onLoadedMetadata = () => {
-            videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
-            resolve();
-          };
-          videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
+
+        // Add comprehensive video element event listeners for readiness tracking
+        let videoReadyResolve: (() => void) | null = null;
+        let videoReadyReject: ((error: Error) => void) | null = null;
+
+        const videoReadyPromise = new Promise<void>((resolve, reject) => {
+          videoReadyResolve = resolve;
+          videoReadyReject = reject;
         });
-        
-        // Simple video.play() call without complex promise management
-        await videoElement.play();
-        
+
+        const handleLoadedMetadata = () => {
+          console.debug('Video loadedmetadata event fired');
+        };
+
+        const handleCanPlay = () => {
+          console.debug('Video canplay event fired');
+        };
+
+        const handleWaiting = () => {
+          console.debug('Video waiting for data');
+        };
+
+        const handlePlaying = () => {
+          console.debug('Video started playing');
+        };
+
+        const handleError = (e: Event) => {
+          const target = e.target as HTMLVideoElement;
+          const error = target.error;
+          console.debug('Video error event:', error ? error.message : 'Unknown error');
+        };
+
+        // Add all event listeners
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.addEventListener('canplay', handleCanPlay);
+        videoElement.addEventListener('waiting', handleWaiting);
+        videoElement.addEventListener('playing', handlePlaying);
+        videoElement.addEventListener('error', handleError);
+
+        // Wait for loadedmetadata event
+        await new Promise<void>((resolve) => {
+          if (videoElement.readyState >= 1) {
+            // already have metadata
+            console.debug('Video already has metadata, readyState:', videoElement.readyState);
+            resolve();
+          } else {
+            const onLoadedMetadata = () => {
+              videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
+              resolve();
+            };
+            videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
+          }
+        });
+
+        // Wait for canplay event to ensure video is ready to play
+        await new Promise<void>((resolve) => {
+          if (videoElement.readyState >= 3) {
+            // HAVE_ENOUGH_DATA
+            console.debug('Video already has enough data, readyState:', videoElement.readyState);
+            resolve();
+          } else {
+            const onCanPlay = () => {
+              videoElement.removeEventListener('canplay', onCanPlay);
+              resolve();
+            };
+            videoElement.addEventListener('canplay', onCanPlay);
+          }
+        });
+
+        // Now attempt to play with proper error handling for autoplay policies
+        try {
+          console.debug('Attempting to play video...');
+          playPromiseRef.current = videoElement.play();
+          await playPromiseRef.current;
+          playPromiseRef.current = null;
+          console.debug('Video play() successful');
+        } catch (error) {
+          console.debug(`Video play() failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+          // Check if video is still paused (autoplay policy restriction)
+          if (videoElement.paused) {
+            console.debug('Video is paused after play() failure - likely due to autoplay policy');
+
+            // Clean up event listeners
+            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            videoElement.removeEventListener('canplay', handleCanPlay);
+            videoElement.removeEventListener('waiting', handleWaiting);
+            videoElement.removeEventListener('playing', handlePlaying);
+            videoElement.removeEventListener('error', handleError);
+
+            setState(prev => ({
+              ...prev,
+              isScanning: false,
+              error: 'Camera access blocked by browser autoplay policy. Please interact with the page first.'
+            }));
+            cleanupAll();
+            return false;
+          }
+        }
+
+        // Clean up event listeners
+        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.removeEventListener('canplay', handleCanPlay);
+        videoElement.removeEventListener('waiting', handleWaiting);
+        videoElement.removeEventListener('playing', handlePlaying);
+        videoElement.removeEventListener('error', handleError);
+
+        // Final comprehensive video readiness validation
+        const isReady = isVideoReady(videoElement);
+        if (!isReady) {
+          console.debug('Video failed final readiness check');
+          setState(prev => ({
+            ...prev,
+            isScanning: false,
+            error: 'Camera stream not ready. Please try again.'
+          }));
+          cleanupAll();
+          return false;
+        }
+
+        console.debug('Video ready and playing successfully');
         videoReadyRef.current = true;
         isScanningRef.current = true;
         setState(prev => ({ ...prev, cameraStatus: 'active', isScanning: true }));
@@ -588,7 +729,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     await attemptStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configState.cameraFacing, initializeReader, scanFrame, setupVideoTrackMonitoring, setupVideoErrorHandler]);
+  }, [configState.cameraFacing, initializeReader, scanFrame, setupVideoTrackMonitoring, setupVideoErrorHandler, isVideoReady]);
 
   // Stop scanning with comprehensive cleanup
   const stopScanning = useCallback(() => {
