@@ -133,117 +133,13 @@ export function BarcodeScannerModal() {
       </div>
 
       {/* Camera View */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Loading overlay during initialization */}
-        {scanState.cameraStatus === 'initializing' && <LoadingOverlay />}
-        
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="w-64 h-48 object-cover"
           playsInline
           muted
         />
-
-        {/* Camera status indicator */}
-        {getCameraStatusIndicator()}
-
-        {/* Scanning Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-72 h-40 border-2 border-white/50 rounded-lg relative">
-            {/* Corner markers */}
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary-500 rounded-tl-lg" />
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary-500 rounded-tr-lg" />
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary-500 rounded-bl-lg" />
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary-500 rounded-br-lg" />
-            
-            {/* Scan line animation */}
-            <div className="absolute inset-x-0 h-0.5 bg-primary-500 animate-scan-line" />
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {scanState.error && (
-          <div className="absolute bottom-20 left-4 right-4 space-y-2">
-            <div className="bg-red-500/80 text-white p-3 rounded-lg">
-              <p className="text-sm">{scanState.error}</p>
-            </div>
-            <button
-              type="button"
-              onClick={retryScanning}
-              className="w-full py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2"
-            >
-              <RotateCcw size={16} />
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* Last Scan Result */}
-        {scanState.lastScan && (
-          <div className="absolute bottom-20 left-4 right-4 bg-green-500/80 text-white p-3 rounded-lg">
-            <p className="text-sm font-medium">Last scan: {scanState.lastScan.text}</p>
-            <p className="text-xs opacity-80">Format: {scanState.lastScan.format}</p>
-          </div>
-        )}
-
-        {/* Book Lookup Result */}
-        {(bookLookup.isLoading || bookLookup.bookData || bookLookup.error) && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4">
-            {bookLookup.isLoading && (
-              <div className="text-center">
-                <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-white">Looking up book...</p>
-              </div>
-            )}
-            
-            {bookLookup.bookData && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-sm w-full">
-                <div className="flex items-start gap-4">
-                  {bookLookup.bookData.coverUrl && (
-                    <img 
-                      src={bookLookup.bookData.coverUrl} 
-                      alt={`Cover of ${bookLookup.bookData.title}`}
-                      className="w-20 h-28 object-cover rounded"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-2">
-                      {bookLookup.bookData.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {bookLookup.bookData.authors?.join(', ')}
-                    </p>
-                    {bookLookup.bookData.publishedYear && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Published: {bookLookup.bookData.publishedYear}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => bookLookup.clearBookData()}
-                  className="mt-4 w-full py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  Add to Library
-                </button>
-              </div>
-            )}
-            
-            {bookLookup.error && (
-              <div className="bg-red-500/90 text-white rounded-lg p-4 max-w-sm w-full">
-                <p className="font-medium">{bookLookup.error}</p>
-                <button
-                  type="button"
-                  onClick={() => bookLookup.clearBookData()}
-                  className="mt-3 w-full py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  Try Again
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Controls */}
