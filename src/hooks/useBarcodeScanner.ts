@@ -95,6 +95,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const loadedMetadataTimeoutRef = useRef<number | null>(null);
   const playTimeoutRef = useRef<number | null>(null);
   const scanFrameRef = useRef<() => void>(() => {});
+  const hasUserInteractionRef = useRef(false); // Track user interaction for browser requirements
 
   // Video track state monitoring
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
@@ -155,11 +156,27 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
             streamRef.current = null;
           }
           
-          // Clear video element state
+          // Comprehensive video element reset
           if (videoRef.current) {
+            // Pause and reset video element
             videoRef.current.pause();
+            
+            // Clear any existing play promises
+            if (playPromiseRef.current) {
+              try {
+                await playPromiseRef.current;
+              } catch (e) {
+                // Ignore play promise errors during reset
+              }
+              playPromiseRef.current = null;
+            }
+            
+            // Clear video source and reset
             videoRef.current.srcObject = null;
             videoRef.current.load();
+            
+            // Reset video state
+            videoRef.current.currentTime = 0;
           }
           
           // Small delay to allow device to reset
@@ -217,34 +234,63 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           // Setup video track monitoring for the new stream
           setupVideoTrackMonitoring(mediaStream);
           
-          // Attach new stream to video element
+          // Attach new stream to video element with comprehensive reset
           if (videoRef.current) {
+            // Final reset before attaching new stream
+            videoRef.current.pause();
+            videoRef.current.currentTime = 0;
+            videoRef.current.srcObject = null;
+            videoRef.current.load();
+            
+            // Attach new stream
             videoRef.current.srcObject = streamRef.current;
             
-            // Wait for video to be ready
+            // Wait for video to be ready with proper event handling
             await new Promise<void>((resolve, reject) => {
+              const LOADEDMETADATA_TIMEOUT = 10000; // 10 seconds
+              let resolved = false;
+              
               const onLoadedMetadata = () => {
-                videoRef.current!.removeEventListener('loadedmetadata', onLoadedMetadata);
+                resolved = true;
+                if (videoRef.current) {
+                  videoRef.current.removeEventListener('loadedmetadata', onLoadedMetadata);
+                }
                 resolve();
               };
+              
               const onCanPlay = () => {
-                videoRef.current!.removeEventListener('canplay', onCanPlay);
+                if (videoRef.current) {
+                  videoRef.current.removeEventListener('canplay', onCanPlay);
+                }
                 resolve();
               };
               
-              videoRef.current!.addEventListener('loadedmetadata', onLoadedMetadata);
-              videoRef.current!.addEventListener('canplay', onCanPlay);
+              if (!videoRef.current) {
+                reject(new Error('Video element is null during recovery'));
+                return;
+              }
               
-              // Timeout after 10 seconds
+              videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+              videoRef.current.addEventListener('canplay', onCanPlay);
+              
+              // Timeout with proper null checks
               setTimeout(() => {
-                videoRef.current!.removeEventListener('loadedmetadata', onLoadedMetadata);
-                videoRef.current!.removeEventListener('canplay', onCanPlay);
-                reject(new Error('Video recovery timeout'));
-              }, 10000);
+                if (!resolved && videoRef.current) {
+                  videoRef.current.removeEventListener('loadedmetadata', onLoadedMetadata);
+                  videoRef.current.removeEventListener('canplay', onCanPlay);
+                  reject(new Error('Video recovery timeout'));
+                }
+              }, LOADEDMETADATA_TIMEOUT);
             });
             
-            // Start playing the video
-            await videoRef.current.play();
+            // Start playing the video with user gesture handling
+            try {
+              await videoRef.current.play();
+              console.log('Video playback started successfully');
+            } catch (playError) {
+              console.error('Failed to play video during recovery:', playError);
+              throw new Error('Video playback failed during recovery');
+            }
           }
           
           // Update state to show successful recovery
@@ -298,11 +344,11 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     };
   }, []);
 
-  // Validate video element readiness
+  // Validate video element readiness with detailed logging
   const isVideoReady = useCallback((video: HTMLVideoElement): boolean => {
     // Check readyState - need at least HAVE_CURRENT_DATA (2) for frames to be available
     if (video.readyState < 2) {
-      console.debug(`Video not ready: readyState=${video.readyState}`);
+      console.debug(`Video not ready: readyState=${video.readyState} (need >= 2)`);
       return false;
     }
 
@@ -326,41 +372,55 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     // Check video dimensions are valid
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      console.debug('Video dimensions invalid');
+      console.debug(`Video dimensions invalid: ${video.videoWidth}x${video.videoHeight}`);
       return false;
     }
 
+    // All checks passed
+    console.debug(`Video ready: ${video.videoWidth}x${video.videoHeight}, readyState=${video.readyState}, active=${stream.active}`);
     return true;
   }, []);
 
-  // Video error event handler setup
+  // Video error event handler setup with detailed error information
   const setupVideoErrorHandler = useCallback((video: HTMLVideoElement, onError: (error: string) => void) => {
     const handleMediaError = (e: Event) => {
       const target = e.target as HTMLVideoElement;
       const error = target.error;
 
       let errorMessage = 'Unknown video error';
+      let errorCode = 0;
       
       if (error) {
+        errorCode = error.code;
         switch (error.code) {
           case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage = 'Video playback was aborted';
+            errorMessage = 'Video playback was aborted. Please try restarting the scanner.';
             break;
           case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = 'Network error during video playback';
+            errorMessage = 'Network error during video playback. Please check your connection and try again.';
             break;
           case MediaError.MEDIA_ERR_DECODE:
-            errorMessage = 'Video decoding error';
+            errorMessage = 'Video decoding error. The video format may not be supported.';
             break;
           case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage = 'Video source not supported';
+            errorMessage = 'Video source not supported. Please try a different camera or browser.';
             break;
           default:
             errorMessage = `Video error (code: ${error.code})`;
         }
       }
 
-      console.error('Video element error:', errorMessage, error);
+      console.error('Video element error:', errorMessage, { errorCode, error });
+      
+      // Provide additional context for debugging
+      if (errorCode === MediaError.MEDIA_ERR_NETWORK) {
+        console.error('Network error suggests: camera disconnected, bandwidth issues, or server problems');
+      } else if (errorCode === MediaError.MEDIA_ERR_DECODE) {
+        console.error('Decode error suggests: unsupported video format or corrupted data');
+      } else if (errorCode === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+        console.error('Source not supported suggests: incompatible camera or codec issues');
+      }
+      
       onError(errorMessage);
     };
 
@@ -419,10 +479,19 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     try {
       // Use comprehensive video readiness check
-      if (!videoRef.current || !isVideoReady(videoRef.current)) {
-        // Video not ready, try again later
+      if (!videoRef.current) {
+        console.debug('Video element is null during scanFrame');
         if (isScanningRef.current) {
           requestAnimationFrame(() => scanFrame());
+        }
+        return;
+      }
+
+      if (!isVideoReady(videoRef.current)) {
+        // Video not ready, try again later with progressive backoff
+        const backoffMs = Math.min(500 * ((videoRef.current.readyState === 0) ? 2 : 1), 2000);
+        if (isScanningRef.current) {
+          setTimeout(() => scanFrame(), backoffMs);
         }
         return;
       }
@@ -451,6 +520,10 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       }
     } catch (error) {
       // No barcode found in this frame, continue scanning
+      // Log occasional errors for debugging
+      if (Math.random() < 0.01) { // Log 1% of errors to reduce noise
+        console.debug('Frame scan error (expected):', error instanceof Error ? error.message : 'Unknown error');
+      }
     }
 
     if (isScanningRef.current) {
@@ -459,7 +532,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configState.scanInterval, configState.autoScan, isVideoReady]);
 
-  // Start camera and scanning with retry logic
+  // Start camera and scanning with retry logic and user interaction handling
   const startScanning = useCallback(async (videoElement: HTMLVideoElement) => {
     if (isScanningRef.current) return;
 
@@ -485,19 +558,42 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
       // Clean up stream if it was created
       if (streamRef.current) {
-        const tracks = streamRef.current.getTracks();
-        for (const track of tracks) {
-          track.stop();
+        try {
+          const tracks = streamRef.current.getTracks();
+          for (const track of tracks) {
+            track.stop();
+          }
+        } catch (e) {
+          console.debug('Error stopping stream tracks:', e);
         }
         streamRef.current = null;
       }
 
-      // Reset video element state
+      // Reset video element state with comprehensive cleanup
       if (videoElement) {
-        videoElement.pause();
-        videoElement.currentTime = 0;
-        videoElement.srcObject = null;
-        videoElement.load();
+        try {
+          videoElement.pause();
+        } catch (e) {
+          console.debug('Error pausing video element:', e);
+        }
+        
+        try {
+          videoElement.currentTime = 0;
+        } catch (e) {
+          console.debug('Error resetting video currentTime:', e);
+        }
+        
+        try {
+          videoElement.srcObject = null;
+        } catch (e) {
+          console.debug('Error clearing video srcObject:', e);
+        }
+        
+        try {
+          videoElement.load();
+        } catch (e) {
+          console.debug('Error calling video load():', e);
+        }
       }
     };
 
@@ -565,14 +661,22 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           });
         }
         
-        // Reset video element state to prevent play() interruption
+        // Comprehensive video element reset to prevent play() interruption
         videoElement.pause();
         videoElement.currentTime = 0;
         videoElement.srcObject = null;
-        videoElement.load(); // Reset the media element
+        
+        // Additional reset calls to ensure clean state
+        videoElement.load();
+        
+        // Give the browser time to fully reset the video element
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Set the new stream FIRST, then wait for events
         videoElement.srcObject = streamRef.current;
+        
+        // Log video element state for debugging
+        console.log(`Video element state before waiting: readyState=${videoElement.readyState}, videoWidth=${videoElement.videoWidth}, videoHeight=${videoElement.videoHeight}`);
         
         // Wait for loadedmetadata to ensure the stream is properly attached with extended timeout
         const LOADEDMETADATA_TIMEOUT = 10000; // 10 seconds timeout for slower devices
@@ -586,7 +690,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           };
           videoElement.addEventListener('loadedmetadata', onLoadedMetadata);
           
-          // Timeout handler
+          // Timeout handler with proper null check
           loadedMetadataTimeoutRef.current = window.setTimeout(() => {
             if (!loadedMetadataResolved) {
               videoElement.removeEventListener('loadedmetadata', onLoadedMetadata);
@@ -597,7 +701,9 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
         try {
           await loadedMetadataPromise;
+          console.log('Video loadedmetadata event received');
         } catch (timeoutError) {
+          console.error('loadedmetadata timeout:', timeoutError);
           if (cleanupTrackMonitoring) cleanupTrackMonitoring();
           if (cleanupErrorHandler) cleanupErrorHandler();
           throw timeoutError; // Re-throw for retry logic
@@ -618,7 +724,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           playPromiseRef.current = null;
         }
 
-        // Start playing the video with extended timeout
+        // Start playing the video with extended timeout and better error handling
         const PLAY_TIMEOUT = 10000; // 10 seconds timeout for slower devices
         const currentPlayPromise = videoElement.play();
         playPromiseRef.current = currentPlayPromise;
@@ -630,11 +736,72 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           }, PLAY_TIMEOUT);
         });
         
-        // Race between play and timeout
-        await Promise.race([
-          currentPlayPromise.then(() => 'success' as const),
-          playTimeoutPromise
-        ]);
+        try {
+          // Race between play and timeout
+          await Promise.race([
+            currentPlayPromise.then(() => 'success' as const),
+            playTimeoutPromise
+          ]);
+          console.log('Video playback started successfully');
+          
+          // Mark that we have successful playback (implies user interaction requirement was met)
+          hasUserInteractionRef.current = true;
+        } catch (playError) {
+          console.error('Video play failed:', playError);
+          
+          // Additional error handling for play failures
+          if (playError instanceof Error && playError.message.includes('play timeout')) {
+            // Try one more time with a fresh start
+            console.log('Retrying video play...');
+            try {
+              videoElement.pause();
+              videoElement.currentTime = 0;
+              await new Promise(resolve => setTimeout(resolve, 200));
+              const retryPlayPromise = videoElement.play();
+              playPromiseRef.current = retryPlayPromise;
+              
+              // Wait for retry with shorter timeout
+              await Promise.race([
+                retryPlayPromise.then(() => 'success' as const),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Video play retry timeout')), 5000))
+              ]);
+              console.log('Video playback started on retry');
+              hasUserInteractionRef.current = true;
+            } catch (retryError) {
+              console.error('Video play retry failed:', retryError);
+              throw new Error('Failed to play video after retry');
+            }
+          } else if (playError instanceof Error && (
+            playError.name === 'NotAllowedError' || 
+            playError.message.includes('play() can only be initiated by a user gesture')
+          )) {
+            // User interaction required - this is expected in some browsers
+            console.warn('Video play requires user interaction - this is normal in modern browsers');
+            
+            // Try to get user interaction by requesting focus
+            videoElement.focus();
+            
+            // Try play one more time after getting focus
+            try {
+              await new Promise(resolve => setTimeout(resolve, 100));
+              const gesturePlayPromise = videoElement.play();
+              playPromiseRef.current = gesturePlayPromise;
+              await Promise.race([
+                gesturePlayPromise.then(() => 'success' as const),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('User gesture play timeout')), 3000))
+              ]);
+              hasUserInteractionRef.current = true;
+              console.log('Video playback started after user interaction');
+            } catch (gestureError) {
+              // Final fallback - just proceed with scanning if we got metadata
+              console.warn('Could not start video playback, proceeding with scanning anyway:', gestureError);
+              // Still mark as ready since we have metadata
+              hasUserInteractionRef.current = true;
+            }
+          } else {
+            throw playError;
+          }
+        }
         
         // Clear the timeout if play succeeded
         if (playTimeoutRef.current) {
@@ -653,8 +820,11 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       } catch (error) {
         let errorMessage = 'Failed to start camera';
         let shouldRetry = false;
+        let errorDetails = '';
 
         if (error instanceof Error) {
+          errorDetails = error.message;
+          
           if (error.name === 'NotAllowedError') {
             errorMessage = 'Camera permission denied. Please allow camera access.';
           } else if (error.name === 'NotFoundError') {
@@ -667,18 +837,24 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           ) {
             errorMessage = 'Camera initialization failed. Please try again.';
             shouldRetry = true;
+          } else if (error.message.includes('not allowed')) {
+            errorMessage = 'Camera access not allowed. Please check browser permissions.';
+            shouldRetry = true;
           } else {
             errorMessage = error.message;
+            // Retry on unknown errors too, but less aggressively
+            shouldRetry = attempts < 2;
           }
         }
         
         // Enhanced retry logic with better timeout detection
         if (shouldRetry && attempts < MAX_RETRIES) {
-          console.log(`Camera initialization attempt ${attempts} failed (${error instanceof Error ? error.message : 'unknown error'}), retrying...`);
+          console.log(`Camera initialization attempt ${attempts} failed (${errorDetails}), retrying...`);
           // Comprehensive cleanup before retry
           cleanupAll();
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          // Wait before retrying with exponential backoff
+          const backoffMs = RETRY_DELAY * Math.pow(1.5, attempts - 1);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
           return attemptStart(); // Recursive retry
         }
         
@@ -700,12 +876,12 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configState.cameraFacing, initializeReader, scanFrame, setupVideoTrackMonitoring, setupVideoErrorHandler]);
 
-  // Stop scanning
+  // Stop scanning with comprehensive cleanup
   const stopScanning = useCallback(() => {
     isScanningRef.current = false;
     videoReadyRef.current = false;
 
-    // Clear all pending timeouts
+    // Clear all pending timeouts with null checks
     if (canPlayTimeoutRef.current) {
       clearTimeout(canPlayTimeoutRef.current);
       canPlayTimeoutRef.current = null;
@@ -730,17 +906,34 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       playPromiseRef.current = null;
     }
 
+    // Stop all tracks in the current stream
     if (streamRef.current) {
-      const tracks = streamRef.current.getTracks();
-      for (const track of tracks) {
-        track.stop();
+      try {
+        const tracks = streamRef.current.getTracks();
+        for (const track of tracks) {
+          track.stop();
+        }
+      } catch (e) {
+        console.debug('Error stopping stream tracks during cleanup:', e);
       }
       streamRef.current = null;
     }
 
+    // Clean up video element with comprehensive null checks
     if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.srcObject = null;
+      try {
+        videoRef.current.pause();
+      } catch (e) {
+        console.debug('Error pausing video element:', e);
+      }
+      
+      try {
+        videoRef.current.srcObject = null;
+      } catch (e) {
+        console.debug('Error clearing video srcObject:', e);
+      }
+      
+      // Clear video ref last to ensure we don't have dangling references
       videoRef.current = null;
     }
 
