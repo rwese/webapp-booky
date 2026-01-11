@@ -143,7 +143,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   // Video track state monitoring - simplified version
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
     const videoTrack = stream.getVideoTracks()[0];
-    if (!videoTrack) return;
+    if (!videoTrack) return null;
 
     videoTrackRef.current = videoTrack;
 
@@ -585,7 +585,11 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     // Clean up video track monitoring
     if (cleanupTrackMonitoringRef.current) {
-      cleanupTrackMonitoringRef.current();
+      try {
+        cleanupTrackMonitoringRef.current();
+      } catch (error) {
+        console.warn('Error during video track monitoring cleanup:', error);
+      }
       cleanupTrackMonitoringRef.current = null;
     }
 
@@ -605,7 +609,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       videoRef.current = null;
     }
 
-    setState(prev => ({ ...prev, isScanning: false }));
+    setState(prev => ({ ...prev, isScanning: false, error: null, cameraStatus: undefined }));
   }, []);
 
   // Toggle flashlight

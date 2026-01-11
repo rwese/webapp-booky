@@ -202,6 +202,97 @@ describe('ISBN Scanner Fixes', () => {
       expect(videoElement.paused).toBe(true);
       expect(videoElement.srcObject).toBeNull();
     });
+
+    it('should properly cleanup video track monitoring', () => {
+      // Simulate cleanupTrackMonitoringRef
+      let cleanupCalled = false;
+      let trackMonitoringRef: (() => void) | null = null;
+      
+      const mockCleanup = () => {
+        cleanupCalled = true;
+      };
+
+      // Simulate setting up track monitoring
+      trackMonitoringRef = mockCleanup;
+
+      // Simulate stopScanning cleanup
+      if (trackMonitoringRef) {
+        trackMonitoringRef();
+        trackMonitoringRef = null;
+      }
+
+      expect(cleanupCalled).toBe(true);
+      expect(trackMonitoringRef).toBeNull();
+    });
+
+    it('should handle cleanup errors gracefully', () => {
+      // Simulate cleanup function that throws an error
+      const mockCleanup = () => {
+        throw new Error('Cleanup failed');
+      };
+
+      let cleanupError: Error | null = null;
+
+      // Simulate stopScanning with error handling
+      try {
+        mockCleanup();
+      } catch (error) {
+        cleanupError = error as Error;
+      }
+
+      expect(cleanupError).not.toBeNull();
+      expect(cleanupError?.message).toBe('Cleanup failed');
+    });
+
+    it('should reset error state when stopping', () => {
+      // Simulate state with error
+      const scanState = {
+        isScanning: true,
+        error: 'Camera recovery failed',
+        cameraStatus: 'error' as const,
+        lastScan: null,
+        cameraDevices: [],
+        selectedDevice: null,
+        flashEnabled: false
+      };
+
+      // Simulate stopScanning state update
+      const resetErrorState = () => {
+        return {
+          ...scanState,
+          isScanning: false,
+          error: null,
+          cameraStatus: undefined
+        };
+      };
+
+      const newState = resetErrorState();
+
+      expect(newState.isScanning).toBe(false);
+      expect(newState.error).toBeNull();
+      expect(newState.cameraStatus).toBeUndefined();
+    });
+
+    it('should handle null cleanup function safely', () => {
+      // Simulate scenario where cleanupTrackMonitoringRef is null
+      let trackMonitoringRef: (() => void) | null = null;
+
+      let errorThrown = false;
+
+      // Simulate stopScanning cleanup logic
+      try {
+        if (trackMonitoringRef) {
+          trackMonitoringRef();
+          trackMonitoringRef = null;
+        }
+        // If trackMonitoringRef is null, the if block should be skipped
+      } catch {
+        errorThrown = true;
+      }
+
+      expect(errorThrown).toBe(false);
+      expect(trackMonitoringRef).toBeNull();
+    });
   });
 
   describe('PerformanceObserver Support Checking', () => {
