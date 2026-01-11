@@ -17,7 +17,8 @@ export function BarcodeScannerModal() {
     startScanning, 
     stopScanning, 
     toggleFlash,
-    switchCamera 
+    switchCamera,
+    retryScanning
   } = useBarcodeScanner();
 
   const manualISBN = useManualISBNEntry();
@@ -162,8 +163,18 @@ export function BarcodeScannerModal() {
 
         {/* Error Display */}
         {scanState.error && (
-          <div className="absolute bottom-20 left-4 right-4 bg-red-500/80 text-white p-3 rounded-lg">
-            <p className="text-sm">{scanState.error}</p>
+          <div className="absolute bottom-20 left-4 right-4 space-y-2">
+            <div className="bg-red-500/80 text-white p-3 rounded-lg">
+              <p className="text-sm">{scanState.error}</p>
+            </div>
+            <button
+              type="button"
+              onClick={retryScanning}
+              className="w-full py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2"
+            >
+              <RotateCcw size={16} />
+              Retry
+            </button>
           </div>
         )}
 

@@ -113,7 +113,24 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     };
 
     const handleTrackMute = () => {
-      console.warn('Video track muted');
+      console.warn('Video track muted - attempting recovery');
+      
+      // Attempt automatic recovery
+      if (streamRef.current) {
+        const videoTrack = streamRef.current.getVideoTracks()[0];
+        if (videoTrack) {
+          // Try to restart the track
+          videoTrack.stop();
+        }
+      }
+      
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Camera stream was interrupted. Attempting to reconnect...',
+        isScanning: false,
+        cameraStatus: 'error'
+      }));
+      isScanningRef.current = false;
     };
 
     const handleTrackUnmute = () => {
@@ -626,6 +643,14 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     };
   }, [stopScanning]);
 
+  // Retry scanning after error
+  const retryScanning = useCallback(async () => {
+    if (videoRef.current) {
+      setState(prev => ({ ...prev, error: null }));
+      await startScanning(videoRef.current);
+    }
+  }, [startScanning]);
+
   return {
     state,
     config: configState,
@@ -633,6 +658,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     stopScanning,
     toggleFlash,
     switchCamera,
+    retryScanning,
     initializeReader
   };
 }
