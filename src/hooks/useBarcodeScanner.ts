@@ -504,35 +504,11 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           (videoElement as any).__videoCleanup = cleanup;
         });
 
-        console.debug('Video metadata loaded, calling video.play()...');
-        
-        // Handle play() with proper autoplay policy checking (POC pattern)
-        try {
-          await videoElement.play();
-          console.debug('Video play successful');
-        } catch (playErr) {
-          console.error('Video play() failed:', playErr);
-          
-          // Check for autoplay policy restrictions
-          if (videoElement.paused) {
-            console.warn('Autoplay policy may be blocking video play');
-            // Cleanup
-            const cleanup = (videoElement as any).__videoCleanup;
-            if (cleanup) {
-              cleanup();
-              delete (videoElement as any).__videoCleanup;
-            }
-            
-            setState(prev => ({
-              ...prev,
-              isScanning: false,
-              error: 'Camera access blocked by browser autoplay policy. Please interact with the page first.'
-            }));
-            cleanupAll();
-            return false;
-          }
-          throw playErr;
-        }
+        console.debug('Video metadata loaded - ZXing library will handle video playback');
+
+        // Don't call videoElement.play() here - let ZXing library handle video playback
+        // This prevents "Trying to play video that is already playing" errors
+        // The ZXing library's decodeFromVideoElement() will handle playing the video
 
         // Cleanup event listeners
         const cleanup = (videoElement as any).__videoCleanup;
