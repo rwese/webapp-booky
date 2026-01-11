@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera POC Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #video-container { width: 640px; height: 480px; background: #000; border: 2px solid #333; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .status { padding: 10px; margin: 10px 0; background: #f0f0f0; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Camera POC Test</h1>
+    
+    <div class="status">
+        <strong>Status:</strong> <span id="status-text">Initializing...</span>
+    </div>
+    
+    <div id="video-container">
+        <video id="video" autoplay playsinline muted></video>
+    </div>
+    
+    <div>
+        <button id="start-btn">Start Camera</button>
+        <button id="stop-btn">Stop Camera</button>
+    </div>
+    
+    <div class="status">
+        <strong>Video State:</strong> <span id="video-state">not ready</span>
+    </div>
+    
+    <div id="error-container"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusText = document.getElementById('status-text');
+        const videoState = document.getElementById('video-state');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const errorContainer = document.getElementById('error-container');
+        
+        let stream = null;
+        
+        function updateStatus(message, isError = false) {
+            statusText.textContent = message;
+            statusText.className = isError ? 'error' : 'success';
+        }
+        
+        function updateVideoState(state) {
+            videoState.textContent = state;
+        }
+        
+        function showError(error) {
+            errorContainer.innerHTML = `<div class="error"><strong>Error:</strong> ${error}</div>`;
+        }
+        
+        function clearError() {
+            errorContainer.innerHTML = '';
+        }
+        
+        async function startCamera() {
+            try {
+                clearError();
+                updateStatus('Requesting camera access...');
+                
+                const constraints = {
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                console.log('Calling getUserMedia with constraints:', constraints);
+                
+                // Check if getUserMedia is available
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('getUserMedia not supported in this browser');
+                }
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('Camera access granted, stream:', stream);
+                
+                video.srcObject = stream;
+                updateStatus('Camera access granted, attaching to video element...');
+                
+                // Wait for loadedmetadata
+                await new Promise((resolve, reject) => {
+                    const onLoadedMetadata = () => {
+                        console.log('loadedmetadata event received');
+                        console.log(`Video readyState: ${video.readyState}`);
+                        console.log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`);
+                        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        resolve();
+                    };
+                    
+                    const onCanPlay = () => {
+                        console.log('canplay event received');
+                        console.log(`Video readyState: ${video.readyState}`);
+                    };
+                    
+                    const onError = (error) => {
+                        console.error('Video error:', error);
+                        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        video.removeEventListener('canplay', onCanPlay);
+                        reject(error);
+                    };
+                    
+                    video.addEventListener('loadedmetadata', onLoadedMetadata);
+                    video.addEventListener('canplay', onCanPlay);
+                    video.addEventListener('error', onError);
+                    
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        console.error('loadedmetadata timeout - video element not ready');
+                        video.removeEventListener('loadedmetadata', onLoadedMetadata);
+                        video.removeEventListener('canplay', onCanPlay);
+                        video.removeEventListener('error', onError);
+                        reject(new Error('Video loadedmetadata timeout'));
+                    }, 10000);
+                });
+                
+                console.log('Calling video.play()...');
+                await video.play();
+                console.log('Video play successful!');
+                
+                updateStatus('Camera active and streaming');
+                updateVideoState('playing');
+                
+                // Monitor video state
+                video.addEventListener('play', () => {
+                    console.log('Video play event');
+                    updateVideoState(`readyState: ${video.readyState}, paused: ${video.paused}`);
+                });
+                
+                video.addEventListener('pause', () => {
+                    console.log('Video pause event');
+                    updateVideoState(`readyState: ${video.readyState}, paused: ${video.paused}`);
+                });
+                
+                video.addEventListener('ended', () => {
+                    console.log('Video ended event');
+                    updateVideoState('ended');
+                });
+                
+            } catch (error) {
+                console.error('Camera access failed:', error);
+                updateStatus(`Camera access failed: ${error.message}`, true);
+                showError(error.message);
+                
+                if (error.name === 'NotAllowedError') {
+                    showError('Camera permission denied. Please allow camera access.');
+                } else if (error.name === 'NotFoundError') {
+                    showError('No camera found. Please connect a camera.');
+                } else {
+                    showError(`Camera error: ${error.message}`);
+                }
+            }
+        }
+        
+        function stopCamera() {
+            console.log('Stopping camera...');
+            
+            if (stream) {
+                console.log('Stopping all tracks in stream...');
+                stream.getTracks().forEach(track => {
+                    console.log(`Stopping track: ${track.kind}`);
+                    track.stop();
+                });
+                stream = null;
+            }
+            
+            if (video) {
+                console.log('Clearing video element...');
+                video.srcObject = null;
+            }
+            
+            updateStatus('Camera stopped');
+            updateVideoState('stopped');
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startCamera);
+        stopBtn.addEventListener('click', stopCamera);
+        
+        // Initial state
+        updateStatus('Ready to start camera');
+    </script>
+</body>
+</html>
