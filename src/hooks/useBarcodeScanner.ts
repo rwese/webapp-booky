@@ -93,6 +93,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const videoTrackRef = useRef<MediaStreamTrack | null>(null);
   const scanFrameRef = useRef<() => void>(() => {});
   const hasUserInteractionRef = useRef(false); // Track user interaction for browser requirements
+  const recoveryInProgressRef = useRef(false); // Prevent concurrent recovery attempts
 
   // Video track state monitoring
   const setupVideoTrackMonitoring = useCallback((stream: MediaStream) => {
@@ -114,8 +115,37 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     const handleTrackMute = () => {
       console.warn('Video track muted - attempting recovery');
       
+      // Check if recovery is already in progress
+      if (recoveryInProgressRef.current) {
+        console.debug('Recovery already in progress, ignoring mute event');
+        return;
+      }
+      
+      // Add trackEnded handler to detect when tracks are actually ended
+      const handleTrackEnded = () => {
+        console.warn('Video track ended during recovery attempt');
+      };
+      
       // Simplified recovery with single attempt
       const attemptRecovery = async () => {
+        // Set recovery flag to prevent concurrent recovery attempts
+        recoveryInProgressRef.current = true;
+        
+        // Add proper cleanup - stop all tracks in current stream
+        if (streamRef.current) {
+          const oldTracks = streamRef.current.getVideoTracks();
+          for (const track of oldTracks) {
+            track.removeEventListener('ended', handleTrackEnded);
+            track.stop();
+          }
+        }
+        
+        // Reset video element state properly
+        if (videoRef.current) {
+          videoRef.current.pause();
+          videoRef.current.srcObject = null;
+        }
+        
         try {
           // Update state to show recovery in progress
           setState(prev => ({ 
@@ -171,8 +201,12 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
               videoRef.current!.addEventListener('loadedmetadata', onLoadedMetadata);
             });
             
-            // Simple video.play() call
-            await videoRef.current.play();
+            // Check if video is already playing before calling play()
+            if (videoRef.current && !videoRef.current.paused && videoRef.current.readyState >= 3) {
+              console.debug('Video already playing, skipping play() call');
+            } else if (videoRef.current) {
+              await videoRef.current.play();
+            }
           }
           
           // Update state to show successful recovery
@@ -185,6 +219,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           
           isScanningRef.current = true;
           videoReadyRef.current = true;
+          recoveryInProgressRef.current = false;
           
           console.log('Video track recovery successful');
           
@@ -203,11 +238,16 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           }));
           
           isScanningRef.current = false;
+          recoveryInProgressRef.current = false;
         }
       };
       
-      // Execute recovery
-      attemptRecovery();
+      // Execute recovery with debouncing to allow transient states to settle
+      setTimeout(() => {
+        if (!recoveryInProgressRef.current) {
+          attemptRecovery();
+        }
+      }, 100);
     };
 
     const handleTrackUnmute = () => {
