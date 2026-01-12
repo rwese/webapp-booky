@@ -2,14 +2,13 @@
  * Book Lookup Hook
  * 
  * Hook for looking up books by ISBN using multiple sources:
- * Open Library, Google Books, and WorldCat (if API key configured).
+ * Open Library and Google Books.
  */
 
 import { useState, useCallback } from 'react';
 import { 
   searchByISBN, 
-  searchGoogleBooksByISBN, 
-  searchWorldCatByISBN,
+  searchGoogleBooksByISBN,
   isbnLookupSources 
 } from '../lib/api';
 import type { Book } from '../types';
@@ -20,7 +19,7 @@ export function useBookLookup() {
   const [bookData, setBookData] = useState<Book | null>(null);
   const [sourcesSearched, setSourcesSearched] = useState<string[]>([]);
 
-  const searchByISBNFromSource = useCallback(async (isbn: string, source: 'openLibrary' | 'googleBooks' | 'worldcat') => {
+  const searchByISBNFromSource = useCallback(async (isbn: string, source: 'openLibrary' | 'googleBooks') => {
     const sourceConfig = isbnLookupSources[source];
     if (!sourceConfig?.enabled) {
       return null;
@@ -31,8 +30,6 @@ export function useBookLookup() {
         return await searchByISBN(isbn);
       case 'googleBooks':
         return await searchGoogleBooksByISBN(isbn);
-      case 'worldcat':
-        return await searchWorldCatByISBN(isbn);
       default:
         return null;
     }
@@ -47,19 +44,19 @@ export function useBookLookup() {
     try {
       if (useComprehensiveSearch) {
         // Search multiple sources in parallel by priority
-        const sources = ['openLibrary', 'googleBooks', 'worldcat'];
-        const searchPromises = sources.map(async (source) => {
-          const book = await searchByISBNFromSource(isbn, source as any);
+        const searchPromises = ['openLibrary', 'googleBooks'].map(async (source) => {
+          const typedSource = source as 'openLibrary' | 'googleBooks';
+          const book = await searchByISBNFromSource(isbn, typedSource);
           if (book) {
-            setSourcesSearched(prev => [...prev, isbnLookupSources[source as keyof typeof isbnLookupSources].name]);
+            setSourcesSearched(prev => [...prev, isbnLookupSources[typedSource].name]);
           }
           return { source, book };
         });
 
         const results = await Promise.all(searchPromises);
         
-        // Priority-based selection: Google Books > Open Library > WorldCat
-        const priorityOrder = ['googleBooks', 'openLibrary', 'worldcat'];
+        // Priority-based selection: Google Books > Open Library
+        const priorityOrder = ['googleBooks', 'openLibrary'];
         let selectedBook = null;
         
         for (const source of priorityOrder) {
@@ -74,8 +71,7 @@ export function useBookLookup() {
           setBookData(selectedBook);
           window.dispatchEvent(new CustomEvent('book:found', { detail: selectedBook }));
         } else {
-          // We can't use sourcesSearched here directly, so we'll get it from the event or let it be empty
-          setError(`Book not found for ISBN ${isbn}. Searched sources: Open Library, Google Books, WorldCat`);
+          setError(`Book not found for ISBN ${isbn}. Searched sources: Open Library, Google Books`);
           window.dispatchEvent(new CustomEvent('book:notfound', { detail: { isbn } }));
         }
       } else {
@@ -99,7 +95,7 @@ export function useBookLookup() {
     }
   }, [searchByISBNFromSource]);
 
-  const lookupFromSource = useCallback(async (isbn: string, source: 'openLibrary' | 'googleBooks' | 'worldcat') => {
+  const lookupFromSource = useCallback(async (isbn: string, source: 'openLibrary' | 'googleBooks') => {
     if (!isbnLookupSources[source]?.enabled) {
       setError(`${isbnLookupSources[source]?.name || source} is not enabled`);
       return null;
@@ -142,8 +138,8 @@ export function useBookLookup() {
       setBookData(null);
       setSourcesSearched([]);
     },
-    availableSources: Object.entries(isbnLookupSources)
-      .filter(([_, config]) => config.enabled)
-      .map(([key, config]) => ({ id: key, name: config.name }))
+    availableSources: (['openLibrary', 'googleBooks'] as const)
+      .filter(key => isbnLookupSources[key].enabled)
+      .map(key => ({ id: key, name: isbnLookupSources[key].name }))
   };
 }

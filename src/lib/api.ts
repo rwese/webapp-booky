@@ -4,8 +4,6 @@ const OPEN_LIBRARY_API = 'https://openlibrary.org';
 const GOOGLE_BOOKS_API_KEY = import.meta.env.GOOGLE_BOOKS_API_KEY;
 const GOOGLE_BOOKS_API_BASE = 'https://www.googleapis.com/books/v1';
 const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
-const WORLDCAT_API = 'https://www.worldcat.org/webservices';
-const WORLDCAT_API_KEY = import.meta.env.VITE_WORLDCAT_API_KEY;
 
 // Additional ISBN lookup sources configuration
 export const isbnLookupSources = {
@@ -21,65 +19,8 @@ export const isbnLookupSources = {
     baseUrl: 'https://www.googleapis.com/books/v1',
     backendProxy: true,
     priority: 2
-  },
-  worldcat: {
-    name: 'WorldCat',
-    enabled: !!WORLDCAT_API_KEY,
-    baseUrl: WORLDCAT_API,
-    apiKey: WORLDCAT_API_KEY,
-    priority: 3
   }
 };
-
-// Search WorldCat by ISBN
-export async function searchWorldCatByISBN(isbn: string): Promise<Book | null> {
-  if (!WORLDCAT_API_KEY || !isbnLookupSources.worldcat.enabled) {
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `${WORLDCAT_API}/citation/export?isbn=${isbn}&servicelevel=full&format=json&wskey=${WORLDCAT_API_KEY}`
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    
-    // WorldCat returns data in a different format, need to map it
-    if (!data || !data.book) {
-      return null;
-    }
-
-    const bookData = data.book;
-    return {
-      id: crypto.randomUUID(),
-      title: bookData.title || 'Unknown Title',
-      authors: bookData.author?.split(', ') || [],
-      isbn: isbn,
-      isbn13: isbn.startsWith('978') ? isbn : undefined,
-      coverUrl: bookData.cover?.url,
-      description: bookData.summary,
-      publishedYear: bookData.publishYear ? parseInt(bookData.publishYear) : undefined,
-      publishedDate: bookData.publishYear,
-      publisher: bookData.publisher,
-      pageCount: bookData.pageCount,
-      languageCode: bookData.language,
-      externalIds: {
-        oclcNumber: bookData.oclcid
-      },
-      format: 'physical' as BookFormat,
-      addedAt: new Date(),
-      needsSync: true,
-      localOnly: true
-    };
-  } catch (error) {
-    console.error('WorldCat ISBN lookup error:', error);
-    return null;
-  }
-}
 
 // Search Open Library
 export async function searchOpenLibrary(query: string): Promise<Book[]> {
