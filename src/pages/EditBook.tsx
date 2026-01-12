@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { BookForm } from '../components/forms/BookForm';
 import { bookOperations } from '../lib/db';
 import { useToastStore } from '../store/useStore';
+import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import type { Book as BookType } from '../types';
 
 export function EditBookPage() {
@@ -14,6 +15,7 @@ export function EditBookPage() {
   const [book, setBook] = useState<BookType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { isRefreshing, refreshMetadata, lastRefreshedData } = useBookMetadataRefresh();
 
   useEffect(() => {
     const loadBook = async () => {
@@ -59,6 +61,23 @@ export function EditBookPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    if (!book || !book.isbn13) return;
+
+    try {
+      const metadata = await refreshMetadata(book.id, book.isbn13);
+      if (metadata) {
+        const updatedBook = { ...book, ...metadata };
+        await bookOperations.update(book.id, updatedBook);
+        setBook(updatedBook);
+        addToast({ type: 'success', message: 'Metadata refreshed!' });
+      }
+    } catch (error) {
+      console.error('Failed to refresh metadata:', error);
+      addToast({ type: 'error', message: 'Failed to refresh metadata' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -84,9 +103,27 @@ export function EditBookPage() {
             Edit Book
           </h1>
           {book && (
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {book.title}
-            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-gray-600 dark:text-gray-400">
+                {book.title}
+              </p>
+              {book.isbn13 && (
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors disabled:opacity-50"
+                  aria-label="Refresh metadata"
+                  title="Refresh metadata from external sources"
+                >
+                  {isRefreshing ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </header>
