@@ -57,11 +57,13 @@ export function BarcodeScannerComponent({
   };
 
   // Enhanced video constraints for better barcode detection
+  // Higher resolution helps with detecting smaller barcodes
   const videoConstraints = {
-    width: { ideal: 1280, min: 640 },
-    height: { ideal: 720, min: 480 },
+    width: { ideal: 1920, min: 1280 },
+    height: { ideal: 1080, min: 720 },
     facingMode: scanConfig.cameraFacing,
     aspectRatio: { ideal: 1.777778 },
+    frameRate: { ideal: 30, min: 15 },
     audio: false
   };
 
