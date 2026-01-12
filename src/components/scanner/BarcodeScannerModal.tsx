@@ -1,16 +1,20 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw } from 'lucide-react';
-import { useBarcodeScanner, useManualISBNEntry, useBatchScanning, useBookLookup } from '../../hooks/useBarcodeScanner';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
+import { useBatchScanning } from '../../hooks/useBatchScanning';
+import { useBookLookup } from '../../hooks/useBookLookup';
 import { useModalStore, useToastStore } from '../../store/useStore';
 import { clsx } from 'clsx';
+import { BarcodeScannerComponent } from './BarcodeScannerComponent';
 
 // Barcode Scanner Modal Component
 export function BarcodeScannerModal() {
   const { closeModal } = useModalStore();
   const { addToast } = useToastStore();
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showBatchMode, setShowBatchMode] = useState(false);
+  const [lastScan, setLastScan] = useState<any>(null);
 
   const { 
     state: scanState, 
@@ -18,7 +22,9 @@ export function BarcodeScannerModal() {
     stopScanning, 
     toggleFlash,
     switchCamera,
-    retryScanning
+    retryScanning,
+    handleScan,
+    handleError
   } = useBarcodeScanner();
 
   const manualISBN = useManualISBNEntry();
@@ -68,38 +74,26 @@ export function BarcodeScannerModal() {
     }
   };
 
-  // Loading overlay component
-  const LoadingOverlay = () => (
-    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-10">
-      <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-white text-lg font-medium">Initializing camera...</p>
-      <p className="text-white/60 text-sm mt-2">Please allow camera access when prompted</p>
-    </div>
-  );
-
   // Handle successful scan
   useEffect(() => {
-    if (scanState.lastScan) {
+    if (lastScan) {
       addToast({
         type: 'success',
-        message: `Scanned: ${scanState.lastScan.text}`,
+        message: `Scanned: ${lastScan.text}`,
         duration: 2000
       });
 
       // Emit event for book lookup
       window.dispatchEvent(new CustomEvent('book:lookup', { 
-        detail: { isbn: scanState.lastScan.text } 
+        detail: { isbn: lastScan.text } 
       }));
-
-      // Close modal after successful scan (optional)
-      // closeModal();
     }
-  }, [scanState.lastScan, addToast]);
+  }, [lastScan, addToast]);
 
   // Start scanning when modal opens
   useEffect(() => {
-    if (videoRef.current && !showManualEntry) {
-      startScanning(videoRef.current);
+    if (!showManualEntry) {
+      startScanning();
     }
 
     return () => {
@@ -111,6 +105,15 @@ export function BarcodeScannerModal() {
     stopScanning();
     closeModal();
   }, [stopScanning, closeModal]);
+
+  const onScan = useCallback((result: any) => {
+    setLastScan(result);
+    handleScan(result);
+  }, [handleScan]);
+
+  const onError = useCallback((error: Error) => {
+    handleError(error);
+  }, [handleError]);
 
   return (
     <div 
@@ -134,12 +137,15 @@ export function BarcodeScannerModal() {
 
       {/* Camera View */}
       <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
-        <video
-          ref={videoRef}
-          className="w-64 h-48 object-cover"
-          playsInline
-          muted
-        />
+        {!showManualEntry && (
+          <BarcodeScannerComponent
+            onScan={onScan}
+            onError={onError}
+            className="w-64 h-48"
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )}
+        {getCameraStatusIndicator()}
       </div>
 
       {/* Controls */}
@@ -198,6 +204,17 @@ export function BarcodeScannerModal() {
             >
               <RotateCcw size={24} />
             </button>
+
+            {scanState.error && (
+              <button
+                type="button"
+                onClick={retryScanning}
+                className="p-3 bg-yellow-500/80 rounded-full hover:bg-yellow-500 transition-colors"
+                aria-label="Retry scanning"
+              >
+                <CameraOff size={24} />
+              </button>
+            )}
           </div>
         )}
 
@@ -380,3 +397,5 @@ function BatchScanQueue({
     </div>
   );
 }
+
+export default BarcodeScannerModal;
