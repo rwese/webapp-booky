@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Trash2, Book, Calendar, User, Building, 
-  Tag, Star, Clock, Check, X, ExternalLink, Share2, Heart
+  Tag, Star, Clock, Check, X, ExternalLink, Share2, Heart, RefreshCw
 } from 'lucide-react';
 import { Button, Card, Badge, Input } from '../components/common/Button';
 import { StarRating, StarRatingDisplay } from '../components/forms/StarRating';
@@ -12,6 +12,7 @@ import { CollectionSelector, CollectionBadge } from '../components/forms/Collect
 import { bookOperations, ratingOperations, tagOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore, useLibraryStore } from '../store/useStore';
+import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
 import { clsx } from 'clsx';
@@ -31,6 +32,9 @@ export function BookDetailPage() {
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [previousRating, setPreviousRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
+
+  // Metadata refresh hook
+  const { isRefreshing, error, refreshMetadata } = useBookMetadataRefresh();
 
   // Load book collections helper
   const loadBookCollections = useCallback(async (bookId: string): Promise<Collection[]> => {
@@ -185,6 +189,39 @@ export function BookDetailPage() {
     }
   }, [book, navigate, addToast]);
 
+  // Handle metadata refresh
+  const handleRefresh = useCallback(async () => {
+    if (!book || !book.isbn13) return;
+
+    try {
+      const metadata = await refreshMetadata(book.id, book.isbn13);
+      
+      if (metadata) {
+        // Merge with existing book data, preserving localOnly fields and user data
+        const updatedBook: BookType = {
+          ...book,
+          ...metadata,
+          // Ensure localOnly fields are preserved
+          addedAt: book.addedAt,
+          localOnly: book.localOnly
+        };
+        
+        // Update in IndexedDB
+        await bookOperations.update(book.id, updatedBook);
+        
+        // Update local state
+        setBook(updatedBook);
+        
+        addToast({ type: 'success', message: 'Metadata refreshed!' });
+      } else if (error) {
+        addToast({ type: 'error', message: error });
+      }
+    } catch (err) {
+      console.error('Failed to refresh metadata:', err);
+      addToast({ type: 'error', message: 'Failed to refresh book metadata' });
+    }
+  }, [book, refreshMetadata, error, addToast]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -227,6 +264,18 @@ export function BookDetailPage() {
               <Button variant="ghost" size="sm" onClick={() => navigate(`/edit/${book.id}`)}>
                 <Edit size={16} />
               </Button>
+              {book.isbn13 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  aria-label="Refresh metadata"
+                  title="Refresh metadata"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                </Button>
+              )}
               <Button variant="ghost" size="sm">
                 <Share2 size={16} />
               </Button>
