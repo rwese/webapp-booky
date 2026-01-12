@@ -5,7 +5,7 @@
  * compatibility with the existing useBarcodeScanner hook interface.
  */
 
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { BarcodeStringFormat } from 'react-qr-barcode-scanner';
 import type { ScanResult, ScanConfig } from '../../types';
 
@@ -18,31 +18,11 @@ export interface ScannerProps {
   style?: React.CSSProperties;
 }
 
-// Format mapping from our types to library formats
-const formatMapping: Record<string, BarcodeStringFormat> = {
-  'ean_13': BarcodeStringFormat.EAN_13,
-  'ean_8': BarcodeStringFormat.EAN_8, 
-  'upc_a': BarcodeStringFormat.UPC_A,
-  'upc_e': BarcodeStringFormat.UPC_E,
-  'code_128': BarcodeStringFormat.CODE_128,
-  'code_39': BarcodeStringFormat.CODE_39,
-  'qr_code': BarcodeStringFormat.QR_CODE,
-  'data_matrix': BarcodeStringFormat.DATA_MATRIX,
-  'pdf_417': BarcodeStringFormat.PDF_417
-};
-
-// Convert our format list to library format
-const getLibraryFormats = (formats: string[]): BarcodeStringFormat[] => {
-  return formats
-    .map(f => formatMapping[f])
-    .filter((f): f is BarcodeStringFormat => f !== undefined);
-};
-
 // Default formats for book barcodes
 const defaultBookFormats = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
 
 // Import the library component
-import BarcodeScanner from 'react-qr-barcode-scanner';
+import BarcodeScannerLib from 'react-qr-barcode-scanner';
 
 export function BarcodeScannerComponent({
   onScan,
@@ -52,11 +32,19 @@ export function BarcodeScannerComponent({
   style
 }: ScannerProps) {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
-  const [cameraStatus, setCameraStatus] = useState<'initializing' | 'ready' | 'streaming' | 'active' | 'error' | undefined>(undefined);
+  const [cameraStatus, setCameraStatus] = useState<'initializing' | 'ready' | 'streaming' | 'active' | 'error' | undefined>('initializing');
   const [error, setError] = useState<string | null>(null);
+  const [videoInfo, setVideoInfo] = useState<{readyState: number; videoWidth: number; videoHeight: number} | null>(null);
+  const [scanActive, setScanActive] = useState(false);
+  const [frameCount, setFrameCount] = useState(0);
   
-  // Debounce scan results to avoid duplicates
+  // Refs for video monitoring
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const frameCountRef = useRef(0);
   const lastScanTimeRef = useRef<number>(0);
+  const isScanningRef = useRef(false);
+  
   const scanCooldown = 1000; // 1 second between same scans
 
   const scanConfig: ScanConfig = {
@@ -68,7 +56,64 @@ export function BarcodeScannerComponent({
     ...config
   };
 
+  // Enhanced video constraints for better barcode detection
+  const videoConstraints = {
+    width: { ideal: 1280, min: 640 },
+    height: { ideal: 720, min: 480 },
+    facingMode: scanConfig.cameraFacing,
+    aspectRatio: { ideal: 1.777778 },
+    audio: false
+  };
+
+  // Monitor video element readyState - essential for barcode detection
+  useEffect(() => {
+    const checkVideoState = setInterval(() => {
+      if (!videoElementRef.current) {
+        // Try to find video element in the DOM
+        const container = containerRef.current;
+        if (container) {
+          const videoElement = container.querySelector('video');
+          if (videoElement) {
+            videoElementRef.current = videoElement as HTMLVideoElement;
+          }
+        }
+        return;
+      }
+
+      const video = videoElementRef.current;
+      const currentReadyState = video.readyState;
+      const currentVideoWidth = video.videoWidth;
+      const currentVideoHeight = video.videoHeight;
+
+      // Update video info state for display
+      setVideoInfo({
+        readyState: currentReadyState,
+        videoWidth: currentVideoWidth,
+        videoHeight: currentVideoHeight
+      });
+
+      // Only allow scanning when video has enough data (readyState >= 2)
+      if (currentReadyState >= 2 && !isScanningRef.current) {
+        isScanningRef.current = true;
+        setScanActive(true);
+        setCameraStatus('ready');
+      } else if (currentReadyState < 2 && isScanningRef.current) {
+        isScanningRef.current = false;
+        setScanActive(false);
+        setCameraStatus('initializing');
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(checkVideoState);
+    };
+  }, []);
+
   const handleUpdate = useCallback((err: unknown, result?: any) => {
+    // Track frame count
+    frameCountRef.current++;
+    setFrameCount(frameCountRef.current);
+    
     if (err) {
       // Handle expected "no barcode found" errors gracefully
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -78,7 +123,6 @@ export function BarcodeScannerComponent({
           errorMessage.includes('No barcode') || 
           errorMessage.includes('NotFound') ||
           errorMessage.includes('No MultiFormat Reader')) {
-        // These are expected - no barcode in frame, silently ignore
         return;
       }
       
@@ -97,17 +141,9 @@ export function BarcodeScannerComponent({
 
     if (result) {
       const now = Date.now();
-      
-      // Debounce duplicate scans
       const resultText = result.getText ? result.getText() : result.text;
       
-      // Debug output when barcode is detected
-      console.debug('[BarcodeScanner] Code detected:', {
-        text: resultText,
-        format: result.getBarcodeFormat ? result.getBarcodeFormat().toString() : (result.format || 'unknown'),
-        timestamp: new Date().toISOString()
-      });
-      
+      // Debounce duplicate scans
       if (resultText === lastScan?.text && now - lastScanTimeRef.current < scanCooldown) {
         return;
       }
@@ -128,42 +164,73 @@ export function BarcodeScannerComponent({
 
   const handleError = useCallback((err: string | DOMException) => {
     const errorMessage = err instanceof DOMException ? err.message : String(err);
-    console.debug('[BarcodeScanner] Camera error:', errorMessage);
     setError(errorMessage);
     setCameraStatus('error');
     onError?.(new Error(errorMessage));
   }, [onError]);
 
   return (
-    <div className={className} style={style}>
-      <BarcodeScanner
-        width={500}
-        height={500}
+    <div ref={containerRef} className={className} style={style}>
+      <BarcodeScannerLib
+        width="100%"
+        height="100%"
         onUpdate={handleUpdate}
         onError={handleError}
         facingMode={scanConfig.cameraFacing}
-        formats={getLibraryFormats(scanConfig.formats)}
-        delay={scanConfig.scanInterval}
-        stopStream={true} // Enable proper cleanup
+        delay={1000}
+        stopStream={false}
+        videoConstraints={videoConstraints}
       />
       
-      {/* Status indicator */}
-      {cameraStatus && (
-        <div className={`camera-status status-${cameraStatus}`}>
-          {cameraStatus === 'initializing' && 'Initializing camera...'}
-          {cameraStatus === 'ready' && 'Camera ready'}
-          {cameraStatus === 'streaming' && 'Streaming'}
-          {cameraStatus === 'active' && 'Active'}
-          {cameraStatus === 'error' && `Error: ${error || 'Camera error'}`}
+      {/* Status panel */}
+      <div style={{ 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        background: 'rgba(0,0,0,0.7)', 
+        color: 'white', 
+        padding: '12px',
+        fontSize: '12px',
+        fontFamily: 'monospace',
+        zIndex: 100
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <strong>Camera:</strong> {
+              cameraStatus === 'initializing' ? 'Initializing...' :
+              cameraStatus === 'ready' ? 'Ready' :
+              cameraStatus === 'streaming' ? 'Streaming' :
+              cameraStatus === 'active' ? 'Active' :
+              cameraStatus === 'error' ? 'Error' : 'Unknown'
+            }
+          </div>
+          
+          <div>
+            <strong>Video:</strong> {
+              videoInfo ? (
+                `${videoInfo.videoWidth > 0 ? videoInfo.videoWidth : '?'}×${videoInfo.videoHeight > 0 ? videoInfo.videoHeight : '?'} (readyState: ${videoInfo.readyState})`
+              ) : 'Loading...'
+            }
+          </div>
+          
+          <div>
+            <strong>Frames:</strong> {frameCount} {scanActive ? '✓' : '⏸'}
+          </div>
         </div>
-      )}
-      
-      {/* Last scan result */}
-      {lastScan && (
-        <div className="last-scan-result">
-          <strong>Last scan:</strong> {lastScan.text} ({lastScan.format})
-        </div>
-      )}
+        
+        {lastScan && (
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
+            <strong>Last scan:</strong> {lastScan.text} ({lastScan.format})
+          </div>
+        )}
+        
+        {error && (
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.3)', color: '#ff6b6b' }}>
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -71,38 +71,38 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
   test.describe('Barcode Scanner Modal', () => {
     
-    test('should have barcode scanner accessible from main app', async ({ page }) => {
-      await page.goto('/');
-      
-      // Check if scan barcode button exists on main page
-      const scanButton = page.locator('button:has-text("Scan barcode")');
-      await expect(scanButton).toBeVisible();
-    });
+  test('should have barcode scanner accessible from main app', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check if scan barcode button exists on main page (floating action button)
+    const scanButton = page.locator('button[aria-label="Scan barcode"]');
+    await expect(scanButton).toBeVisible();
+  });
 
-    test('should open scanner modal when scan button is clicked', async ({ page }) => {
-      await page.goto('/');
-      
-      // Click scan barcode button
-      await page.click('button:has-text("Scan barcode")');
-      
-      // Wait for modal to appear
-      await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-      
-      // Check that modal contains scanner elements
-      await expect(page.locator('text=Scan ISBN Barcode')).toBeVisible();
-    });
+  test('should open scanner modal when scan button is clicked', async ({ page }) => {
+    await page.goto('/');
+    
+    // Click scan barcode button (floating action button)
+    await page.click('button[aria-label="Scan barcode"]');
+    
+    // Wait for modal to appear
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    
+    // Check that modal contains scanner elements
+    await expect(page.locator('text=Scan ISBN Barcode')).toBeVisible();
+  });
 
-    test('should show camera mode by default', async ({ page }) => {
-      await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
-      
-      // Check that camera mode is active
-      await expect(page.locator('button:has-text("Camera")')).toHaveClass(/bg-primary-500/);
-    });
+  test('should show camera mode by default', async ({ page }) => {
+    await page.goto('/');
+    await page.click('button[aria-label="Scan barcode"]');
+    
+    // Check that camera mode is active
+    await expect(page.locator('button:has-text("Camera")')).toHaveClass(/bg-primary-500/);
+  });
 
     test('should switch to manual entry mode', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Click manual entry tab
       await page.click('button:has-text("Manual")');
@@ -113,7 +113,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should switch to batch mode', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Click batch tab
       await page.click('button:has-text("Batch")');
@@ -127,7 +127,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
     
     test('should accept valid ISBN-13', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Manual")');
       
       // Enter valid ISBN-13
@@ -139,7 +139,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should accept valid ISBN-10', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Manual")');
       
       // Enter valid ISBN-10
@@ -151,7 +151,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should reject invalid ISBN format', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Manual")');
       
       // Enter invalid ISBN
@@ -166,7 +166,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should auto-format ISBN with hyphens', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Manual")');
       
       // Enter ISBN without hyphens
@@ -181,7 +181,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
     
     test('should add ISBN to batch queue', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Batch")');
       
       // Add ISBN to queue
@@ -197,7 +197,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should prevent duplicate ISBNs in batch queue', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Batch")');
       
       // Add same ISBN twice
@@ -215,7 +215,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should clear batch queue', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.click('button:has-text("Batch")');
       
       // Add some ISBNs
@@ -250,7 +250,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
       });
       
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Should show error state (may take a moment)
       await page.waitForTimeout(500);
@@ -275,7 +275,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
       });
       
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Should show error state
       await page.waitForTimeout(500);
@@ -289,7 +289,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
     
     test('should render barcode scanner component', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Check that the scanner component is rendered
       await expect(page.locator('.react-qr-barcode-scanner')).toBeVisible();
@@ -297,7 +297,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
 
     test('should have correct video attributes', async ({ page }) => {
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       
       // Wait for video to render
       await page.waitForSelector('video', { state: 'attached' });
@@ -322,7 +322,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
       });
       
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.waitForTimeout(500);
       
       // Filter out expected media-related errors
@@ -345,7 +345,7 @@ test.describe('Barcode Scanner with react-qr-barcode-scanner', () => {
       });
       
       await page.goto('/');
-      await page.click('button:has-text("Scan barcode")');
+      await page.click('button[aria-label="Scan barcode"]');
       await page.waitForTimeout(500);
       
       expect(exceptions).toHaveLength(0);
