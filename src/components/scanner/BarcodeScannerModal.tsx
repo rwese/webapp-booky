@@ -17,6 +17,7 @@ export function BarcodeScannerModal() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showBatchMode, setShowBatchMode] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
+  const processedScanRef = useRef<string | null>(null);
 
   const { 
     state: scanState, 
@@ -95,39 +96,37 @@ export function BarcodeScannerModal() {
 
   // Handle successful scan
   useEffect(() => {
-    if (lastScan) {
-      addToast({
-        type: 'success',
-        message: `Scanned: ${lastScan.text}`,
-        duration: 2000
-      });
+    if (!lastScan) return;
+    
+    // Check if we've already processed this scan
+    if (processedScanRef.current === lastScan.text) return;
+    processedScanRef.current = lastScan.text;
 
-      // If batch mode is active, add to queue
-      if (showBatchMode) {
-        if (batchScan.addToQueue(lastScan.text)) {
-          addToast({ type: 'success', message: 'Added to batch queue' });
-        }
-      } else {
-        // Single mode: navigate to AddBook page and populate fields
-        const isbn = lastScan.text;
-        const format = lastScan.format;
-        
-        // Navigate to AddBook page if not already there
-        navigate('/add', { replace: true });
-        
-        // Use setTimeout to ensure navigation completes before emitting event
-        setTimeout(() => {
-          // Emit event for book lookup
-          window.dispatchEvent(new CustomEvent('barcode:scanned', { 
-            detail: { text: isbn, format } 
-          }));
-          
-          // Close the scanner modal
-          handleClose();
-        }, 100);
+    // If batch mode is active, add to queue
+    if (showBatchMode) {
+      if (batchScan.addToQueue(lastScan.text)) {
+        addToast({ type: 'success', message: 'Added to batch queue' });
       }
+    } else {
+      // Single mode: navigate to AddBook page and populate fields
+      const isbn = lastScan.text;
+      const format = lastScan.format;
+      
+      // Navigate to AddBook page if not already there
+      navigate('/add', { replace: true });
+      
+      // Use setTimeout to ensure navigation completes before emitting event
+      setTimeout(() => {
+        // Emit event for book lookup
+        window.dispatchEvent(new CustomEvent('barcode:scanned', { 
+          detail: { text: isbn, format } 
+        }));
+        
+        // Close the scanner modal
+        handleClose();
+      }, 100);
     }
-  }, [lastScan, addToast, showBatchMode, batchScan, navigate, handleClose]);
+  }, [lastScan, showBatchMode, batchScan, addToast, navigate, handleClose]);
 
   const onScan = useCallback((result: any) => {
     console.log('[BarcodeScannerModal] Scan detected:', result.text, result.format);
