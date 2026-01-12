@@ -11,6 +11,7 @@ export type BookFormat =
 export interface Book {
   id: string;
   title: string;
+  subtitle?: string;
   authors: string[];
   isbn?: string;
   isbn13?: string;
@@ -19,12 +20,16 @@ export interface Book {
   description?: string;
   publisher?: string;
   publishedYear?: number;
+  publishedDate?: string; // Full date from API (e.g., "2003-02-25")
   pageCount?: number;
   format: BookFormat;
   addedAt: Date;
   externalIds: {
     openLibrary?: string;
     googleBooks?: string;
+    oclcNumber?: string;
+    lccn?: string;
+    deweyDecimal?: string;
   };
   lastSyncedAt?: Date;
   needsSync: boolean;
@@ -34,6 +39,72 @@ export interface Book {
   language?: string;
   // Reading status (computed from reading logs)
   readingStatus?: ReadingStatus;
+  
+  // ISBN Metadata - Ratings & Reviews
+  averageRating?: number;
+  ratingsCount?: number;
+  
+  // ISBN Metadata - Content Categories  
+  categories?: string[];
+  subjects?: string[];
+  tags?: string[];
+  
+  // ISBN Metadata - Physical Details
+  printType?: string; // "BOOK" or "MAGAZINE"
+  dimensions?: {
+    height?: string;
+    width?: string;
+    thickness?: string;
+  };
+  weight?: string; // in grams or ounces
+  
+  // ISBN Metadata - Language & Region
+  country?: string;
+  languageCode?: string; // "en", "de", etc.
+  
+  // ISBN Metadata - Access & Links
+  previewLink?: string;
+  infoLink?: string;
+  canonicalVolumeLink?: string;
+  webReaderLink?: string;
+  
+  // ISBN Metadata - Content Features
+  isEbook?: boolean;
+  epubAvailable?: boolean;
+  pdfAvailable?: boolean;
+  textToSpeechPermission?: string;
+  
+  // ISBN Metadata - Series & Edition
+  seriesName?: string;
+  seriesVolume?: number;
+  edition?: string;
+  volume?: string;
+  
+  // ISBN Metadata - Additional Identifiers
+  oclcNumber?: string;
+  lccn?: string; // Library of Congress Control Number
+  deweyDecimal?: string;
+  
+  // ISBN Metadata - Author Details
+  authorDetails?: {
+    name: string;
+    bio?: string;
+    born?: string;
+    died?: string;
+    photoUrl?: string;
+  }[];
+  
+  // ISBN Metadata - Pricing & Availability (from Google Books saleInfo)
+  saleability?: string;
+  listPrice?: {
+    amount: number;
+    currencyCode: string;
+  };
+  
+  // ISBN Metadata - Content Versioning
+  contentVersion?: string;
+  maturityRating?: string; // "NOT_MATURE", "MATURE"
+  allowAnonLogging?: boolean;
 }
 
 export interface Rating {
@@ -247,32 +318,103 @@ export interface BatchScanConfig {
 export interface OpenLibraryBook {
   key: string;
   title: string;
+  subtitle?: string;
   author_name?: string[];
   isbn?: string[];
   first_publish_year?: number;
+  publish_date?: string;
   cover_i?: number;
   number_of_pages_median?: number;
   publisher?: string[];
+  authors?: Array<{
+    key: string;
+    name: string;
+    birth_date?: string;
+    death_date?: string;
+  }>;
+  subjects?: string[];
+  subject?: string[];
+  oclc_number?: string[];
+  lccn?: string[];
+  dewey_number?: string[];
+  ia?: string[];
 }
 
 export interface GoogleBooksVolume {
   id: string;
+  etag?: string;
+  selfLink?: string;
   volumeInfo: {
     title: string;
+    subtitle?: string;
     authors?: string[];
     description?: string;
     publishedDate?: string;
     pageCount?: number;
     categories?: string[];
+    averageRating?: number;
+    ratingsCount?: number;
     imageLinks?: {
+      smallThumbnail: string;
       thumbnail: string;
       large?: string;
+      extraLarge?: string;
     };
     industryIdentifiers?: Array<{
       type: string;
       identifier: string;
     }>;
     publisher?: string;
+    printType?: string;
+    contentVersion?: string;
+    maturityRating?: string;
+    allowAnonLogging?: boolean;
+    country?: string;
+    language?: string;
+    previewLink?: string;
+    infoLink?: string;
+    canonicalVolumeLink?: string;
+    dimensions?: {
+      height?: string;
+      width?: string;
+      thickness?: string;
+    };
+    webReaderLink?: string;
+    textToSpeechPermission?: string;
+    accessInfo?: {
+      epub?: {
+        isAvailable: boolean;
+      };
+      pdf?: {
+        isAvailable: boolean;
+      };
+      viewability?: string;
+      embeddable?: boolean;
+    };
+  };
+  saleInfo?: {
+    country?: string;
+    saleability?: string;
+    isEbook?: boolean;
+    listPrice?: {
+      amount: number;
+      currencyCode: string;
+    };
+  };
+  accessInfo?: {
+    viewability?: string;
+    embeddable?: boolean;
+    publicDomain?: boolean;
+    textToSpeechPermission?: string;
+    epub?: {
+      isAvailable: boolean;
+    };
+    pdf?: {
+      isAvailable: boolean;
+    };
+    webReaderLink?: string;
+    accessViewStatus?: string;
+    quoteSharingAllowed?: boolean;
   };
 }
 

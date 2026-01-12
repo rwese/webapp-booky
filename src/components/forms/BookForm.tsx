@@ -20,6 +20,7 @@ export function BookForm({
 }: BookFormProps) {
   const [formData, setFormData] = useState<Partial<BookType>>({
     title: initialData?.title || '',
+    subtitle: initialData?.subtitle || '',
     authors: initialData?.authors || [],
     isbn: initialData?.isbn || '',
     isbn13: initialData?.isbn13 || '',
@@ -27,8 +28,14 @@ export function BookForm({
     description: initialData?.description || '',
     publisher: initialData?.publisher || '',
     publishedYear: initialData?.publishedYear || undefined,
+    publishedDate: initialData?.publishedDate || '',
     pageCount: initialData?.pageCount || undefined,
     format: initialData?.format || 'physical',
+    subjects: initialData?.subjects || [],
+    languageCode: initialData?.languageCode || '',
+    categories: initialData?.categories || [],
+    averageRating: initialData?.averageRating,
+    ratingsCount: initialData?.ratingsCount,
   });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -42,6 +49,7 @@ export function BookForm({
     const book: BookType = {
       id: initialData?.id || crypto.randomUUID(),
       title: formData.title!,
+      subtitle: formData.subtitle,
       authors: formData.authors || [],
       isbn: formData.isbn,
       isbn13: formData.isbn13,
@@ -49,12 +57,18 @@ export function BookForm({
       description: formData.description,
       publisher: formData.publisher,
       publishedYear: formData.publishedYear,
+      publishedDate: formData.publishedDate,
       pageCount: formData.pageCount,
       format: formData.format as BookFormat,
       addedAt: initialData?.addedAt || new Date(),
       externalIds: initialData?.externalIds || {},
       needsSync: true,
-      localOnly: true
+      localOnly: true,
+      subjects: formData.subjects,
+      languageCode: formData.languageCode,
+      categories: formData.categories,
+      averageRating: formData.averageRating,
+      ratingsCount: formData.ratingsCount,
     };
 
     await onSubmit(book);
@@ -74,6 +88,13 @@ export function BookForm({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Enter book title"
             required
+          />
+          
+          <Input
+            label="Subtitle"
+            value={formData.subtitle || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, subtitle: e.target.value })}
+            placeholder="Enter subtitle (optional)"
           />
           
           <Input
@@ -138,6 +159,61 @@ export function BookForm({
               })}
               placeholder="Pages"
               min="1"
+            />
+          </div>
+          
+          <Input
+            label="Language"
+            value={formData.languageCode || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, languageCode: e.target.value })}
+            placeholder="Language (e.g., en, de, fr)"
+          />
+          
+          <Input
+            label="Categories"
+            value={formData.categories?.join(', ') || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+              ...formData, 
+              categories: e.target.value.split(',').map((c: string) => c.trim()).filter(Boolean) 
+            })}
+            placeholder="Categories/Genres (comma-separated)"
+          />
+          
+          <Input
+            label="Subjects"
+            value={formData.subjects?.join(', ') || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+              ...formData, 
+              subjects: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) 
+            })}
+            placeholder="Subjects/Topics (comma-separated)"
+          />
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Rating"
+              type="number"
+              step="0.1"
+              min="0"
+              max="5"
+              value={formData.averageRating || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+                ...formData, 
+                averageRating: e.target.value ? parseFloat(e.target.value) : undefined 
+              })}
+              placeholder="0-5"
+            />
+            
+            <Input
+              label="Ratings Count"
+              type="number"
+              value={formData.ratingsCount || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
+                ...formData, 
+                ratingsCount: e.target.value ? parseInt(e.target.value) : undefined 
+              })}
+              placeholder="Count"
+              min="0"
             />
           </div>
           
