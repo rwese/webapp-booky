@@ -18,8 +18,6 @@
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
     "@rwese/agent-loop-plugin": "rwese/agent-loop-plugin",
-    "@zxing/browser": "^0.1.5",
-    "@zxing/library": "^0.21.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
     "dexie": "^3.2.4",
@@ -30,6 +28,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.49.2",
+    "react-qr-barcode-scanner": "^2.1.20",
     "react-router-dom": "^7.0.0",
     "recharts": "^2.10.3",
     "tailwind-merge": "^2.1.0",
