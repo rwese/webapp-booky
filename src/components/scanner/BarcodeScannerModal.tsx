@@ -9,6 +9,37 @@ import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { BarcodeScannerComponent } from './BarcodeScannerComponent';
 
+// Haptic and audio feedback helper
+function provideScanFeedback() {
+  // Vibrate if available (50ms pulse)
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
+  
+  // Play beep sound using Web Audio API
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // High-pitched beep (1800Hz) for success
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(1800, audioContext.currentTime);
+    
+    // Short duration with quick fade
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  } catch (error) {
+    // Audio not available, ignore
+  }
+}
+
 // Barcode Scanner Modal Component
 export function BarcodeScannerModal() {
   const { closeModal } = useModalStore();
@@ -115,6 +146,9 @@ export function BarcodeScannerModal() {
     // Check if we've already processed this scan
     if (processedScanRef.current === lastScan.text) return;
     processedScanRef.current = lastScan.text;
+
+    // Provide haptic and audio feedback for successful scan
+    provideScanFeedback();
 
     // If batch mode is active, add to queue with auto-lookup
     if (showBatchMode) {
@@ -295,6 +329,9 @@ export function BarcodeScannerModal() {
           <ManualISBNEntry 
             {...manualISBN}
             onSubmit={(isbn: string) => {
+              // Provide feedback for manual entry
+              provideScanFeedback();
+              
               // Navigate to AddBook page and populate fields
               navigate('/add', { replace: true });
               
@@ -313,6 +350,9 @@ export function BarcodeScannerModal() {
           <BatchScanQueue 
             batchScan={batchScan}
             onAddIsbn={(isbn: string) => {
+              // Provide feedback when adding to batch queue
+              provideScanFeedback();
+              
               batchScan.lookupAndAddToQueue(isbn).then((result) => {
                 if (result === 'success') {
                   addToast({ type: 'success', message: 'Book found!' });
