@@ -154,7 +154,7 @@ export interface ScanQueueItem {
   id: string;
   isbn: string;
   isbn13?: string;
-  status: 'pending' | 'success' | 'error' | 'duplicate';
+  status: 'pending' | 'success' | 'error' | 'duplicate' | 'created';
   bookData?: any;
   error?: string;
   scannedAt: Date;

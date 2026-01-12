@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw } from 'lucide-react';
+import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, Plus } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
 import { useBatchScanning } from '../../hooks/useBatchScanning';
@@ -75,21 +75,6 @@ export function BarcodeScannerModal() {
   };
 
   // Handle successful scan
-  useEffect(() => {
-    if (lastScan) {
-      addToast({
-        type: 'success',
-        message: `Scanned: ${lastScan.text}`,
-        duration: 2000
-      });
-
-      // Emit event for book lookup
-      window.dispatchEvent(new CustomEvent('book:lookup', { 
-        detail: { isbn: lastScan.text } 
-      }));
-    }
-  }, [lastScan, addToast]);
-
   // Start scanning when modal opens
   useEffect(() => {
     if (!showManualEntry) {
@@ -105,6 +90,31 @@ export function BarcodeScannerModal() {
     stopScanning();
     closeModal();
   }, [stopScanning, closeModal]);
+
+  // Handle successful scan
+  useEffect(() => {
+    if (lastScan) {
+      addToast({
+        type: 'success',
+        message: `Scanned: ${lastScan.text}`,
+        duration: 2000
+      });
+
+      // If batch mode is active, add to queue
+      if (showBatchMode) {
+        if (batchScan.addToQueue(lastScan.text)) {
+          addToast({ type: 'success', message: 'Added to batch queue' });
+        }
+      } else {
+        // Single mode: emit barcode scanned event to open AddBook and populate fields
+        window.dispatchEvent(new CustomEvent('barcode:scanned', { 
+          detail: { text: lastScan.text, format: lastScan.format } 
+        }));
+        // Close the scanner modal after successful scan in single mode
+        handleClose();
+      }
+    }
+  }, [lastScan, addToast, showBatchMode, batchScan, handleClose]);
 
   const onScan = useCallback((result: any) => {
     setLastScan(result);
@@ -223,7 +233,10 @@ export function BarcodeScannerModal() {
           <ManualISBNEntry 
             {...manualISBN}
             onSubmit={(isbn: string) => {
-              window.dispatchEvent(new CustomEvent('book:lookup', { detail: { isbn } }));
+              window.dispatchEvent(new CustomEvent('barcode:scanned', { 
+                detail: { text: isbn, format: 'manual' } 
+              }));
+              handleClose();
             }}
           />
         )}
@@ -346,14 +359,29 @@ function BatchScanQueue({
             className="flex items-center justify-between p-2 bg-white/10 rounded-lg"
           >
             <div className="flex items-center gap-2">
-              <span className={clsx(
-                'w-2 h-2 rounded-full',
-                item.status === 'success' && 'bg-green-500',
-                item.status === 'pending' && 'bg-yellow-500',
-                item.status === 'error' && 'bg-red-500',
-                item.status === 'duplicate' && 'bg-gray-500'
-              )} />
+              {/* Status Icon */}
+              {item.status === 'success' && (
+                <Check size={16} className="text-green-500" />
+              )}
+              {item.status === 'pending' && (
+                <Clock size={16} className="text-yellow-500" />
+              )}
+              {item.status === 'error' && (
+                <AlertCircle size={16} className="text-red-500" />
+              )}
+              {item.status === 'duplicate' && (
+                <BookOpen size={16} className="text-gray-500" />
+              )}
+              {item.status === 'created' && (
+                <Check size={16} className="text-blue-500" />
+              )}
               <span className="text-sm text-white">{item.isbn}</span>
+              {/* Show book title if available */}
+              {item.bookData?.title && (
+                <span className="text-xs text-gray-400 truncate max-w-[120px]">
+                  {item.bookData.title}
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -377,14 +405,33 @@ function BatchScanQueue({
               'flex-1 py-2 rounded-lg font-medium transition-colors',
               batchScan.state.isProcessing
                 ? 'bg-white/20 text-white/50 cursor-not-allowed'
-                : 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-yellow-500 text-white hover:bg-yellow-600'
             )}
           >
             {batchScan.state.isProcessing 
-              ? `Processing ${batchScan.state.currentProgress}/${batchScan.state.totalItems}`
-              : `Process ${batchScan.state.queue.length} books`
+              ? `Looking up ${batchScan.state.currentProgress}/${batchScan.state.totalItems}`
+              : `Lookup ${batchScan.state.queue.filter((i: any) => i.status === 'pending').length} books`
             }
           </button>
+          
+          {/* Start Book Creation Button - shows when there are successfully looked up books */}
+          {batchScan.state.queue.some((item: any) => item.status === 'success') && (
+            <button
+              type="button"
+              onClick={() => batchScan.createBooks()}
+              disabled={batchScan.state.isProcessing}
+              className={clsx(
+                'flex-1 py-2 rounded-lg font-medium transition-colors',
+                batchScan.state.isProcessing
+                  ? 'bg-white/20 text-white/50 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              )}
+            >
+              <Plus size={16} className="inline mr-1" />
+              Create {batchScan.state.queue.filter((item: any) => item.status === 'success').length} books
+            </button>
+          )}
+          
           <button
             type="button"
             onClick={() => batchScan.clearQueue()}
