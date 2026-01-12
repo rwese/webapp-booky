@@ -96,10 +96,17 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const maxRecoveryAttempts = 3; // Maximum recovery attempts to prevent infinite loops
   const recoveryAttemptsRef = useRef(0); // Track current recovery attempt count
   const zxingDecodeStartedRef = useRef(false); // Prevent multiple ZXing decodeFromVideoElement calls
+  const componentUnmountedRef = useRef(false); // Prevent recovery attempts during unmount
 
   // Simple recovery state validation
   const validateRecoveryState = useCallback(async (): Promise<boolean> => {
     try {
+      // Don't validate if component is unmounting
+      if (componentUnmountedRef.current) {
+        console.debug('Skipping recovery validation: component unmounting');
+        return false;
+      }
+      
       if (!videoRef.current) {
         console.error('Recovery validation failed: video element is null');
         return false;
@@ -160,8 +167,21 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     const handleTrackMute = () => {
       console.warn('Video track muted');
       
+      // Don't attempt recovery if component is unmounting or not scanning
+      if (componentUnmountedRef.current || !isScanningRef.current) {
+        console.debug('Skipping recovery: component unmounting or not scanning');
+        return;
+      }
+      
       // Simple recovery with timeout protection
       const attemptRecovery = async () => {
+        // Double-check unmounted state before recovery
+        if (componentUnmountedRef.current || !isScanningRef.current) {
+          console.debug('Recovery aborted: component unmounting or not scanning');
+          recoveryInProgressRef.current = false;
+          return;
+        }
+        
         // Check max recovery attempts
         if (recoveryAttemptsRef.current >= maxRecoveryAttempts) {
           console.error(`Recovery failed: maximum attempts (${maxRecoveryAttempts}) reached`);
@@ -194,6 +214,13 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
           
           // Small delay
           await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Double-check unmounted state after delay
+          if (componentUnmountedRef.current || !isScanningRef.current) {
+            console.debug('Recovery aborted after delay: component unmounting or not scanning');
+            recoveryInProgressRef.current = false;
+            return;
+          }
           
           // Request new stream with simple constraints
           const newStream = await navigator.mediaDevices.getUserMedia({
@@ -573,6 +600,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
   // Stop scanning with simple cleanup
   const stopScanning = useCallback(() => {
+    // Signal that we're stopping to prevent recovery attempts
     isScanningRef.current = false;
     videoReadyRef.current = false;
     zxingDecodeStartedRef.current = false; // Reset ZXing decode flag
@@ -583,7 +611,7 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
       playPromiseRef.current = null;
     }
 
-    // Clean up video track monitoring
+    // Clean up video track monitoring first
     if (cleanupTrackMonitoringRef.current) {
       try {
         cleanupTrackMonitoringRef.current();
@@ -646,6 +674,9 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Signal that component is unmounting to prevent recovery attempts
+      componentUnmountedRef.current = true;
+      
       // Cancel any pending play request
       if (playPromiseRef.current) {
         playPromiseRef.current.then(() => {
