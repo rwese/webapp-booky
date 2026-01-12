@@ -41,8 +41,7 @@ export async function searchOpenLibrary(query: string): Promise<Book[]> {
       title: book.title,
       subtitle: book.subtitle,
       authors: book.author_name || [],
-      isbn: book.isbn?.[0],
-      isbn13: book.isbn?.[1],
+      isbn13: book.isbn?.[1], // Use ISBN-13 as canonical field
       coverUrl: book.cover_i 
         ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`
         : undefined,
@@ -92,8 +91,7 @@ export async function searchByISBN(isbn: string): Promise<Book | null> {
       title: data.title,
       subtitle: data.subtitle,
       authors: data.authors?.map((a: any) => a.name) || [],
-      isbn: isbn,
-      isbn13: data.isbn_13?.[0],
+      isbn13: isbn, // Use input ISBN as ISBN-13
       coverUrl: data.covers?.[0]
         ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg`
         : undefined,
@@ -185,8 +183,7 @@ export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null
       title: volumeInfo.title,
       subtitle: volumeInfo.subtitle,
       authors: volumeInfo.authors || [],
-      isbn: isbn10,
-      isbn13: isbn13,
+      isbn13: isbn13 || isbn, // Use extracted ISBN-13 or input ISBN
       coverUrl: volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:'),
       description: volumeInfo.description,
       publishedYear: volumeInfo.publishedDate 
@@ -237,14 +234,14 @@ export async function searchBooks(query: string): Promise<Book[]> {
     // Search Open Library
     const openLibraryResults = await searchOpenLibrary(query);
     openLibraryResults.forEach(book => {
-      const key = book.isbn || book.externalIds.openLibrary || book.title;
+      const key = book.isbn13 || book.externalIds.openLibrary || book.title;
       results.set(key, book);
     });
     
     // Search Google Books as fallback
     const googleBooksResults = await searchGoogleBooks(query);
     googleBooksResults.forEach(book => {
-      const key = book.isbn || book.externalIds.googleBooks || book.title;
+      const key = book.isbn13 || book.externalIds.googleBooks || book.title;
       if (!results.has(key)) {
         results.set(key, book);
       }

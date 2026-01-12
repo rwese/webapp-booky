@@ -22,7 +22,6 @@ export function BookForm({
     title: initialData?.title || '',
     subtitle: initialData?.subtitle || '',
     authors: initialData?.authors || [],
-    isbn: initialData?.isbn || '',
     isbn13: initialData?.isbn13 || '',
     coverUrl: initialData?.coverUrl || '',
     description: initialData?.description || '',
@@ -51,7 +50,6 @@ export function BookForm({
       title: formData.title!,
       subtitle: formData.subtitle,
       authors: formData.authors || [],
-      isbn: formData.isbn,
       isbn13: formData.isbn13,
       coverUrl: formData.coverUrl,
       description: formData.description,
@@ -109,16 +107,9 @@ export function BookForm({
           
           <Input
             label="ISBN"
-            value={formData.isbn || ''}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isbn: e.target.value })}
-            placeholder="Enter ISBN (optional)"
-          />
-          
-          <Input
-            label="ISBN13"
             value={formData.isbn13 || ''}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isbn13: e.target.value })}
-            placeholder="Enter ISBN13 (optional)"
+            placeholder="Enter ISBN (optional)"
           />
           
           <Input

@@ -23,7 +23,7 @@ export function AddBookPage() {
   const [newBook, setNewBook] = useState<Partial<BookType>>({
     title: '',
     authors: [],
-    isbn: '',
+    isbn13: '',
     format: 'physical',
   });
   
@@ -95,7 +95,7 @@ export function AddBookPage() {
       // Fallback to Google Books
       if (!book) {
         const googleResults = await searchBooks(cleanIsbn);
-        book = googleResults.find(b => b.isbn === cleanIsbn) || null;
+        book = googleResults.find(b => b.isbn13 === cleanIsbn) || null;
       }
       
       if (book) {
@@ -117,10 +117,9 @@ export function AddBookPage() {
   const handleAddBook = async (book: BookType) => {
     try {
       // Check for duplicates
-      const existingByIsbn = book.isbn ? await bookOperations.getByIsbn(book.isbn) : null;
-      const existingByIsbn13 = book.isbn13 ? await bookOperations.getByIsbn13(book.isbn13) : null;
+      const existingByIsbn = book.isbn13 ? await bookOperations.getByIsbn(book.isbn13) : null;
       
-      if (existingByIsbn || existingByIsbn13) {
+      if (existingByIsbn) {
         addToast({ type: 'warning', message: 'This book is already in your collection' });
         return;
       }
@@ -144,7 +143,6 @@ export function AddBookPage() {
       id: crypto.randomUUID(),
       title: newBook.title!,
       authors: newBook.authors || [],
-      isbn: newBook.isbn,
       isbn13: newBook.isbn13,
       coverUrl: newBook.coverUrl,
       description: newBook.description,
@@ -291,8 +289,8 @@ export function AddBookPage() {
               />
               <Input
                 label="ISBN"
-                value={newBook.isbn || ''}
-                onChange={(e) => setNewBook({ ...newBook, isbn: e.target.value })}
+                value={newBook.isbn13 || ''}
+                onChange={(e) => setNewBook({ ...newBook, isbn13: e.target.value })}
                 placeholder="Enter ISBN (optional)"
               />
               <div className="space-y-1">

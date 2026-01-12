@@ -27,7 +27,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
     
     // Check for duplicates
     const exists = state.queue.some(item => 
-      item.isbn === cleanedISBN || item.isbn13 === cleanedISBN
+      item.isbn === cleanedISBN
     );
 
     if (exists) {
@@ -37,8 +37,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
 
     const item: ScanQueueItem = {
       id: crypto.randomUUID(),
-      isbn: cleanedISBN,
-      isbn13: cleanedISBN.length === 13 ? cleanedISBN : undefined,
+      isbn: cleanedISBN, // This is now ISBN-13
       status: 'pending',
       scannedAt: new Date()
     };
@@ -92,7 +91,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
     
     // Check for duplicates
     const exists = state.queue.some(item => 
-      item.isbn === cleanedISBN || item.isbn13 === cleanedISBN
+      item.isbn === cleanedISBN
     );
 
     if (exists) {
@@ -104,8 +103,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
     const itemId = crypto.randomUUID();
     const item: ScanQueueItem = {
       id: itemId,
-      isbn: cleanedISBN,
-      isbn13: cleanedISBN.length === 13 ? cleanedISBN : undefined,
+      isbn: cleanedISBN, // This is now ISBN-13
       status: 'pending',
       scannedAt: new Date()
     };
@@ -121,10 +119,9 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
       
       if (bookData) {
         // Check if book already exists in database
-        const existingByIsbn = bookData.isbn ? await bookOperations.getByIsbn(bookData.isbn) : null;
-        const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn13(bookData.isbn13) : null;
+        const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn(bookData.isbn13) : null;
 
-        if (existingByIsbn || existingByIsbn13) {
+        if (existingByIsbn13) {
           // Mark as duplicate
           setState(prev => ({
             ...prev,
@@ -181,10 +178,9 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
   const createBookInDatabase = useCallback(async (bookData: any): Promise<boolean> => {
     try {
       // Check for duplicates in database
-      const existingByIsbn = bookData.isbn ? await bookOperations.getByIsbn(bookData.isbn) : null;
-      const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn13(bookData.isbn13) : null;
+      const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn(bookData.isbn13) : null;
       
-      if (existingByIsbn || existingByIsbn13) {
+      if (existingByIsbn13) {
         return false; // Duplicate
       }
       
@@ -218,10 +214,9 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
 
         if (bookData) {
           // Check if book already exists in database
-          const existingByIsbn = bookData.isbn ? await bookOperations.getByIsbn(bookData.isbn) : null;
-          const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn13(bookData.isbn13) : null;
+          const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn(bookData.isbn13) : null;
 
-          if (existingByIsbn || existingByIsbn13) {
+          if (existingByIsbn13) {
             // Mark as duplicate
             setState(prev => ({
               ...prev,

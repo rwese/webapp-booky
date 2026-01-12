@@ -66,10 +66,10 @@ export const formatISBN = (input: string): string => {
   return input;
 };
 
-// Convert ISBN-10 to ISBN-13
-export const toISBN13 = (isbn10: string): string => {
+// ISBN-10 to ISBN-13 conversion
+export const isbn10ToIsbn13 = (isbn10: string): string => {
   const cleaned = isbn10.replace(/[-\s]/g, '');
-  if (cleaned.length !== 10) return cleaned;
+  if (cleaned.length !== 10) return '';
   
   const prefix = '978';
   const baseISBN = prefix + cleaned.substring(0, 9);
@@ -81,6 +81,34 @@ export const toISBN13 = (isbn10: string): string => {
   const checkDigit = (10 - (sum % 10)) % 10;
   
   return baseISBN + checkDigit;
+};
+
+// Validate ISBN format and check digit
+export const isValidIsbn = (input: string): boolean => {
+  const validation = validateISBN(input);
+  return validation.isValid;
+};
+
+// Normalize ISBN (remove hyphens/spaces and validate)
+export const normalizeIsbn = (input: string): string | null => {
+  const cleaned = input.replace(/[-\s]/g, '');
+  
+  // Try as ISBN-13 first
+  if (cleaned.length === 13 && /^\d{13}$/.test(cleaned)) {
+    const validation = validateISBN(cleaned);
+    return validation.isValid ? cleaned : null;
+  }
+  
+  // Try as ISBN-10
+  if (cleaned.length === 10 && /^\d{9}[\dX]$/i.test(cleaned)) {
+    const validation = validateISBN(cleaned);
+    if (validation.isValid) {
+      return isbn10ToIsbn13(cleaned);
+    }
+    return null;
+  }
+  
+  return null;
 };
 
 // Clean ISBN (remove hyphens and spaces)
@@ -152,8 +180,7 @@ export const defaultManualEntryConfig: ManualEntryConfig = {
 // Batch scan types
 export interface ScanQueueItem {
   id: string;
-  isbn: string;
-  isbn13?: string;
+  isbn: string; // ISBN-13 (canonical field)
   status: 'pending' | 'success' | 'error' | 'duplicate' | 'created';
   bookData?: any;
   error?: string;

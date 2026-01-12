@@ -72,15 +72,13 @@ export function transformBookData(importBook: ImportBookData): Partial<Book> {
   return {
     title: importBook.title.trim(),
     authors,
-    isbn: importBook.isbn,
+    isbn13: importBook.isbn, // Use import ISBN as ISBN-13
     pageCount: importBook.pageCount,
     publishedYear: importBook.publicationYear,
     publisher: importBook.publisher?.trim(),
     format: 'physical', // Default format for imported books
     addedAt: new Date(),
-    externalIds: {
-      ...mapIsbnSource(importBook.isbnSource)
-    },
+    externalIds: {},
     needsSync: false,
     localOnly: true,
     genre: importBook.genre,

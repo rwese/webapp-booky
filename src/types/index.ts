@@ -13,8 +13,7 @@ export interface Book {
   title: string;
   subtitle?: string;
   authors: string[];
-  isbn?: string;
-  isbn13?: string;
+  isbn13?: string; // Canonical ISBN field (ISBN-13)
   coverUrl?: string;
   localCoverPath?: string;
   description?: string;
@@ -202,8 +201,7 @@ export interface OfflineAction {
 
 export interface ScanQueueItem {
   id: string;
-  isbn: string;
-  isbn13?: string;
+  isbn: string; // ISBN-13 (canonical field)
   status: 'pending' | 'success' | 'error' | 'duplicate';
   bookData?: Book;
   error?: string;
@@ -664,8 +662,7 @@ export interface ImportBookData {
   id: string;
   title: string;
   author: string;
-  isbn?: string;
-  isbnSource?: string;
+  isbn?: string; // ISBN-13 (canonical field)
   pageCount?: number;
   publicationYear?: number;
   publisher?: string;

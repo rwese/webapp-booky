@@ -387,7 +387,7 @@ export function BookDetailPage() {
           <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Details</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {book.isbn && (
+            {book.isbn13 && (
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
                   <Tag size={14} className="text-gray-500" />
@@ -395,7 +395,7 @@ export function BookDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500">ISBN</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatISBN(book.isbn)}
+                    {formatISBN(book.isbn13)}
                   </p>
                 </div>
               </div>

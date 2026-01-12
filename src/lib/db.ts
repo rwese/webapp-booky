@@ -30,7 +30,7 @@ class BookCollectionDB extends Dexie {
     
     // Define schema and indexes
     this.version(2).stores({
-      books: 'id, title, isbn, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
+      books: 'id, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name, color',
       bookTags: '[bookId+tagId], bookId, tagId',
@@ -81,11 +81,7 @@ export const bookOperations = {
   },
   
   async getByIsbn(isbn: string) {
-    return await db.books.where('isbn').equals(isbn).first();
-  },
-  
-  async getByIsbn13(isbn13: string) {
-    return await db.books.where('isbn13').equals(isbn13).first();
+    return await db.books.where('isbn13').equals(isbn).first();
   },
   
   async add(book: Book) {
