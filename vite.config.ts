@@ -55,30 +55,6 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff}'],
         runtimeCaching: [
-          // Exclude media streams and blob URLs from caching
-          {
-            urlPattern: /^blob:.*$/i,
-            handler: 'NetworkOnly',
-            options: {
-              cacheName: 'media-streams',
-              expiration: {
-                maxEntries: 0,
-                maxAgeSeconds: 0
-              }
-            }
-          },
-          // Exclude media file extensions from caching
-          {
-            urlPattern: /\.(mp4|webm|ogg|mp3|wav|flac|aac)$/i,
-            handler: 'NetworkOnly',
-            options: {
-              cacheName: 'media-files',
-              expiration: {
-                maxEntries: 0,
-                maxAgeSeconds: 0
-              }
-            }
-          },
           {
             urlPattern: /^https:\/\/.*\.openlibrary\.org\/.*$/i,
             handler: 'CacheFirst',
