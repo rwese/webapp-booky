@@ -5,7 +5,7 @@ import { Button, Input, Card } from '../components/common/Button';
 import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
-import { useDebounce } from '../hooks/useOffline';
+import { useDebounce } from '../hooks/usePerformance';
 import type { Book as BookType } from '../types';
 import { clsx } from 'clsx';
 

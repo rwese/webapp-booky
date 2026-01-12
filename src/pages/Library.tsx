@@ -4,7 +4,7 @@ import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
-import { useDebounce, useIsTouchDevice } from '../hooks/useOffline';
+import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
 import { bookOperations } from '../lib/db';
 import type { Book as BookType, FilterConfig, SortConfig } from '../types';
 import { clsx } from 'clsx';

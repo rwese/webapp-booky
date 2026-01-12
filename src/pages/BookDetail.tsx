@@ -10,7 +10,7 @@ import { ReviewEditor, ReviewDisplay } from '../components/forms/ReviewEditor';
 import { TagInput, TagBadge, TagManager } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { bookOperations, ratingOperations, tagOperations, collectionOperations } from '../lib/db';
-import { formatISBN } from '../lib/api';
+import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore, useLibraryStore } from '../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';

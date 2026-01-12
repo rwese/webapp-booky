@@ -41,10 +41,7 @@ export function getExtensionFromMimeType(mimeType: string): string {
 }
 
 // Extract file extension from filename
-export function getExtensionFromFilename(filename: string): string {
-  const parts = filename.split('.');
-  return parts.length > 1 ? parts.pop()?.toLowerCase() || 'jpg' : 'jpg';
-}
+import { getFileExtension } from './importUtils';
 
 // Validate cover image file
 export function isValidCoverImage(file: File): boolean {

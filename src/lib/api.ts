@@ -1,4 +1,5 @@
 import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat } from '../types';
+import { validateISBN, formatISBN } from './barcodeUtils';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
 const GOOGLE_BOOKS_API_KEY = import.meta.env.GOOGLE_BOOKS_API_KEY;
@@ -259,44 +260,5 @@ export async function searchBooks(query: string): Promise<Book[]> {
 
 // ISBN validation
 export function isValidISBN(isbn: string): boolean {
-  const cleanIsbn = isbn.replace(/[-\s]/g, '');
-  
-  // ISBN-10
-  if (cleanIsbn.length === 10) {
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(cleanIsbn[i]) * (10 - i);
-    }
-    const lastChar = cleanIsbn[9].toUpperCase();
-    const lastValue = lastChar === 'X' ? 10 : parseInt(lastChar);
-    sum += lastValue;
-    return sum % 11 === 0;
-  }
-  
-  // ISBN-13
-  if (cleanIsbn.length === 13) {
-    let sum = 0;
-    for (let i = 0; i < 12; i++) {
-      sum += parseInt(cleanIsbn[i]) * (i % 2 === 0 ? 1 : 3);
-    }
-    const checkDigit = (10 - (sum % 10)) % 10;
-    return checkDigit === parseInt(cleanIsbn[12]);
-  }
-  
-  return false;
-}
-
-// Format ISBN for display
-export function formatISBN(isbn: string): string {
-  const cleanIsbn = isbn.replace(/[-\s]/g, '');
-  
-  if (cleanIsbn.length === 13) {
-    return `${cleanIsbn.slice(0, 3)}-${cleanIsbn.slice(3, 4)}-${cleanIsbn.slice(4, 6)}-${cleanIsbn.slice(6, 12)}-${cleanIsbn.slice(12)}`;
-  }
-  
-  if (cleanIsbn.length === 10) {
-    return `${cleanIsbn.slice(0, 1)}-${cleanIsbn.slice(1, 3)}-${cleanIsbn.slice(3, 9)}-${cleanIsbn.slice(9)}`;
-  }
-  
-  return isbn;
+  return validateISBN(isbn).isValid;
 }

@@ -17,48 +17,6 @@ import type {
   StorageUsage
 } from '../types';
 
-// Hook for media queries
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
-  });
-  
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(query);
-    const handler = (event: MediaQueryListEvent) => setMatches(event.matches);
-    
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, [query]);
-  
-  return matches;
-}
-
-// Hook for detecting touch device
-export function useIsTouchDevice(): boolean {
-  return useMediaQuery('(pointer: coarse)');
-}
-
-// Hook for debouncing values
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [value, delay]);
-  
-  return debouncedValue;
-}
-
 // Hook for managing online/offline status with enhanced monitoring
 export function useOnlineStatus(): boolean {
   const [isOnline, setIsOnline] = useState(true);

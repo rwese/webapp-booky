@@ -121,41 +121,6 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// Breakpoint hooks
-export function useIsMobile() {
-  return useMediaQuery('(max-width: 639px)');
-}
-
-export function useIsTablet() {
-  return useMediaQuery('(min-width: 640px) and (max-width: 1024px)');
-}
-
-export function useIsDesktop() {
-  return useMediaQuery('(min-width: 1024px)');
-}
-
-// Online status hook
-export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  return isOnline;
-}
-
 // Previous value hook
 export function usePrevious<T>(value: T): T | undefined {
   const ref = useRef<T>();
