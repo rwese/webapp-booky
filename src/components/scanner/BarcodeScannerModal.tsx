@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, Plus } from 'lucide-react';
+import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, Plus, RefreshCw } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
 import { useBatchScanning } from '../../hooks/useBatchScanning';
@@ -97,16 +97,22 @@ export function BarcodeScannerModal() {
   // Handle successful scan
   useEffect(() => {
     if (!lastScan) return;
-    
+
     // Check if we've already processed this scan
     if (processedScanRef.current === lastScan.text) return;
     processedScanRef.current = lastScan.text;
 
-    // If batch mode is active, add to queue
+    // If batch mode is active, add to queue with auto-lookup
     if (showBatchMode) {
-      if (batchScan.addToQueue(lastScan.text)) {
-        addToast({ type: 'success', message: 'Added to batch queue' });
-      }
+      batchScan.lookupAndAddToQueue(lastScan.text).then((result) => {
+        if (result === 'success') {
+          addToast({ type: 'success', message: 'Book found!' });
+        } else if (result === 'error') {
+          addToast({ type: 'error', message: 'Book not found' });
+        } else if (result === 'duplicate') {
+          addToast({ type: 'warning', message: 'Already in queue' });
+        }
+      });
     } else {
       // Single mode: navigate to AddBook page and populate fields
       const isbn = lastScan.text;
@@ -264,9 +270,17 @@ export function BarcodeScannerModal() {
           <BatchScanQueue 
             batchScan={batchScan}
             onAddIsbn={(isbn: string) => {
-              if (batchScan.addToQueue(isbn)) {
-                addToast({ type: 'success', message: 'Added to queue' });
-              }
+              batchScan.lookupAndAddToQueue(isbn).then((result) => {
+                if (result === 'success') {
+                  addToast({ type: 'success', message: 'Book found!' });
+                } else if (result === 'error') {
+                  addToast({ type: 'error', message: 'Book not found' });
+                } else if (result === 'duplicate') {
+                  addToast({ type: 'warning', message: 'Already in queue' });
+                } else if (result === false) {
+                  addToast({ type: 'info', message: 'Already in queue' });
+                }
+              });
             }}
           />
         )}
@@ -356,7 +370,7 @@ function BatchScanQueue({
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Add ISBN to queue..."
+          placeholder="Scan or enter ISBN..."
           className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-primary-500 text-sm"
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
         />
@@ -367,6 +381,11 @@ function BatchScanQueue({
         >
           Add
         </button>
+      </div>
+
+      {/* Instructions */}
+      <div className="text-xs text-gray-400 text-center">
+        Books will be looked up automatically. Use retry button if lookup fails.
       </div>
 
       {/* Queue List */}
@@ -393,21 +412,42 @@ function BatchScanQueue({
               {item.status === 'created' && (
                 <Check size={16} className="text-blue-500" />
               )}
-              <span className="text-sm text-white">{item.isbn}</span>
-              {/* Show book title if available */}
-              {item.bookData?.title && (
-                <span className="text-xs text-gray-400 truncate max-w-[120px]">
-                  {item.bookData.title}
-                </span>
-              )}
+              <div className="flex flex-col">
+                <span className="text-sm text-white">{item.isbn}</span>
+                {/* Show book title if available */}
+                {item.bookData?.title && (
+                  <span className="text-xs text-gray-400 truncate max-w-[150px]">
+                    {item.bookData.title}
+                  </span>
+                )}
+                {/* Show error message if failed */}
+                {item.status === 'error' && item.error && (
+                  <span className="text-xs text-red-400 truncate max-w-[150px]">
+                    {item.error}
+                  </span>
+                )}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => batchScan.removeFromQueue(item.id)}
-              className="p-1 hover:bg-white/20 rounded"
-            >
-              <X size={16} className="text-white" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Retry button for failed items */}
+              {item.status === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => batchScan.retryItem(item.id)}
+                  className="p-1 hover:bg-white/20 rounded"
+                  title="Retry lookup"
+                >
+                  <RefreshCw size={14} className="text-yellow-500" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => batchScan.removeFromQueue(item.id)}
+                className="p-1 hover:bg-white/20 rounded"
+              >
+                <X size={16} className="text-white" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -415,25 +455,8 @@ function BatchScanQueue({
       {/* Queue Actions */}
       {batchScan.state.queue.length > 0 && (
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => batchScan.processQueue()}
-            disabled={batchScan.state.isProcessing}
-            className={clsx(
-              'flex-1 py-2 rounded-lg font-medium transition-colors',
-              batchScan.state.isProcessing
-                ? 'bg-white/20 text-white/50 cursor-not-allowed'
-                : 'bg-yellow-500 text-white hover:bg-yellow-600'
-            )}
-          >
-            {batchScan.state.isProcessing 
-              ? `Looking up ${batchScan.state.currentProgress}/${batchScan.state.totalItems}`
-              : `Lookup ${batchScan.state.queue.filter((i: any) => i.status === 'pending').length} books`
-            }
-          </button>
-          
-          {/* Start Book Creation Button - shows when there are successfully looked up books */}
-          {batchScan.state.queue.some((item: any) => item.status === 'success') && (
+          {/* Create All Books Button - shows when there are successfully looked up books */}
+          {batchScan.state.queue.some((item: any) => item.status === 'success' || item.status === 'created') && (
             <button
               type="button"
               onClick={() => batchScan.createBooks()}
@@ -445,11 +468,14 @@ function BatchScanQueue({
                   : 'bg-green-500 text-white hover:bg-green-600'
               )}
             >
-              <Plus size={16} className="inline mr-1" />
-              Create {batchScan.state.queue.filter((item: any) => item.status === 'success').length} books
+              {batchScan.state.isProcessing 
+                ? `Creating ${batchScan.state.currentProgress}/${batchScan.state.totalItems}`
+                : `Save ${batchScan.state.queue.filter((item: any) => item.status === 'success').length} books`
+              }
             </button>
           )}
           
+          {/* Clear Queue Button */}
           <button
             type="button"
             onClick={() => batchScan.clearQueue()}

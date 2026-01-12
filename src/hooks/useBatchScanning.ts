@@ -86,6 +86,97 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
     }
   }, []);
 
+  // Auto-lookup book when added to queue
+  const lookupAndAddToQueue = useCallback(async (isbn: string) => {
+    const cleanedISBN = cleanISBN(isbn);
+    
+    // Check for duplicates
+    const exists = state.queue.some(item => 
+      item.isbn === cleanedISBN || item.isbn13 === cleanedISBN
+    );
+
+    if (exists) {
+      window.dispatchEvent(new CustomEvent('batch:duplicate', { detail: isbn }));
+      return false;
+    }
+
+    // Create item with pending status first
+    const itemId = crypto.randomUUID();
+    const item: ScanQueueItem = {
+      id: itemId,
+      isbn: cleanedISBN,
+      isbn13: cleanedISBN.length === 13 ? cleanedISBN : undefined,
+      status: 'pending',
+      scannedAt: new Date()
+    };
+
+    setState(prev => ({
+      ...prev,
+      queue: [...prev.queue, item]
+    }));
+
+    // Immediately lookup the book
+    try {
+      const bookData = await lookupBookByISBN(cleanedISBN);
+      
+      if (bookData) {
+        // Check if book already exists in database
+        const existingByIsbn = bookData.isbn ? await bookOperations.getByIsbn(bookData.isbn) : null;
+        const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn13(bookData.isbn13) : null;
+
+        if (existingByIsbn || existingByIsbn13) {
+          // Mark as duplicate
+          setState(prev => ({
+            ...prev,
+            queue: prev.queue.map(q => 
+              q.id === itemId ? { ...q, status: 'duplicate' } : q
+            )
+          }));
+          window.dispatchEvent(new CustomEvent('batch:duplicate', { detail: cleanedISBN }));
+          return 'duplicate';
+        } else {
+          // Store book data and mark as success
+          setState(prev => ({
+            ...prev,
+            queue: prev.queue.map(q => 
+              q.id === itemId ? { 
+                ...q, 
+                status: 'success',
+                bookData: bookData
+              } : q
+            )
+          }));
+          return 'success';
+        }
+      } else {
+        // Book not found - mark as error
+        setState(prev => ({
+          ...prev,
+          queue: prev.queue.map(q => 
+            q.id === itemId ? { 
+              ...q, 
+              status: 'error',
+              error: 'Book not found'
+            } : q
+          )
+        }));
+        return 'error';
+      }
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        queue: prev.queue.map(q => 
+          q.id === itemId ? { 
+            ...q, 
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Lookup failed'
+          } : q
+        )
+      }));
+      return 'error';
+    }
+  }, [state.queue, lookupBookByISBN]);
+
   // Function to create book in database
   const createBookInDatabase = useCallback(async (bookData: any): Promise<boolean> => {
     try {
@@ -299,6 +390,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
     state,
     config: configState,
     addToQueue,
+    lookupAndAddToQueue,
     removeFromQueue,
     clearQueue,
     processQueue,
