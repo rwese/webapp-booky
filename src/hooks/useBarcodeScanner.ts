@@ -48,8 +48,8 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
 
     setState(prev => ({ ...prev, lastScan: result }));
     
-    // Emit custom event for other components
-    window.dispatchEvent(new CustomEvent('barcode:scanned', { detail: result }));
+    // Note: The barcode:scanned event is emitted by the BarcodeScannerModal component
+    // to ensure proper timing and avoid duplicate events
   }, [state.lastScan]);
 
   const handleError = useCallback((error: Error) => {

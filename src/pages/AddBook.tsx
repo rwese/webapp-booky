@@ -42,7 +42,7 @@ export function AddBookPage() {
   useEffect(() => {
     const handleBarcodeScanned = (event: CustomEvent) => {
       const { text, format } = event.detail;
-      console.debug('[AddBookPage] Barcode scanned:', { text, format });
+      console.log('[AddBookPage] Barcode scanned event received:', { text, format });
       
       // Auto-fill ISBN input and switch to ISBN search mode
       setIsbnInput(text);

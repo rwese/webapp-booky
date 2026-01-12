@@ -110,13 +110,17 @@ export function BarcodeScannerModal() {
         window.dispatchEvent(new CustomEvent('barcode:scanned', { 
           detail: { text: lastScan.text, format: lastScan.format } 
         }));
-        // Close the scanner modal after successful scan in single mode
-        handleClose();
+        
+        // Close the scanner modal after a short delay to ensure event is received
+        setTimeout(() => {
+          handleClose();
+        }, 100);
       }
     }
   }, [lastScan, addToast, showBatchMode, batchScan, handleClose]);
 
   const onScan = useCallback((result: any) => {
+    console.log('[BarcodeScannerModal] Scan detected:', result.text, result.format);
     setLastScan(result);
     handleScan(result);
   }, [handleScan]);
