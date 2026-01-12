@@ -13,15 +13,15 @@ test.describe('Book Collection App - Core Regression Tests', () => {
       
       // Check page loads and shows expected elements
       await expect(page.locator('h1:has-text("Library")')).toBeVisible();
-      await expect(page.locator('text=Add new book')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Add new book' })).toBeVisible();
     });
 
     test('should display empty state when no books exist', async ({ page }) => {
       await page.goto('/library');
       
       // Should show empty state message
-      await expect(page.locator('text=Your library is empty')).toBeVisible();
-      await expect(page.locator('text=Add Your First Book')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Your library is empty' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Add Your First Book' })).toBeVisible();
     });
   });
 
