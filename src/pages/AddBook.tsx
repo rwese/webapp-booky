@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';
 import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
-import { useToastStore } from '../store/useStore';
+import { useToastStore, useModalStore } from '../store/useStore';
 import { useDebounce } from '../hooks/useOffline';
 import type { Book as BookType } from '../types';
 import { clsx } from 'clsx';
@@ -12,6 +12,7 @@ import { clsx } from 'clsx';
 export function AddBookPage() {
   const navigate = useNavigate();
   const { addToast } = useToastStore();
+  const { openModal } = useModalStore();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BookType[]>([]);
@@ -36,6 +37,31 @@ export function AddBookPage() {
       setSearchType('search');
     }
   }, [searchParams]);
+  
+  // Listen for barcode scanned events from the scanner
+  useEffect(() => {
+    const handleBarcodeScanned = (event: CustomEvent) => {
+      const { text, format } = event.detail;
+      console.debug('[AddBookPage] Barcode scanned:', { text, format });
+      
+      // Auto-fill ISBN input and switch to ISBN search mode
+      setIsbnInput(text);
+      setSearchType('isbn');
+      setManualEntry(false);
+      
+      addToast({
+        type: 'success',
+        message: `Scanned: ${text}`,
+        duration: 2000
+      });
+    };
+    
+    window.addEventListener('barcode:scanned', handleBarcodeScanned as EventListener);
+    
+    return () => {
+      window.removeEventListener('barcode:scanned', handleBarcodeScanned as EventListener);
+    };
+  }, [addToast]);
   
   // Search when query changes
   const handleSearch = async () => {
@@ -228,6 +254,14 @@ export function AddBookPage() {
                   className="input pl-10"
                 />
               </div>
+              <Button 
+                onClick={() => openModal('barcodeScanner')}
+                variant="secondary"
+                aria-label="Scan barcode"
+                title="Scan barcode"
+              >
+                <Camera size={20} />
+              </Button>
               <Button onClick={handleIsbnLookup} loading={loading}>
                 Lookup
               </Button>
