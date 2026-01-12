@@ -12,6 +12,23 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
+## Testing Commands
+
+This project has both **unit tests** (Vitest) and **e2e tests** (Playwright):
+
+```bash
+# Run unit tests only
+npm test
+
+# Run e2e tests (auto-starts dev server on port 3001)
+npm run test:e2e
+
+# Run all tests
+npm test && npm run test:e2e
+```
+
+**Note**: E2E tests use port 3001 to avoid conflicts with OpenCode desktop app on port 3000.
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
@@ -33,8 +50,8 @@ bd sync               # Sync with git
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-
