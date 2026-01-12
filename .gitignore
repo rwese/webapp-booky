@@ -42,3 +42,4 @@ coverage/
 # Tickteer (separate git repository)
 tools/tickteer/
 dev-dist/
+test-results
