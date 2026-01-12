@@ -5,6 +5,7 @@ import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
 import { useBatchScanning } from '../../hooks/useBatchScanning';
 import { useBookLookup } from '../../hooks/useBookLookup';
 import { useModalStore, useToastStore } from '../../store/useStore';
+import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { BarcodeScannerComponent } from './BarcodeScannerComponent';
 
@@ -12,6 +13,7 @@ import { BarcodeScannerComponent } from './BarcodeScannerComponent';
 export function BarcodeScannerModal() {
   const { closeModal } = useModalStore();
   const { addToast } = useToastStore();
+  const navigate = useNavigate();
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showBatchMode, setShowBatchMode] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
@@ -106,18 +108,26 @@ export function BarcodeScannerModal() {
           addToast({ type: 'success', message: 'Added to batch queue' });
         }
       } else {
-        // Single mode: emit barcode scanned event to open AddBook and populate fields
-        window.dispatchEvent(new CustomEvent('barcode:scanned', { 
-          detail: { text: lastScan.text, format: lastScan.format } 
-        }));
+        // Single mode: navigate to AddBook page and populate fields
+        const isbn = lastScan.text;
+        const format = lastScan.format;
         
-        // Close the scanner modal after a short delay to ensure event is received
+        // Navigate to AddBook page if not already there
+        navigate('/add', { replace: true });
+        
+        // Use setTimeout to ensure navigation completes before emitting event
         setTimeout(() => {
+          // Emit event for book lookup
+          window.dispatchEvent(new CustomEvent('barcode:scanned', { 
+            detail: { text: isbn, format } 
+          }));
+          
+          // Close the scanner modal
           handleClose();
         }, 100);
       }
     }
-  }, [lastScan, addToast, showBatchMode, batchScan, handleClose]);
+  }, [lastScan, addToast, showBatchMode, batchScan, navigate, handleClose]);
 
   const onScan = useCallback((result: any) => {
     console.log('[BarcodeScannerModal] Scan detected:', result.text, result.format);
@@ -237,10 +247,15 @@ export function BarcodeScannerModal() {
           <ManualISBNEntry 
             {...manualISBN}
             onSubmit={(isbn: string) => {
-              window.dispatchEvent(new CustomEvent('barcode:scanned', { 
-                detail: { text: isbn, format: 'manual' } 
-              }));
-              handleClose();
+              // Navigate to AddBook page and populate fields
+              navigate('/add', { replace: true });
+              
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('barcode:scanned', { 
+                  detail: { text: isbn, format: 'manual' } 
+                }));
+                handleClose();
+              }, 100);
             }}
           />
         )}
