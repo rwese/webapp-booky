@@ -18,7 +18,6 @@ import { useModalStore, useUIStore } from './store/useStore';
 import { clsx } from 'clsx';
 import { SkipLink, announce } from './components/common/Accessibility';
 import { usePerformanceMetrics } from './hooks/usePerformance';
-import CameraPOC from './components/camera/CameraPOC';
 
 // Loading skeleton component
 function PageLoader() {
@@ -108,7 +107,6 @@ function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/book/:id" element={<BookDetailPage />} />
               <Route path="/edit/:id" element={<EditBookPage />} />
-              <Route path="/camera-poc" element={<CameraPOC />} />
             </Routes>
           </Suspense>
         </div>
