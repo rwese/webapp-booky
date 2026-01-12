@@ -18,6 +18,20 @@ export function BarcodeScannerModal() {
   const [showBatchMode, setShowBatchMode] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const processedScanRef = useRef<string | null>(null);
+  const [isCameraMirrored, setIsCameraMirrored] = useState(true); // Default to mirrored
+  
+  // Load mirror preference from localStorage on mount
+  useEffect(() => {
+    const savedMirror = localStorage.getItem('scannerMirrorEnabled');
+    if (savedMirror !== null) {
+      setIsCameraMirrored(savedMirror === 'true');
+    }
+  }, []);
+
+  // Save mirror preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('scannerMirrorEnabled', String(isCameraMirrored));
+  }, [isCameraMirrored]);
 
   const { 
     state: scanState, 
@@ -172,6 +186,8 @@ export function BarcodeScannerModal() {
             onError={onError}
             className="w-64 h-48"
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            isFlipped={isCameraMirrored}
+            onFlipChange={setIsCameraMirrored}
           />
         )}
         {getCameraStatusIndicator()}
@@ -216,6 +232,33 @@ export function BarcodeScannerModal() {
         {/* Camera Controls */}
         {!showManualEntry && !showBatchMode && (
           <div className="flex justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsCameraMirrored(!isCameraMirrored)}
+              className={clsx(
+                'p-3 rounded-full transition-colors',
+                isCameraMirrored ? 'bg-primary-500 text-white' : 'bg-white/20 text-white'
+              )}
+              aria-label={isCameraMirrored ? 'Disable camera mirror' : 'Enable camera mirror'}
+              title={isCameraMirrored ? 'Camera mirrored (tap to disable)' : 'Camera normal (tap to enable mirror)'}
+            >
+              {isCameraMirrored ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <title>Mirrored camera</title>
+                  <path d="M20 3l-4 4-4-4M4 21l4-4 4-4" />
+                  <path d="M12 3v18" />
+                  <path d="M4 21h16" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <title>Normal camera</title>
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8" />
+                  <path d="M12 17v4" />
+                </svg>
+              )}
+            </button>
+            
             <button
               type="button"
               onClick={toggleFlash}

@@ -16,6 +16,8 @@ export interface ScannerProps {
   config?: Partial<ScanConfig>;
   className?: string;
   style?: React.CSSProperties;
+  isFlipped?: boolean;
+  onFlipChange?: (flipped: boolean) => void;
 }
 
 // Default formats for book barcodes
@@ -29,7 +31,9 @@ export function BarcodeScannerComponent({
   onError,
   config = {},
   className,
-  style
+  style,
+  isFlipped: externalFlipped,
+  onFlipChange
 }: ScannerProps) {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [cameraStatus, setCameraStatus] = useState<'initializing' | 'ready' | 'streaming' | 'active' | 'error' | undefined>('initializing');
@@ -37,6 +41,27 @@ export function BarcodeScannerComponent({
   const [videoInfo, setVideoInfo] = useState<{readyState: number; videoWidth: number; videoHeight: number} | null>(null);
   const [scanActive, setScanActive] = useState(false);
   const [frameCount, setFrameCount] = useState(0);
+  const [internalFlipped, setInternalFlipped] = useState(true); // Default to flipped (mirror)
+  
+  // Use external flipped state if provided, otherwise use internal
+  const isFlipped = externalFlipped !== undefined ? externalFlipped : internalFlipped;
+  const setFlipped = (value: boolean) => {
+    if (onFlipChange) {
+      onFlipChange(value);
+    } else {
+      setInternalFlipped(value);
+    }
+  };
+  
+  // Load flip preference from localStorage on mount
+  useEffect(() => {
+    if (externalFlipped === undefined) {
+      const savedFlip = localStorage.getItem('scannerMirrorEnabled');
+      if (savedFlip !== null) {
+        setInternalFlipped(savedFlip === 'true');
+      }
+    }
+  }, [externalFlipped]);
   
   // Refs for video monitoring
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -66,6 +91,13 @@ export function BarcodeScannerComponent({
     frameRate: { ideal: 30, min: 15 },
     audio: false
   };
+
+  // Save flip preference to localStorage when it changes (only if using internal state)
+  useEffect(() => {
+    if (externalFlipped === undefined) {
+      localStorage.setItem('scannerMirrorEnabled', String(isFlipped));
+    }
+  }, [isFlipped, externalFlipped]);
 
   // Monitor video element readyState - essential for barcode detection
   useEffect(() => {
@@ -173,16 +205,34 @@ export function BarcodeScannerComponent({
 
   return (
     <div ref={containerRef} className={className} style={style}>
-      <BarcodeScannerLib
-        width="100%"
-        height="100%"
-        onUpdate={handleUpdate}
-        onError={handleError}
-        facingMode={scanConfig.cameraFacing}
-        delay={1000}
-        stopStream={false}
-        videoConstraints={videoConstraints}
-      />
+      <div style={{ 
+        width: '100%', 
+        height: '100%',
+        transform: isFlipped ? 'scaleX(-1)' : 'scaleX(1)',
+        transition: 'transform 0.3s ease'
+      }}>
+        <BarcodeScannerLib
+          width="100%"
+          height="100%"
+          onUpdate={handleUpdate}
+          onError={handleError}
+          facingMode={scanConfig.cameraFacing}
+          delay={1000}
+          stopStream={false}
+          videoConstraints={videoConstraints}
+        />
+      </div>
+      
+      {/* Flip toggle button */}
+      <button
+        type="button"
+        onClick={() => setFlipped(!isFlipped)}
+        className="absolute top-2 right-2 z-50 p-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors"
+        title={isFlipped ? 'Mirror off' : 'Mirror on'}
+        style={{ fontSize: '12px' }}
+      >
+        {isFlipped ? '🔄 Mirrored' : '🔒 Normal'}
+      </button>
       
       {/* Status panel */}
       <div style={{ 
