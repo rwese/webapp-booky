@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - link "Skip to navigation" [ref=e5] [cursor=pointer]:
+      - /url: "#main-navigation"
+    - navigation "Main navigation":
+      - button "Open sidebar" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+    - button "Add new book" [ref=e8] [cursor=pointer]:
+      - img [ref=e9]
+    - button "Scan barcode" [active] [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+    - main [ref=e16]:
+      - generic [ref=e18]:
+        - generic [ref=e20]:
+          - heading "Welcome Back" [level=1] [ref=e21]
+          - paragraph [ref=e22]: Here's an overview of your book collection
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e26]:
+              - img [ref=e28]
+              - generic [ref=e30]:
+                - paragraph [ref=e31]: "0"
+                - paragraph [ref=e32]: Total Books
+            - generic [ref=e34]:
+              - img [ref=e36]
+              - generic [ref=e39]:
+                - paragraph [ref=e40]: "0"
+                - paragraph [ref=e41]: Reading Now
+            - generic [ref=e43]:
+              - img [ref=e45]
+              - generic [ref=e48]:
+                - paragraph [ref=e49]: "0"
+                - paragraph [ref=e50]: Completed
+          - generic [ref=e51]:
+            - heading "Quick Actions" [level=2] [ref=e52]
+            - generic [ref=e53]:
+              - generic [ref=e55] [cursor=pointer]:
+                - img [ref=e57]
+                - generic [ref=e58]:
+                  - heading "Add New Book" [level=3] [ref=e59]
+                  - paragraph [ref=e60]: Search or scan a book to add to your collection
+              - generic [ref=e62] [cursor=pointer]:
+                - img [ref=e64]
+                - generic [ref=e66]:
+                  - heading "Browse Library" [level=3] [ref=e67]
+                  - paragraph [ref=e68]: View and manage your entire book collection
+              - generic [ref=e70] [cursor=pointer]:
+                - img [ref=e72]
+                - generic [ref=e75]:
+                  - heading "View Analytics" [level=3] [ref=e76]
+                  - paragraph [ref=e77]: See insights about your reading habits
+          - generic [ref=e78]:
+            - img [ref=e80]
+            - heading "No books yet" [level=3] [ref=e82]
+            - paragraph [ref=e83]: Start building your collection by adding your first book
+            - button "Add Your First Book" [ref=e84] [cursor=pointer]:
+              - img [ref=e85]
+              - text: Add Your First Book
+          - generic [ref=e89]: Online
+    - dialog "Barcode Scanner" [ref=e90]:
+      - generic [ref=e91]:
+        - heading "Scan ISBN Barcode" [level=2] [ref=e92]
+        - button "Close scanner" [ref=e93] [cursor=pointer]:
+          - img [ref=e94]
+      - generic [ref=e98]:
+        - button "🔄 Mirrored" [ref=e101] [cursor=pointer]
+        - generic [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]:
+              - strong [ref=e105]: "Camera:"
+              - text: Error
+            - generic [ref=e106]:
+              - strong [ref=e107]: "Video:"
+              - text: "?×? (readyState: 0)"
+            - generic [ref=e108]:
+              - strong [ref=e109]: "Frames:"
+              - text: 0 ⏸
+          - generic [ref=e110]:
+            - strong [ref=e111]: "Error:"
+            - text: Not supported
+      - generic [ref=e112]:
+        - generic [ref=e113]:
+          - button "Camera" [ref=e114] [cursor=pointer]
+          - button "Manual" [ref=e115] [cursor=pointer]
+          - button "Batch (0)" [ref=e116] [cursor=pointer]
+        - generic [ref=e117]:
+          - button "Disable camera mirror" [ref=e118] [cursor=pointer]:
+            - img "Mirrored camera" [ref=e119]
+          - button "Turn on flashlight" [ref=e121] [cursor=pointer]:
+            - img [ref=e122]
+          - button "Switch camera" [ref=e126] [cursor=pointer]:
+            - img [ref=e127]
+          - button "Retry scanning" [ref=e130] [cursor=pointer]:
+            - img [ref=e131]
+  - status [ref=e136]: Navigated to /
+  - status [ref=e137]: Navigated to /
+```

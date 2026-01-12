@@ -97,9 +97,27 @@ npm run preview
 
 # Run tests
 npm test              # Unit tests only (55 tests)
-npm run test:e2e      # E2E tests only (8 tests)
+npm run test:e2e      # E2E tests only (8 essential tests)
 npm test && npm run test:e2e  # All tests (63 tests)
 ```
+
+### E2E Test Setup
+
+E2E tests are configured to **automatically start the dev server** on port 3001 (avoiding OpenCode conflict on port 3000):
+
+```bash
+# Run e2e tests - Playwright will auto-start the dev server
+npm run test:e2e
+
+# Or use the helper script that verifies dev server auto-start
+bash scripts/test-e2e.sh
+```
+
+The Playwright configuration (`playwright.config.ts`) includes a `webServer` section that:
+
+- Automatically starts the Vite dev server on port 3001
+- Waits for the server to be ready before running tests
+- Reuses existing server when available (faster local development)
 
 ### Available Scripts
 
