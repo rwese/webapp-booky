@@ -1,20 +1,18 @@
-import { useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { SidebarNavigation, FloatingActionButtons } from './components/common/Navigation';
 import { ToastContainer } from './components/common/Toast';
-import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { HomePage } from './pages/Home';
 import { LibraryPage } from './pages/Library';
 import { AddBookPage } from './pages/AddBook';
 import { AnalyticsPage } from './pages/Analytics';
-import { SettingsPage } from './pages/Settings';
 import { BookDetailPage } from './pages/BookDetail';
 import { EditBookPage } from './pages/EditBook';
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
 import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';
 import { registerServiceWorker } from './lib/serviceWorker';
-import { useModalStore, useUIStore } from './store/useStore';
+import { useModalStore } from './store/useStore';
 import { clsx } from 'clsx';
 import { SkipLink, announce } from './components/common/Accessibility';
 import { usePerformanceMetrics } from './hooks/usePerformance';
@@ -69,9 +67,6 @@ function App() {
     const path = window.location.pathname;
     announce(`Navigated to ${path}`);
   }, []);
-
-  // Get sidebar state
-  const { sidebarOpen } = useUIStore();
 
   return (
     <div className={clsx(

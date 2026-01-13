@@ -11,11 +11,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { LoginButton } from '../../components/auth/LoginButton';
 import { Card } from '../../components/common/Button';
 
-interface SignInPageProps {
-  callbackUrl?: string;
-}
-
-export function SignInPage({ callbackUrl = '/' }: SignInPageProps) {
+export function SignInPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const error = searchParams.get('error');
@@ -66,7 +62,6 @@ export function SignInPage({ callbackUrl = '/' }: SignInPageProps) {
             <div className="space-y-4">
               <LoginButton
                 provider="google"
-                callbackUrl={callbackUrl}
                 className="w-full"
                 variant="outline"
               />
@@ -74,7 +69,6 @@ export function SignInPage({ callbackUrl = '/' }: SignInPageProps) {
               {import.meta.env.VITE_AUTH_ENABLE_GITHUB === 'true' && (
                 <LoginButton
                   provider="github"
-                  callbackUrl={callbackUrl}
                   className="w-full"
                   variant="outline"
                 />
@@ -83,7 +77,6 @@ export function SignInPage({ callbackUrl = '/' }: SignInPageProps) {
               {import.meta.env.VITE_AUTH_ENABLE_DISCORD === 'true' && (
                 <LoginButton
                   provider="discord"
-                  callbackUrl={callbackUrl}
                   className="w-full"
                   variant="outline"
                 />

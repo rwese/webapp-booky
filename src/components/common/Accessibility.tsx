@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { clsx } from 'clsx';
 
 // Focus trap for modals

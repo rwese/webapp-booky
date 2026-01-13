@@ -11,7 +11,6 @@ import { useAuth } from './AuthProvider';
 
 interface LoginButtonProps {
   provider?: 'google' | 'github' | 'discord';
-  callbackUrl?: string;
   className?: string;
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg';
@@ -20,7 +19,6 @@ interface LoginButtonProps {
 
 export function LoginButton({
   provider = 'google',
-  callbackUrl = '/',
   className = '',
   variant = 'primary',
   size = 'md',

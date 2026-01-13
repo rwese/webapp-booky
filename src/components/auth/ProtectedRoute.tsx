@@ -92,12 +92,15 @@ export function withAuth<P extends object>(
   return function AuthenticatedComponent(props: P) {
     const { isAuthenticated, isLoading } = useAuth();
     const navigate = useNavigate();
+    
+    // Extract options to avoid dependency issues
+    const redirectTo = options?.redirectTo || '/auth/signin';
 
     useEffect(() => {
       if (!isLoading && !isAuthenticated) {
-        navigate(options?.redirectTo || '/auth/signin', { replace: true });
+        navigate(redirectTo, { replace: true });
       }
-    }, [isAuthenticated, isLoading, navigate, options]);
+    }, [isAuthenticated, isLoading, navigate, redirectTo]);
 
     if (isLoading) {
       return (
