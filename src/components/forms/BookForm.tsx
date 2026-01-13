@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../common/Button';
+import { CoverUpload } from '../image/CoverUpload';
 import type { Book as BookType, BookFormat } from '../../types';
 
 interface BookFormProps {
@@ -36,6 +37,10 @@ export function BookForm({
     averageRating: initialData?.averageRating,
     ratingsCount: initialData?.ratingsCount,
   });
+
+  const handleCoverChange = (coverUrl: string) => {
+    setFormData({ ...formData, coverUrl });
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -110,6 +115,12 @@ export function BookForm({
             value={formData.isbn13 || ''}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, isbn13: e.target.value })}
             placeholder="Enter ISBN (optional)"
+          />
+          
+          <CoverUpload
+            value={formData.coverUrl}
+            onChange={handleCoverChange}
+            bookTitle={formData.title || 'book'}
           />
           
           <Input

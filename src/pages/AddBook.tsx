@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';
+import { CoverUpload } from '../components/image/CoverUpload';
 import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
@@ -275,6 +276,12 @@ export function AddBookPage() {
           <Card className="p-6 mb-6">
             <h2 className="text-lg font-semibold mb-4">Manual Entry</h2>
             <div className="space-y-4">
+              <CoverUpload
+                value={newBook.coverUrl}
+                onChange={(coverUrl) => setNewBook({ ...newBook, coverUrl })}
+                bookTitle={newBook.title || 'book'}
+              />
+              
               <Input
                 label="Title *"
                 value={newBook.title}
