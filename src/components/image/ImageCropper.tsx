@@ -124,35 +124,71 @@ export function ImageCropper({
     const sin = Math.abs(Math.sin(radRotation));
     const cos = Math.abs(Math.cos(radRotation));
 
-    const width = image.width * cos + image.height * sin;
-    const height = image.width * sin + image.height * cos;
+    const rotatedWidth = image.width * cos + image.height * sin;
+    const rotatedHeight = image.width * sin + image.height * cos;
 
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = rotatedWidth;
+    canvas.height = rotatedHeight;
 
-    // Translate and rotate the context
-    ctx.translate(width / 2, height / 2);
+    // Transform crop coordinates from original image space to rotated canvas space
+    let transformedCropX = cropPixels.x;
+    let transformedCropY = cropPixels.y;
+
+    if (rotation !== 0) {
+      // For 90° rotation:
+      // - Original x becomes y in rotated space
+      // - Original y becomes (height - x - width) in rotated space
+      // For 270° (-90°) rotation:
+      // - Original x becomes (width - y - height) in rotated space
+      // - Original y becomes x in rotated space
+      // For 180° rotation:
+      // - Original x becomes (width - x - cropWidth)
+      // - Original y becomes (height - y - cropHeight)
+
+      const angle = ((rotation % 360) + 360) % 360; // Normalize to 0-359
+
+      if (angle === 90) {
+        transformedCropX = image.height - cropPixels.y - cropPixels.height;
+        transformedCropY = cropPixels.x;
+      } else if (angle === 270) {
+        transformedCropX = cropPixels.y;
+        transformedCropY = image.width - cropPixels.x - cropPixels.width;
+      } else if (angle === 180) {
+        transformedCropX = image.width - cropPixels.x - cropPixels.width;
+        transformedCropY = image.height - cropPixels.y - cropPixels.height;
+      }
+    }
+
+    // Draw the image rotated
+    ctx.translate(rotatedWidth / 2, rotatedHeight / 2);
     ctx.rotate(radRotation);
-    ctx.translate(-width / 2, -height / 2);
+    ctx.translate(-rotatedWidth / 2, -rotatedHeight / 2);
 
-    // Draw the image
-    ctx.drawImage(image, 0, 0);
+    // Draw the image (centered in the rotated canvas)
+    ctx.drawImage(image, (rotatedWidth - image.width) / 2, (rotatedHeight - image.height) / 2);
 
-    // Crop and scale
+    // Extract the cropped region from the rotated canvas using transformed coordinates
     const data = ctx.getImageData(
-      cropPixels.x,
-      cropPixels.y,
+      transformedCropX,
+      transformedCropY,
       cropPixels.width,
       cropPixels.height
     );
 
-    canvas.width = cropPixels.width;
-    canvas.height = cropPixels.height;
+    // Create a new canvas for the final cropped output
+    const outputCanvas = document.createElement('canvas');
+    outputCanvas.width = cropPixels.width;
+    outputCanvas.height = cropPixels.height;
 
-    ctx.putImageData(data, 0, 0);
+    const outputCtx = outputCanvas.getContext('2d');
+    if (!outputCtx) {
+      throw new Error('No 2D context for output canvas');
+    }
+
+    outputCtx.putImageData(data, 0, 0);
 
     return new Promise((resolve, reject) => {
-      canvas.toBlob(blob => {
+      outputCanvas.toBlob(blob => {
         if (blob) {
           resolve(blob);
         } else {

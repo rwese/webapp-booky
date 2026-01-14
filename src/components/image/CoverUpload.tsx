@@ -1,12 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ImageCropper } from './ImageCropper';
+import { CameraCapture } from '../camera/CameraCapture';
 import { 
   Upload, 
   X, 
   Crop as CropIcon, 
   RefreshCw, 
   Image as ImageIcon,
-  Check
+  Check,
+  Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -37,6 +39,9 @@ export function CoverUpload({
   const [isCropping, setIsCropping] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cropError, setCropError] = useState<string | null>(null);
+  const [isUsingCamera, setIsUsingCamera] = useState(false);
+  const [cameraBlob, setCameraBlob] = useState<Blob | null>(null);
+  const [cameraFileName, setCameraFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file selection
@@ -88,6 +93,23 @@ export function CoverUpload({
     }
   }, [bookTitle, onChange]);
 
+  // Handle camera capture
+  const handleCameraCapture = useCallback(async (blob: Blob, fileName: string) => {
+    setCameraBlob(blob);
+    setCameraFileName(fileName);
+    
+    // Create preview URL for cropping
+    const previewUrl = URL.createObjectURL(blob);
+    setPreviewUrl(previewUrl);
+    setIsUsingCamera(false);
+    setIsCropping(true);
+  }, []);
+
+  // Handle camera cancellation
+  const handleCameraCancel = useCallback(() => {
+    setIsUsingCamera(false);
+  }, []);
+
   // Handle crop completion
   const handleCropComplete = useCallback(async (croppedBlob: Blob) => {
     setIsProcessing(true);
@@ -95,13 +117,15 @@ export function CoverUpload({
       const { localPath, file } = await processCroppedImage(
         croppedBlob, 
         bookTitle,
-        selectedFile?.name
+        cameraFileName || selectedFile?.name
       );
       onChange(localPath, file);
       
       // Reset cropping state
       setIsCropping(false);
       setSelectedFile(null);
+      setCameraBlob(null);
+      setCameraFileName(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
@@ -112,12 +136,14 @@ export function CoverUpload({
     } finally {
       setIsProcessing(false);
     }
-  }, [bookTitle, selectedFile, previewUrl, onChange]);
+  }, [bookTitle, selectedFile, cameraFileName, previewUrl, onChange]);
 
   // Handle crop cancellation
   const handleCropCancel = useCallback(() => {
     setIsCropping(false);
     setSelectedFile(null);
+    setCameraBlob(null);
+    setCameraFileName(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -272,6 +298,18 @@ export function CoverUpload({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   JPEG, PNG, GIF, WebP up to 5MB
                 </p>
+                
+                {/* Camera button */}
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => setIsUsingCamera(true)}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  >
+                    <Camera size={18} />
+                    Or take a photo
+                  </button>
+                )}
               </div>
             </div>
           )}
