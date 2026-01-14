@@ -22,6 +22,7 @@
     "date-fns": "^2.30.0",
     "dexie": "^3.2.4",
     "dexie-react-hooks": "^1.1.6",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.294.0",
     "next-auth": "^4.24.13",
     "opencode-beads": "^0.3.2",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
+    "@types/jszip": "^3.4.1",
     "@types/node": "^25.0.6",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",

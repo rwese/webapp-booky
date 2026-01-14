@@ -23,12 +23,52 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
   });
   const [result, setResult] = useState<ImportResult | undefined>();
 
-  const handleFileSelect = useCallback((files: FileList | null) => {
+  // Handle ZIP file import
+  const handleZipFile = useCallback(async (file: File) => {
+    setStep('importing');
+    
+    const progressCallback = (progressData: ImportProgress) => {
+      setProgress(progressData);
+    };
+
+    bookImportService.setProgressCallback(progressCallback);
+
+    try {
+      const importResult = await bookImportService.importFromZip(file, {
+        skipDuplicates: true,
+        onProgress: progressCallback
+      });
+
+      setResult(importResult);
+      setStep('complete');
+    } catch (error) {
+      console.error('ZIP import failed:', error);
+      setProgress(prev => ({
+        ...prev,
+        status: 'error',
+        errors: [{ 
+          bookId: 'unknown', 
+          title: 'Import failed', 
+          error: error instanceof Error ? error.message : 'Unknown error. Make sure the ZIP contains a valid metadata.json file.' 
+        }]
+      }));
+    }
+  }, []);
+
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    
+    // Check if it's a ZIP file
+    if (file.name.endsWith('.zip')) {
+      await handleZipFile(file);
+      return;
+    }
+
+    // Handle JSON file (metadata.json)
     if (file.name !== 'metadata.json') {
-      alert('Please select the metadata.json file from the booknotes-export folder');
+      alert('Please select either a ZIP file or the metadata.json file from the booknotes-export folder');
       return;
     }
 
@@ -50,7 +90,7 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
       }
     };
     reader.readAsText(file);
-  }, []);
+  }, [handleZipFile]);
 
   const handleImport = useCallback(async (options: { skipDuplicates: boolean }) => {
     setStep('importing');
@@ -120,25 +160,31 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
                 <div className="text-4xl mb-2">📚</div>
                 <h3 className="text-lg font-semibold mb-2">Import from booknotes-export</h3>
                 <p className="text-gray-600">
-                  Select the metadata.json file from your booknotes-export folder
+                  Select a ZIP file or the metadata.json file from your booknotes-export folder
                 </p>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
-                <h4 className="font-medium mb-2">Expected file structure:</h4>
+                <h4 className="font-medium mb-2">Supported formats:</h4>
                 <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• <code className="bg-gray-200 px-1 rounded">/Users/wese/Downloads/booknotes-export/</code></li>
-                  <li>• <code className="bg-gray-200 px-1 rounded">metadata.json</code> - Contains book data (70+ books)</li>
-                  <li>• <code className="bg-gray-200 px-1 rounded">cover_images/</code> - Folder with 178 cover images</li>
+                  <li>• <code className="bg-gray-200 px-1 rounded">.zip</code> - ZIP archive (recommended - includes cover images)</li>
+                  <li>• <code className="bg-gray-200 px-1 rounded">metadata.json</code> - JSON file with book data</li>
                 </ul>
+                <div className="mt-3 text-sm text-gray-500">
+                  Expected ZIP structure:
+                  <ul className="ml-4 space-y-1 mt-1">
+                    <li>• <code className="bg-gray-200 px-1 rounded">metadata.json</code> - Contains book data</li>
+                    <li>• <code className="bg-gray-200 px-1 rounded">cover_images/</code> - Folder with cover images</li>
+                  </ul>
+                </div>
               </div>
 
               <div className="mb-4">
                 <label className="btn btn-primary cursor-pointer">
-                  Select metadata.json File
+                  Select File
                   <input
                     type="file"
-                    accept=".json"
+                    accept=".zip,.json"
                     onChange={(e) => handleFileSelect(e.target.files)}
                     className="hidden"
                   />
@@ -146,7 +192,7 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
               </div>
 
               <p className="text-sm text-gray-500">
-                The import will include books, ratings, reading status, and tags.
+                The import will include books, ratings, reading status, tags, and cover images.
               </p>
             </div>
           )}

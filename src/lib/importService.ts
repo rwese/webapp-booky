@@ -12,7 +12,8 @@ import {
   bookOperations, 
   ratingOperations, 
   readingLogOperations,
-  tagOperations 
+  tagOperations,
+  coverImageOperations
 } from './db';
 import { 
   transformImportBook,
@@ -23,6 +24,7 @@ import {
   getFileExtension,
   processTagsForImport
 } from './importUtils';
+import JSZip from 'jszip';
 
 class BookImportService {
   private coverImagesPath: string = '/Users/wese/Downloads/booknotes-export/cover_images/';
@@ -327,6 +329,242 @@ class BookImportService {
   // Clear imported books cache
   clearImportedBooks() {
     this.importedBooks.clear();
+  }
+
+  // Extract and parse a ZIP file containing booknotes-export data
+  async extractZipFile(file: File): Promise<{
+    metadata: ImportMetadata;
+    coverImages: Map<string, Blob>;
+  }> {
+    this.updateProgress({ status: 'reading', current: 0, total: 0 });
+
+    try {
+      const zip = new JSZip();
+      const zipContent = await zip.loadAsync(file);
+      
+      // Find metadata.json in the ZIP
+      const metadataFile = zipContent.file('metadata.json');
+      if (!metadataFile) {
+        throw new Error('metadata.json not found in ZIP file');
+      }
+
+      // Parse metadata
+      const metadataJson = await metadataFile.async('string');
+      const data = JSON.parse(metadataJson);
+      
+      const metadata: ImportMetadata = {
+        books: data.books || data,
+        exportedAt: data.exportedAt || new Date().toISOString(),
+        source: data.source || 'booknotes-export',
+        version: data.version || '1.0'
+      };
+
+      // Extract cover images
+      const coverImages = new Map<string, Blob>();
+      const coverImageFiles = Object.keys(zipContent.files).filter(
+        path => path.startsWith('cover_images/') && !zipContent.files[path].dir
+      );
+
+      const totalCovers = coverImageFiles.length;
+      this.updateProgress({ status: 'reading', total: totalCovers, current: 0 });
+
+      for (let i = 0; i < coverImageFiles.length; i++) {
+        const path = coverImageFiles[i];
+        const fileData = zipContent.file(path);
+        if (fileData) {
+          const blob = await fileData.async('blob');
+          const filename = path.replace('cover_images/', '');
+          coverImages.set(filename, blob);
+          
+          this.updateProgress({ 
+            status: 'reading', 
+            total: totalCovers, 
+            current: i + 1 
+          });
+        }
+      }
+
+      this.updateProgress({ status: 'completed', total: totalCovers, current: totalCovers });
+
+      return { metadata, coverImages };
+    } catch (error) {
+      console.error('Error extracting ZIP file:', error);
+      throw error;
+    }
+  }
+
+  // Import books from ZIP file with cover images
+  async importFromZip(file: File, options?: {
+    skipDuplicates?: boolean;
+    onProgress?: (progress: ImportProgress) => void;
+  }): Promise<ImportResult> {
+    const { skipDuplicates = true, onProgress } = options || {};
+    
+    this.progressCallback = onProgress;
+
+    try {
+      // Extract ZIP contents
+      const { metadata, coverImages } = await this.extractZipFile(file);
+
+      // Store cover images and update book data
+      const importDataWithCovers: (ImportBookData & { _coverId?: string })[] = await Promise.all(
+        metadata.books.map(async (book) => {
+          if (book.coverFilename) {
+            const coverBlob = coverImages.get(book.coverFilename);
+            if (coverBlob) {
+              // Store cover image and get ID
+              const coverId = await coverImageOperations.store(coverBlob);
+              // Store the coverId in a way we can retrieve it during import
+              // We'll use a temporary property
+              return {
+                ...book,
+                _coverId: coverId  // Temporary property, will be used during import
+              };
+            }
+          }
+          return book;
+        })
+      );
+
+      // Create a modified import function that handles stored cover images
+      return await this.importBooksWithStoredCovers(importDataWithCovers, {
+        skipDuplicates,
+        onProgress
+      });
+    } catch (error) {
+      console.error('Error importing from ZIP:', error);
+      throw error;
+    }
+  }
+
+  // Internal method to import books with pre-stored cover image IDs
+  private async importBooksWithStoredCovers(importData: (ImportBookData & { _coverId?: string })[], options?: {
+    skipDuplicates?: boolean;
+    onProgress?: (progress: ImportProgress) => void;
+  }): Promise<ImportResult> {
+    const { skipDuplicates = true, onProgress } = options || {};
+    
+    this.progressCallback = onProgress;
+    const errors: Array<{ bookId: string; title: string; error: string; field?: string }> = [];
+    let imported = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    const total = importData.length;
+    this.updateProgress({ status: 'processing', total, current: 0 });
+
+    for (let i = 0; i < importData.length; i++) {
+      const book = importData[i];
+      this.updateProgress({ 
+        status: 'importing', 
+        total, 
+        current: i + 1, 
+        currentBook: book.title 
+      });
+
+      const result = await this.importSingleBookWithCover(book);
+
+      if (result.success) {
+        imported++;
+      } else if (result.error?.includes('already exists')) {
+        if (skipDuplicates) {
+          skipped++;
+        } else {
+          failed++;
+          errors.push({
+            bookId: book.id,
+            title: book.title,
+            error: result.error
+          });
+        }
+      } else {
+        failed++;
+        errors.push({
+          bookId: book.id,
+          title: book.title,
+          error: result.error || 'Unknown error'
+        });
+      }
+    }
+
+    this.updateProgress({ 
+      status: 'completed', 
+      total, 
+      current: total,
+      errors 
+    });
+
+    return {
+      success: failed === 0,
+      imported,
+      skipped,
+      failed,
+      errors
+    };
+  }
+
+  // Import a single book with pre-stored cover image
+  private async importSingleBookWithCover(importBook: ImportBookData & { _coverId?: string }): Promise<{
+    success: boolean;
+    bookId?: string;
+    error?: string;
+  }> {
+    try {
+      const validation = validateImportBook(importBook);
+      if (!validation.valid) {
+        return { success: false, error: validation.errors.join(', ') };
+      }
+
+      const duplicateCheck = await this.checkForDuplicate(importBook);
+      if (duplicateCheck.duplicate) {
+        return { success: false, error: duplicateCheck.reason };
+      }
+
+      const transformed = transformImportBook(importBook);
+      const newBookId = generateImportBookId(importBook.id);
+
+      // Use stored cover ID if available
+      const localCoverPath = importBook._coverId || (
+        importBook.coverFilename 
+          ? await this.processCoverImage(importBook.coverFilename, newBookId)
+          : undefined
+      );
+
+      const book: Book = {
+        ...transformed.book as Book,
+        id: newBookId,
+        localCoverPath
+      };
+
+      await bookOperations.add(book);
+
+      if (transformed.rating) {
+        const rating: Rating = {
+          ...transformed.rating,
+          id: crypto.randomUUID(),
+          bookId: newBookId
+        };
+        await ratingOperations.upsert(rating);
+      }
+
+      const readingLog: ReadingLog = {
+        ...transformed.readingLog,
+        id: crypto.randomUUID(),
+        bookId: newBookId
+      };
+      await readingLogOperations.upsert(readingLog);
+
+      if (transformed.tags.length > 0) {
+        await processTagsForImport(newBookId, transformed.tags);
+      }
+
+      this.importedBooks.set(newBookId, book);
+
+      return { success: true, bookId: newBookId };
+    } catch (error) {
+      console.error('Error importing book:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 }
 

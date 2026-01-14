@@ -12,6 +12,14 @@ import type {
   ReadingStatus
 } from '../types';
 
+// Cover image storage type
+interface CoverImageRecord {
+  id: string;
+  blob: Blob;
+  mimeType: string;
+  createdAt: Date;
+}
+
 // IndexedDB Database Setup with Dexie.js
 class BookCollectionDB extends Dexie {
   // Tables declaration
@@ -24,12 +32,13 @@ class BookCollectionDB extends Dexie {
   syncQueue!: Table<SyncOperation>;
   settings!: Table<UserSettings>;
   readingLogs!: Table<ReadingLog>;
+  coverImages!: Table<CoverImageRecord>;
 
   constructor() {
     super('BookCollectionDB');
     
     // Define schema and indexes
-    this.version(2).stores({
+    this.version(3).stores({
       books: 'id, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name, color',
@@ -38,7 +47,8 @@ class BookCollectionDB extends Dexie {
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
       syncQueue: 'id, entity, entityId, timestamp, synced',
       settings: 'id',
-      readingLogs: 'id, bookId, status, createdAt'
+      readingLogs: 'id, bookId, status, createdAt',
+      coverImages: 'id, createdAt'
     });
   }
 }
@@ -323,5 +333,38 @@ export const readingLogOperations = {
 
   async getAllByStatus(status: ReadingStatus): Promise<ReadingLog[]> {
     return await db.readingLogs.where('status').equals(status).toArray();
+  }
+};
+
+// Cover image operations for storing imported cover images
+export const coverImageOperations = {
+  async store(blob: Blob, id?: string): Promise<string> {
+    const imageId = id || crypto.randomUUID();
+    await db.coverImages.put({
+      id: imageId,
+      blob,
+      mimeType: blob.type,
+      createdAt: new Date()
+    });
+    return imageId;
+  },
+
+  async get(id: string): Promise<Blob | null> {
+    const image = await db.coverImages.get(id);
+    return image?.blob || null;
+  },
+
+  async getUrl(id: string): Promise<string | null> {
+    const blob = await this.get(id);
+    if (!blob) return null;
+    return URL.createObjectURL(blob);
+  },
+
+  async delete(id: string): Promise<void> {
+    await db.coverImages.delete(id);
+  },
+
+  async clear(): Promise<void> {
+    await db.coverImages.clear();
   }
 };
