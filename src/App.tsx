@@ -1,4 +1,4 @@
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { SidebarNavigation, FloatingActionButtons } from './components/common/Navigation';
 import { ToastContainer } from './components/common/Toast';
@@ -8,6 +8,8 @@ import { AddBookPage } from './pages/AddBook';
 import { AnalyticsPage } from './pages/Analytics';
 import { BookDetailPage } from './pages/BookDetail';
 import { EditBookPage } from './pages/EditBook';
+// Lazy load Settings page
+const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage })) as Promise<{ default: React.ComponentType<any> }>);
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
 import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';
@@ -102,6 +104,7 @@ function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/book/:id" element={<BookDetailPage />} />
               <Route path="/edit/:id" element={<EditBookPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Suspense>
         </div>
