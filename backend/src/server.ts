@@ -37,6 +37,21 @@ import {
   validatePasswordStrength
 } from './auth';
 import { authMiddleware } from './authMiddleware';
+import {
+  globalRateLimiter,
+  authRateLimiter,
+  syncRateLimiter,
+  searchRateLimiter,
+  securityHeaders,
+  corsOptions,
+  xssProtection,
+  validateRequest,
+  schemas,
+  versionMiddleware,
+  versionAwareResponse,
+  requestTimeout,
+  securityErrorHandler
+} from './security';
 
 dotenv.config();
 
@@ -50,17 +65,18 @@ initializeDatabase().catch((error) => {
 });
 
 // Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(securityHeaders);
+app.use(cors(corsOptions));
+app.use(xssProtection);
+app.use(express.json({ limit: '10mb' }));
+app.use(requestTimeout(30000));
 
-// Rate limiting - 100 requests per 15 minutes
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Too many requests, please try again later.' }
-});
-app.use('/api/', limiter);
+// API versioning
+app.use(versionMiddleware);
+app.use(versionAwareResponse);
+
+// Rate limiting
+app.use('/api/', globalRateLimiter);
 
 // Google Books API configuration
 const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
@@ -181,8 +197,8 @@ app.get('/api/isbn/:isbn', async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Search endpoint
-app.get('/api/search', async (req: Request, res: Response, next: NextFunction) => {
+// Search endpoint (with rate limiting)
+app.get('/api/search', searchRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { q } = req.query;
     
@@ -280,7 +296,7 @@ app.get('/api/books/:id', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/books', async (req: Request, res: Response) => {
+app.post('/api/books', authMiddleware, validateRequest(schemas.createBook), async (req: Request, res: Response) => {
   try {
     const { userId, ...bookData } = req.body;
     
@@ -338,7 +354,7 @@ app.get('/api/collections', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/collections', async (req: Request, res: Response) => {
+app.post('/api/collections', authMiddleware, validateRequest(schemas.createCollection), async (req: Request, res: Response) => {
   try {
     const { userId, ...collectionData } = req.body;
     
@@ -371,7 +387,7 @@ app.get('/api/tags', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/tags', async (req: Request, res: Response) => {
+app.post('/api/tags', authMiddleware, validateRequest(schemas.createTag), async (req: Request, res: Response) => {
   try {
     const { userId, ...tagData } = req.body;
     
@@ -389,8 +405,8 @@ app.post('/api/tags', async (req: Request, res: Response) => {
 
 // ==================== AUTHENTICATION ENDPOINTS ====================
 
-// Register new user
-app.post('/api/auth/register', async (req: Request, res: Response) => {
+// Register new user (with rate limiting and validation)
+app.post('/api/auth/register', authRateLimiter, validateRequest(schemas.registerUser), async (req: Request, res: Response) => {
   try {
     const { email, password, name } = req.body;
     
@@ -429,8 +445,8 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
   }
 });
 
-// Login user
-app.post('/api/auth/login', async (req: Request, res: Response) => {
+// Login user (with rate limiting and validation)
+app.post('/api/auth/login', authRateLimiter, validateRequest(schemas.loginUser), async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     
@@ -787,8 +803,8 @@ app.post('/api/auth/validate-password', async (req: Request, res: Response) => {
 
 // Sync endpoints
 
-// Process sync operations
-app.post('/api/sync/operations', authMiddleware, async (req: Request, res: Response) => {
+// Process sync operations (with rate limiting and validation)
+app.post('/api/sync/operations', authMiddleware, syncRateLimiter, validateRequest(schemas.syncBatch), async (req: Request, res: Response) => {
   try {
     const { operations } = req.body;
     
