@@ -13,16 +13,6 @@ import {
   tagService,
   readingLogService 
 } from './database';
-import {
-  queueSyncOperation,
-  getPendingOperations,
-  processSyncBatch,
-  getChangesSince,
-  fullSync,
-  getSyncStatus,
-  markOperationsSynced,
-  clearSyncedOperations
-} from './syncService';
 import { 
   createUser, 
   loginUser, 
@@ -54,6 +44,7 @@ import {
   securityErrorHandler
 } from './security';
 import fileRoutes from './routes/files';
+import { cacheService, CacheKeys, CACHE_CONFIG } from './cache';
 
 dotenv.config();
 
@@ -64,6 +55,11 @@ const PORT = process.env.PORT || 3001;
 initializeDatabase().catch((error) => {
   console.error('Failed to initialize database:', error);
   process.exit(1);
+});
+
+// Initialize cache connection (non-blocking)
+cacheService.connect().catch((error) => {
+  console.warn('Cache service initialization failed, caching will be disabled:', error.message);
 });
 
 // Middleware
@@ -296,7 +292,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// Book CRUD endpoints
+// Get all books for user (with caching)
 app.get('/api/books', async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
@@ -305,7 +301,18 @@ app.get('/api/books', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'User ID is required' });
     }
     
+    // Try cache first
+    const cacheKey = CacheKeys.userBooks(userId);
+    const cached = await cacheService.get<any[]>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const books = await bookService.getAll(userId);
+    
+    // Cache for 15 minutes
+    await cacheService.set(cacheKey, books, CACHE_CONFIG.TTL.bookList);
+    
     res.json(books);
   } catch (error) {
     console.error('Get books error:', error);
@@ -313,14 +320,26 @@ app.get('/api/books', async (req: Request, res: Response) => {
   }
 });
 
+// Get single book by ID (with caching)
 app.get('/api/books/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Try cache first
+    const cacheKey = CacheKeys.book(id);
+    const cached = await cacheService.get<any>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const book = await bookService.getById(id);
     
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
+    
+    // Cache for 24 hours
+    await cacheService.set(cacheKey, book, CACHE_CONFIG.TTL.bookMetadata);
     
     res.json(book);
   } catch (error) {
