@@ -4,11 +4,25 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { 
+  initializeDatabase, 
+  bookService, 
+  syncService,
+  collectionService,
+  tagService,
+  readingLogService 
+} from './database';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize database connection
+initializeDatabase().catch((error) => {
+  console.error('Failed to initialize database:', error);
+  process.exit(1);
+});
 
 // Middleware
 app.use(helmet());
@@ -208,10 +222,154 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+// Book CRUD endpoints
+app.get('/api/books', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const books = await bookService.getAll(userId);
+    res.json(books);
+  } catch (error) {
+    console.error('Get books error:', error);
+    res.status(500).json({ error: 'Failed to get books' });
+  }
+});
+
+app.get('/api/books/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const book = await bookService.getById(id);
+    
+    if (!book) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    
+    res.json(book);
+  } catch (error) {
+    console.error('Get book error:', error);
+    res.status(500).json({ error: 'Failed to get book' });
+  }
+});
+
+app.post('/api/books', async (req: Request, res: Response) => {
+  try {
+    const { userId, ...bookData } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const book = await bookService.create(userId, bookData);
+    res.status(201).json(book);
+  } catch (error) {
+    console.error('Create book error:', error);
+    res.status(500).json({ error: 'Failed to create book' });
+  }
+});
+
+app.put('/api/books/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { ...changes } = req.body;
+    
+    const book = await bookService.update(id, changes);
+    res.json(book);
+  } catch (error) {
+    console.error('Update book error:', error);
+    res.status(500).json({ error: 'Failed to update book' });
+  }
+});
+
+app.delete('/api/books/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await bookService.delete(id);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Delete book error:', error);
+    res.status(500).json({ error: 'Failed to delete book' });
+  }
+});
+
+// Collection endpoints
+app.get('/api/collections', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const collections = await collectionService.getAll(userId);
+    res.json(collections);
+  } catch (error) {
+    console.error('Get collections error:', error);
+    res.status(500).json({ error: 'Failed to get collections' });
+  }
+});
+
+app.post('/api/collections', async (req: Request, res: Response) => {
+  try {
+    const { userId, ...collectionData } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const collection = await collectionService.create(userId, collectionData);
+    res.status(201).json(collection);
+  } catch (error) {
+    console.error('Create collection error:', error);
+    res.status(500).json({ error: 'Failed to create collection' });
+  }
+});
+
+// Tag endpoints
+app.get('/api/tags', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const tags = await tagService.getAll(userId);
+    res.json(tags);
+  } catch (error) {
+    console.error('Get tags error:', error);
+    res.status(500).json({ error: 'Failed to get tags' });
+  }
+});
+
+app.post('/api/tags', async (req: Request, res: Response) => {
+  try {
+    const { userId, ...tagData } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const tag = await tagService.create(userId, tagData);
+    res.status(201).json(tag);
+  } catch (error) {
+    console.error('Create tag error:', error);
+    res.status(500).json({ error: 'Failed to create tag' });
+  }
+});
+
 // Sync endpoints
 app.post('/api/sync/operations', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { operations } = req.body;
+    const { userId, operations } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
     
     if (!Array.isArray(operations)) {
       return res.status(400).json({ error: 'Operations must be an array' });
@@ -221,20 +379,23 @@ app.post('/api/sync/operations', async (req: Request, res: Response, next: NextF
     const results = [];
     for (const operation of operations) {
       try {
-        // TODO: Implement actual sync logic based on operation type
-        // This would involve updating the backend database
-        // For conflict resolution, use "last-write-wins" strategy
-        // In production, check timestamps and implement merge logic
-        console.log('Processing sync operation:', operation);
+        // Queue the sync operation in the database
+        const syncedOp = await syncService.queueOperation(userId, {
+          type: operation.type,
+          entity: operation.entity,
+          entityId: operation.entityId,
+          data: operation.data
+        });
+        
         results.push({ 
-          id: operation.id, 
+          id: syncedOp.id, 
           status: 'success',
           entity: operation.entity,
           entityId: operation.entityId
         });
       } catch (error) {
         results.push({ 
-          id: operation.id, 
+          id: operation.id || 'unknown', 
           status: 'failed',
           error: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -243,37 +404,43 @@ app.post('/api/sync/operations', async (req: Request, res: Response, next: NextF
     
     res.json({ results });
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Sync operations error:', error.message);
-      res.status(500).json({ error: 'Sync failed' });
-    } else {
-      next(error);
-    }
+    console.error('Sync operations error:', error);
+    res.status(500).json({ error: 'Sync failed' });
   }
 });
 
 // Get sync status
 app.get('/api/sync/status', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // TODO: Return sync status from backend database
-    // For now, return basic status
+    const { userId } = req.query;
+    
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Get pending operations count from database
+    const pendingOperations = await syncService.getPendingOperations(userId);
+    
     res.json({ 
       status: 'ready',
       lastSync: null,
-      pendingOperations: 0
+      pendingOperations: pendingOperations.length
     });
   } catch (error) {
-    next(error);
+    console.error('Sync status error:', error);
+    res.status(500).json({ error: 'Failed to get sync status' });
   }
 });
 
 // Sync full data dump (for initial sync or complete resync)
 app.post('/api/sync/full', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { books, collections, tags, readings } = req.body;
+    const { userId, books, collections, tags, readings } = req.body;
     
-    // TODO: Implement full sync logic
-    // This would replace all backend data with the provided data
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
     console.log('Processing full sync with', {
       booksCount: books?.length || 0,
       collectionsCount: collections?.length || 0,
@@ -281,12 +448,15 @@ app.post('/api/sync/full', async (req: Request, res: Response, next: NextFunctio
       readingsCount: readings?.length || 0
     });
     
+    // TODO: Implement full sync logic with proper transaction handling
+    // For now, just return success
     res.json({ 
       status: 'success',
       syncedAt: new Date().toISOString()
     });
   } catch (error) {
-    next(error);
+    console.error('Full sync error:', error);
+    res.status(500).json({ error: 'Full sync failed' });
   }
 });
 

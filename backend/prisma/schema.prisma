@@ -1,0 +1,253 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model for authentication and data isolation
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings      UserSettings?
+  books         Book[]
+  ratings       Rating[]
+  tags          Tag[]
+  collections   Collection[]
+  readingLogs   ReadingLog[]
+  syncOperations SyncOperation[]
+}
+
+// User preferences and settings
+model UserSettings {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme                String   @default("system") // 'light' | 'dark' | 'system'
+  defaultFormat        String   @default("physical") // 'physical' | 'kindle' | 'kobo' | 'audible' | 'audiobook' | 'pdf' | 'other'
+  ratingDisplay        String   @default("stars") // 'stars' | 'numbers'
+  dateFormat           String   @default("MM/dd/yyyy")
+  readingReminders     Boolean  @default(true)
+  newRecommendations   Boolean  @default(true)
+  weeklyDigest         Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// Main book entity
+model Book {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  subtitle        String?
+  authors         String[]
+  isbn13          String?  @unique
+  coverUrl        String?
+  localCoverPath  String?
+  description     String?
+  publisher       String?
+  publishedYear   Int?
+  publishedDate   String?
+  pageCount       Int?
+  format          String   @default("physical") // BookFormat enum
+  addedAt         DateTime @default(now())
+  externalIds     Json?    // { openLibrary?: string, googleBooks?: string, oclcNumber?: string, lccn?: string, deweyDecimal?: string }
+  lastSyncedAt    DateTime?
+  needsSync       Boolean  @default(true)
+  localOnly       Boolean  @default(false)
+  
+  // Metadata fields
+  genre           String?
+  language        String?
+  averageRating   Float?
+  ratingsCount    Int?
+  categories      String[]
+  subjects        String[]
+  tags            String[]
+  printType       String?
+  dimensions      Json?    // { height?: string, width?: string, thickness?: string }
+  weight          String?
+  country         String?
+  languageCode    String?
+  previewLink     String?
+  infoLink        String?
+  canonicalVolumeLink String?
+  webReaderLink   String?
+  isEbook         Boolean?
+  epubAvailable   Boolean?
+  pdfAvailable    Boolean?
+  textToSpeechPermission String?
+  seriesName      String?
+  seriesVolume    Int?
+  edition         String?
+  volume          String?
+  saleability     String?
+  listPrice       Json?    // { amount: number, currencyCode: string }
+  contentVersion  String?
+  maturityRating  String?
+  allowAnonLogging Boolean?
+  authorDetails   Json?    // Array of { name: string, bio?: string, born?: string, died?: string, photoUrl?: string }
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  ratings         Rating[]
+  bookTags        BookTag[]
+  collectionBooks CollectionBook[]
+  readingLogs     ReadingLog[]
+
+  @@index([userId])
+  @@index([isbn13])
+  @@index([format])
+  @@index([addedAt])
+  @@index([userId, addedAt])
+}
+
+// Book ratings and reviews
+model Rating {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId            String
+  book              Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  stars             Float    // 0.5 to 5.0, increments of 0.5
+  review            String?
+  reviewCreatedAt   DateTime?
+  containsSpoilers  Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([stars])
+}
+
+// Tag definitions
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookTags  BookTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// Many-to-many relationship between books and tags
+model BookTag {
+  id      String @id @default(cuid())
+  bookId  String
+  book    Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, tagId])
+  @@index([bookId])
+  @@index([tagId])
+}
+
+// Collection definitions
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  coverImage  String?
+  isSmart     Boolean  @default(false)
+  smartRules  Json?    // Array of { field: 'rating' | 'format' | 'tags' | 'status' | 'year', operator: 'equals' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains', value: string | number | string[] }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  books       CollectionBook[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isSmart])
+}
+
+// Many-to-many relationship between collections and books
+model CollectionBook {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  bookId       String
+  book         Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  order        Int        @default(0)
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, bookId])
+  @@index([collectionId])
+  @@index([bookId])
+}
+
+// Reading status logs
+model ReadingLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId     String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  status     String   // 'want_to_read' | 'currently_reading' | 'read' | 'dnf'
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([status])
+}
+
+// Sync operation queue
+model SyncOperation {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               String   // 'create' | 'update' | 'delete'
+  entity             String   // 'book' | 'rating' | 'tag' | 'collection' | 'readingLog'
+  entityId           String
+  data               Json
+  timestamp          DateTime @default(now())
+  synced             Boolean  @default(false)
+  conflictResolution String?  // 'local' | 'server' | 'merge'
+
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([synced])
+  @@index([timestamp])
+}
+
+// Cover image metadata (actual images stored in file storage)
+model CoverImage {
+  id        String   @id @default(cuid())
+  bookId    String?
+  userId    String
+  path      String   // Path to file in storage (S3, local filesystem, etc.)
+  mimeType  String   @default("image/jpeg")
+  size      Int?
+  createdAt DateTime @default(now())
+  
+  @@index([bookId])
+  @@index([userId])
+}
