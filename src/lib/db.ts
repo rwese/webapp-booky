@@ -307,6 +307,10 @@ export const settingsOperations = {
 };
 
 export const readingLogOperations = {
+  async getAll(): Promise<ReadingLog[]> {
+    return await db.readingLogs.toArray();
+  },
+  
   async getByBookId(bookId: string): Promise<ReadingLog | undefined> {
     return await db.readingLogs.where('bookId').equals(bookId).first();
   },
