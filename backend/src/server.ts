@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { register, recordRequest, activeConnections } from './metrics';
 import { 
   initializeDatabase, 
   bookService, 
@@ -78,6 +79,34 @@ app.use(versionAwareResponse);
 
 // Rate limiting
 app.use('/api/', globalRateLimiter);
+
+// Metrics middleware for tracking request duration
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const startTime = Date.now();
+  activeConnections.inc();
+  
+  res.on('finish', () => {
+    const duration = (Date.now() - startTime) / 1000;
+    const method = req.method || 'UNKNOWN';
+    const route = req.route?.path || req.path || 'unknown';
+    const statusCode = res.statusCode || 500;
+    
+    recordRequest(method, route, statusCode, duration);
+    activeConnections.dec();
+  });
+  
+  next();
+});
+
+// Metrics endpoint (no authentication required for Prometheus scraping)
+app.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (error) {
+    res.status(500).end('Error collecting metrics');
+  }
+});
 
 // File storage routes
 app.use('/api/files', fileRoutes);
