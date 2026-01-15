@@ -34,13 +34,31 @@ const REFRESHABLE_FIELDS = [
 type RefreshableField = typeof REFRESHABLE_FIELDS[number];
 
 /**
+ * Error types for better error handling
+ */
+export type MetadataErrorType = 
+  | 'isbn_required'
+  | 'no_results'
+  | 'api_error'
+  | 'network_error'
+  | 'rate_limit'
+  | 'unknown';
+
+interface MetadataError {
+  type: MetadataErrorType;
+  message: string;
+  source?: string;
+  retryable: boolean;
+}
+
+/**
  * Return type for the useBookMetadataRefresh hook
  */
 interface UseBookMetadataRefreshReturn {
   /** Whether a refresh is currently in progress */
   isRefreshing: boolean;
   /** Any error that occurred during refresh */
-  error: string | null;
+  error: MetadataError | null;
   /** The last successfully refreshed book data (with only refreshable fields) */
   lastRefreshedData: Partial<Book> | null;
   /** Function to trigger metadata refresh */
@@ -69,7 +87,7 @@ interface UseBookMetadataRefreshReturn {
  */
 export function useBookMetadataRefresh(): UseBookMetadataRefreshReturn {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MetadataError | null>(null);
   const [lastRefreshedData, setLastRefreshedData] = useState<Partial<Book> | null>(null);
 
   /**
@@ -112,7 +130,11 @@ export function useBookMetadataRefresh(): UseBookMetadataRefreshReturn {
   const refreshMetadata = useCallback(
     async (bookId: string, isbn: string): Promise<Partial<Book> | null> => {
       if (!isbn) {
-        setError('ISBN is required for metadata refresh');
+        setError({
+          type: 'isbn_required',
+          message: 'ISBN is required for metadata refresh',
+          retryable: false
+        });
         return null;
       }
 
@@ -142,7 +164,11 @@ export function useBookMetadataRefresh(): UseBookMetadataRefreshReturn {
         }
 
         if (!selectedBook) {
-          setError(`No metadata found for ISBN ${isbn}. Searched sources: ${isbnLookupSources.googleBooks.name}, ${isbnLookupSources.openLibrary.name}`);
+          setError({
+            type: 'no_results',
+            message: `No metadata found for ISBN ${isbn}. Searched sources: ${isbnLookupSources.googleBooks.name}, ${isbnLookupSources.openLibrary.name}`,
+            retryable: true
+          });
           return null;
         }
 
@@ -167,7 +193,11 @@ export function useBookMetadataRefresh(): UseBookMetadataRefreshReturn {
         return mergedData;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to refresh book metadata';
-        setError(errorMessage);
+        setError({
+          type: 'api_error',
+          message: errorMessage,
+          retryable: true
+        });
         console.error('Metadata refresh error:', err);
         return null;
       } finally {

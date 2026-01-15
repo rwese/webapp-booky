@@ -16,6 +16,7 @@ import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
 import { clsx } from 'clsx';
+import { BookCover } from '../components/image';
 
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -214,7 +215,7 @@ export function BookDetailPage() {
         
         addToast({ type: 'success', message: 'Metadata refreshed!' });
       } else if (error) {
-        addToast({ type: 'error', message: error });
+        addToast({ type: 'error', message: error.message });
       }
     } catch (err) {
       console.error('Failed to refresh metadata:', err);
@@ -296,17 +297,7 @@ export function BookDetailPage() {
           {/* Cover */}
           <div className="flex-shrink-0">
             <div className="w-48 h-72 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden shadow-lg">
-              {book.coverUrl ? (
-                <img 
-                  src={book.coverUrl} 
-                  alt={book.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Book size={48} className="text-gray-400" />
-                </div>
-              )}
+              <BookCover book={book} className="w-full h-full" />
             </div>
           </div>
 

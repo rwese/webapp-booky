@@ -30,16 +30,5 @@ yarn-error.log*
 # Testing
 coverage/
 .nyc_output/
-
-# Misc
-*.local
-.cache/
-
-# PWA
-**/sw.js
-**/workbox-*.js
-
-# Tickteer (separate git repository)
-tools/tickteer/
-dev-dist/
-test-results
+playwright-report/
+test-results/

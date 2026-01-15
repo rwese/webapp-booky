@@ -6,6 +6,7 @@ import { useFilteredBooks } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
 import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
 import { bookOperations } from '../lib/db';
+import { BookCover } from '../components/image';
 import type { Book as BookType, FilterConfig, SortConfig } from '../types';
 import { clsx } from 'clsx';
 
@@ -245,17 +246,7 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
       <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
         <div className="flex p-4 gap-4">
           <div className="flex-shrink-0 w-20 h-28 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-            {book.coverUrl ? (
-              <img 
-                src={book.coverUrl} 
-                alt={book.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Book className="text-gray-400" size={32} />
-              </div>
-            )}
+            <BookCover book={book} className="w-full h-full" />
           </div>
           <div className="flex-1 min-w-0 py-1">
             <div className="flex items-start justify-between">
@@ -293,17 +284,7 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
   return (
     <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700">
-        {book.coverUrl ? (
-          <img 
-            src={book.coverUrl} 
-            alt={book.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Book className="text-gray-400" size={48} />
-          </div>
-        )}
+        <BookCover book={book} className="w-full h-full" />
       </div>
       <div className="p-3">
         <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">

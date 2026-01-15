@@ -1,6 +1,6 @@
 # Book Collection Webapp
 
-A mobile-first, offline-capable webapp for organizing personal book collections. Users can catalog books, rate them, organize with tags and collections, track reading history, and view analytics about their reading habits.
+A mobile-first, offline-capable webapp for organizing personal book collections with optional cloud sync. Users can catalog books, rate them, organize with tags and collections, track reading history, and view analytics about their reading habits.
 
 ## Features
 
@@ -11,9 +11,12 @@ A mobile-first, offline-capable webapp for organizing personal book collections.
 - 📊 **Analytics** - Visual insights into reading habits
 - 📱 **Mobile-First** - Optimized for mobile with responsive design
 - 📴 **Offline Support** - Works without internet connection
-- 🔒 **Privacy-First** - All data stored locally
+- 🔄 **Cloud Sync** - Optional backend sync across devices (PostgreSQL + JWT auth)
+- 🔒 **Privacy-First** - All data stored locally by default
 
 ## Tech Stack
+
+### Frontend
 
 - **Framework**: React 18 with TypeScript
 - **Build Tool**: Vite 5
@@ -25,6 +28,15 @@ A mobile-first, offline-capable webapp for organizing personal book collections.
 - **Charts**: Recharts
 - **Icons**: Lucide React
 - **Testing**: Vitest (unit) + Playwright (e2e)
+
+### Backend (Optional)
+
+- **Runtime**: Node.js 18+ with Express
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT with refresh tokens
+- **File Storage**: S3-compatible storage for book covers
+- **Deployment**: Docker + Kubernetes or Docker Compose
+- **Monitoring**: Prometheus + Grafana + Sentry
 
 ## Project Structure
 
@@ -178,6 +190,37 @@ The Playwright configuration (`playwright.config.ts`) includes a `webServer` sec
 
 - **Open Library API** - Primary metadata source (free, no rate limits)
 - **Google Books API** - Fallback for cover images and metadata
+
+## Backend (Optional Cloud Sync)
+
+The app can optionally use a backend server for cloud sync across devices:
+
+### Quick Start (Docker Compose)
+
+```bash
+cd backend
+cp .env.production .env  # Configure environment variables
+docker-compose up -d     # Start PostgreSQL and backend
+
+# Verify deployment
+curl https://api.booky.app/api/health
+```
+
+### Backend Features
+
+- **Authentication**: JWT-based with refresh tokens
+- **Data Sync**: Real-time sync with conflict resolution
+- **File Storage**: S3-compatible storage for book covers
+- **Rate Limiting**: Protection against abuse
+- **Monitoring**: Prometheus metrics and alerting
+
+### Deployment Options
+
+- **Docker Compose**: Single-server deployment
+- **Kubernetes**: Scalable container orchestration
+- **Cloud Services**: AWS ECS, GCP Cloud Run, Azure Container Apps
+
+See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Contributing
 
