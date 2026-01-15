@@ -225,6 +225,7 @@ export interface SyncStatus {
   pendingOperations: number;
   isSyncing: boolean;
   syncError: string | null;
+  lastSyncStatus?: 'success' | 'error' | 'syncing' | 'idle';
 }
 
 // Barcode Scanning Types
@@ -708,4 +709,40 @@ export interface ImportProgress {
   status: 'idle' | 'reading' | 'processing' | 'importing' | 'completed' | 'error';
   currentBook?: string;
   errors: ImportError[];
+}
+
+// Authentication Types
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user?: User;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  message?: string;
+  error?: string;
 }
