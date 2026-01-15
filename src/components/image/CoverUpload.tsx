@@ -179,6 +179,17 @@ export function CoverUpload({
         </p>
       )}
 
+      {/* Camera View */}
+      {isUsingCamera && !isCropping && (
+        <div className="relative">
+          <CameraCapture
+            onCapture={handleCameraCapture}
+            onCancel={handleCameraCancel}
+            aspectRatio={16 / 9}
+          />
+        </div>
+      )}
+
       {/* Cropping View */}
       {isCropping && (
         <div className="relative">
