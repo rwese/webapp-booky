@@ -52,6 +52,7 @@ import {
   requestTimeout,
   securityErrorHandler
 } from './security';
+import fileRoutes from './routes/files';
 
 dotenv.config();
 
@@ -77,6 +78,9 @@ app.use(versionAwareResponse);
 
 // Rate limiting
 app.use('/api/', globalRateLimiter);
+
+// File storage routes
+app.use('/api/files', fileRoutes);
 
 // Google Books API configuration
 const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
