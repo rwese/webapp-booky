@@ -294,24 +294,27 @@ export async function getCollectionShares(collectionId: string, userId: string) 
       collectionId,
       collection: { userId },
     },
-    include: {
-      sharedWith: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-        },
-      },
-    },
   });
 
-  return shares.map((s: any) => ({
-    userId: s.sharedWith.id,
-    name: s.sharedWith.name,
-    avatarUrl: s.sharedWith.image,
-    permission: s.permission,
-    sharedAt: s.createdAt.toISOString(),
-  }));
+  // Get user details separately
+  const userIds = shares.map(s => s.sharedWithUserId);
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true, image: true },
+  });
+  
+  const userMap = new Map(users.map(u => [u.id, u]));
+
+  return shares.map(s => {
+    const user = userMap.get(s.sharedWithUserId);
+    return {
+      userId: s.sharedWithUserId,
+      name: user?.name || 'Unknown',
+      avatarUrl: user?.image || undefined,
+      permission: s.permission,
+      sharedAt: s.createdAt.toISOString(),
+    };
+  });
 }
 
 export async function createShareLink(
@@ -788,30 +791,43 @@ export async function getActivityFeed(userId: string, page = 1, limit = 20) {
       userId: { in: followingIds },
       action: { in: ['book.read', 'book.started', 'collection.created', 'challenge.completed'] },
     },
-    include: {
-      user: {
-        select: { id: true, name: true, image: true },
-      },
-      book: {
-        select: { id: true, title: true, coverUrl: true, authors: true },
-      },
-    },
     skip: (page - 1) * limit,
     take: limit,
     orderBy: { createdAt: 'desc' },
   });
 
-  return activities.map(a => ({
-    id: a.id,
-    userId: a.user.id,
-    userName: a.user.name,
-    userAvatar: a.user.image || undefined,
-    action: a.action,
-    bookId: a.book?.id,
-    bookTitle: a.book?.title,
-    bookCover: a.book?.coverUrl,
-    timestamp: a.createdAt.toISOString(),
-  }));
+  // Get user and book details separately
+  const userIds = activities.map(a => a.userId);
+  const bookIds = activities.filter(a => a.bookId).map(a => a.bookId as string);
+  
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true, image: true },
+  });
+  
+  const books = await prisma.book.findMany({
+    where: { id: { in: bookIds } },
+    select: { id: true, title: true, coverUrl: true, authors: true },
+  });
+  
+  const userMap = new Map(users.map(u => [u.id, u]));
+  const bookMap = new Map(books.map(b => [b.id, b]));
+
+  return activities.map(a => {
+    const user = userMap.get(a.userId);
+    const book = a.bookId ? bookMap.get(a.bookId) : null;
+    return {
+      id: a.id,
+      userId: a.userId,
+      userName: user?.name || 'Unknown',
+      userAvatar: user?.image || undefined,
+      action: a.action,
+      bookId: book?.id,
+      bookTitle: book?.title,
+      bookCover: book?.coverUrl,
+      timestamp: a.createdAt.toISOString(),
+    };
+  });
 }
 
 export async function logActivity(

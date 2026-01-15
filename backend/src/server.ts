@@ -13,6 +13,16 @@ import {
   tagService,
   readingLogService 
 } from './database';
+import {
+  queueSyncOperation,
+  getPendingOperations,
+  processSyncBatch,
+  getChangesSince,
+  fullSync,
+  getSyncStatus,
+  markOperationsSynced,
+  clearSyncedOperations
+} from './syncService';
 import { 
   createUser, 
   loginUser, 
