@@ -107,6 +107,300 @@ app.get('/metrics', async (req: Request, res: Response) => {
 // File storage routes
 app.use('/api/files', fileRoutes);
 
+// Social features routes
+app.get('/api/social/profile/:userId', async (req: Request, res: Response) => {
+  try {
+    const { getPublicProfile } = await import('./social');
+    const profile = await getPublicProfile(req.params.userId);
+    if (!profile) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(profile);
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+app.put('/api/social/profile', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { updateProfile } = await import('./social');
+    const { name, bio, avatarUrl } = req.body;
+    const userId = (req as any).user?.id || req.body.userId;
+    const profile = await updateProfile(userId, { name, bio, avatarUrl });
+    res.json(profile);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+app.post('/api/social/follow/:userId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { followUser } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    await followUser(userId, req.params.userId);
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.message === 'Cannot follow yourself') {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Follow error:', error);
+    res.status(500).json({ error: 'Failed to follow user' });
+  }
+});
+
+app.delete('/api/social/follow/:userId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { unfollowUser } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    await unfollowUser(userId, req.params.userId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Unfollow error:', error);
+    res.status(500).json({ error: 'Failed to unfollow user' });
+  }
+});
+
+app.get('/api/social/followers/:userId', async (req: Request, res: Response) => {
+  try {
+    const { getFollowers } = await import('./social');
+    const page = parseInt(req.query.page as string) || 1;
+    const followers = await getFollowers(req.params.userId, page);
+    res.json(followers);
+  } catch (error) {
+    console.error('Get followers error:', error);
+    res.status(500).json({ error: 'Failed to get followers' });
+  }
+});
+
+app.get('/api/social/following/:userId', async (req: Request, res: Response) => {
+  try {
+    const { getFollowing } = await import('./social');
+    const page = parseInt(req.query.page as string) || 1;
+    const following = await getFollowing(req.params.userId, page);
+    res.json(following);
+  } catch (error) {
+    console.error('Get following error:', error);
+    res.status(500).json({ error: 'Failed to get following' });
+  }
+});
+
+// Collection sharing
+app.post('/api/social/collections/:collectionId/share', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { shareCollectionWithUser } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    const { targetUserId, permission } = req.body;
+    const share = await shareCollectionWithUser(req.params.collectionId, userId, targetUserId, permission);
+    res.json(share);
+  } catch (error: any) {
+    if (error.message.includes('not found or access denied')) {
+      return res.status(403).json({ error: error.message });
+    }
+    console.error('Share collection error:', error);
+    res.status(500).json({ error: 'Failed to share collection' });
+  }
+});
+
+app.delete('/api/social/collections/:collectionId/share/:targetUserId', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { revokeCollectionShare } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    await revokeCollectionShare(req.params.collectionId, userId, req.params.targetUserId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Revoke share error:', error);
+    res.status(500).json({ error: 'Failed to revoke share' });
+  }
+});
+
+app.post('/api/social/collections/:collectionId/link', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { createShareLink } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    const { expiresAt, maxViews, allowEdit } = req.body;
+    const link = await createShareLink(req.params.collectionId, userId, { expiresAt, maxViews, allowEdit });
+    res.json(link);
+  } catch (error: any) {
+    if (error.message.includes('not found or access denied')) {
+      return res.status(403).json({ error: error.message });
+    }
+    console.error('Create share link error:', error);
+    res.status(500).json({ error: 'Failed to create share link' });
+  }
+});
+
+app.get('/api/social/share/:token', async (req: Request, res: Response) => {
+  try {
+    const { accessViaShareLink } = await import('./social');
+    const result = await accessViaShareLink(req.params.token);
+    res.json({
+      collection: result.collection,
+      permission: result.permission,
+    });
+  } catch (error: any) {
+    if (error.message.includes('Invalid') || error.message.includes('expired') || error.message.includes('limit')) {
+      return res.status(404).json({ error: error.message });
+    }
+    console.error('Access share link error:', error);
+    res.status(500).json({ error: 'Failed to access share link' });
+  }
+});
+
+app.put('/api/social/collections/:collectionId/public', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { makeCollectionPublic, makeCollectionPrivate } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    const isPublic = req.body.isPublic === true;
+    
+    if (isPublic) {
+      await makeCollectionPublic(req.params.collectionId, userId);
+    } else {
+      await makeCollectionPrivate(req.params.collectionId, userId);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Toggle public error:', error);
+    res.status(500).json({ error: 'Failed to update collection visibility' });
+  }
+});
+
+app.get('/api/social/collections/public', async (req: Request, res: Response) => {
+  try {
+    const { getPublicCollections } = await import('./social');
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const collections = await getPublicCollections(page, limit);
+    res.json(collections);
+  } catch (error) {
+    console.error('Get public collections error:', error);
+    res.status(500).json({ error: 'Failed to get public collections' });
+  }
+});
+
+// Book recommendations
+app.get('/api/social/recommendations', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { getRecommendations } = await import('./social');
+    const userId = (req as any).user?.id || req.query.userId;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const recommendations = await getRecommendations(userId, limit);
+    res.json(recommendations);
+  } catch (error) {
+    console.error('Get recommendations error:', error);
+    res.status(500).json({ error: 'Failed to get recommendations' });
+  }
+});
+
+app.get('/api/social/books/:bookId/similar', async (req: Request, res: Response) => {
+  try {
+    const { getSimilarBooks } = await import('./social');
+    const limit = parseInt(req.query.limit as string) || 5;
+    const similar = await getSimilarBooks(req.params.bookId, limit);
+    res.json(similar);
+  } catch (error) {
+    console.error('Get similar books error:', error);
+    res.status(500).json({ error: 'Failed to get similar books' });
+  }
+});
+
+// Reading challenges
+app.post('/api/social/challenges', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { createChallenge } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    const { name, description, targetBooks, startDate, endDate, isPublic } = req.body;
+    const challenge = await createChallenge(userId, { name, description, targetBooks, startDate, endDate });
+    // Update isPublic separately if needed
+    res.status(201).json(challenge);
+  } catch (error) {
+    console.error('Create challenge error:', error);
+    res.status(500).json({ error: 'Failed to create challenge' });
+  }
+});
+
+app.get('/api/social/challenges', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { getUserChallenges } = await import('./social');
+    const userId = (req as any).user?.id || req.query.userId;
+    const challenges = await getUserChallenges(userId);
+    res.json(challenges);
+  } catch (error) {
+    console.error('Get challenges error:', error);
+    res.status(500).json({ error: 'Failed to get challenges' });
+  }
+});
+
+app.get('/api/social/challenges/public', async (req: Request, res: Response) => {
+  try {
+    const { getPublicChallenges } = await import('./social');
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const challenges = await getPublicChallenges(page, limit);
+    res.json(challenges);
+  } catch (error) {
+    console.error('Get public challenges error:', error);
+    res.status(500).json({ error: 'Failed to get public challenges' });
+  }
+});
+
+app.post('/api/social/challenges/:challengeId/join', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { joinCommunityChallenge } = await import('./social');
+    const userId = (req as any).user?.id || req.body.userId;
+    const participant = await joinCommunityChallenge(req.params.challengeId, userId);
+    res.json(participant);
+  } catch (error) {
+    console.error('Join challenge error:', error);
+    res.status(500).json({ error: 'Failed to join challenge' });
+  }
+});
+
+app.get('/api/social/challenges/:challengeId/leaderboard', async (req: Request, res: Response) => {
+  try {
+    const { getChallengeLeaderboard } = await import('./social');
+    const limit = parseInt(req.query.limit as string) || 10;
+    const leaderboard = await getChallengeLeaderboard(req.params.challengeId, limit);
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Get leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+// Activity feed
+app.get('/api/social/feed', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { getActivityFeed } = await import('./social');
+    const userId = (req as any).user?.id || req.query.userId;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const feed = await getActivityFeed(userId, page, limit);
+    res.json(feed);
+  } catch (error) {
+    console.error('Get activity feed error:', error);
+    res.status(500).json({ error: 'Failed to get activity feed' });
+  }
+});
+
+// User search
+app.get('/api/social/users/search', async (req: Request, res: Response) => {
+  try {
+    const { searchUsers } = await import('./social');
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    const limit = parseInt(req.query.limit as string) || 20;
+    const users = await searchUsers(q, limit);
+    res.json(users);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
 // Google Books API configuration
 const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
 const GOOGLE_BOOKS_API_KEY = process.env.GOOGLE_BOOKS_API_KEY;

@@ -17,6 +17,7 @@ model User {
   name      String?
   password  String?  // Hashed password for credentials auth
   image     String?
+  bio       String?  // User bio for social features
   emailVerified DateTime? @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -40,6 +41,13 @@ model User {
   collections   Collection[]
   readingLogs   ReadingLog[]
   syncOperations SyncOperation[]
+  
+  // Social features
+  followedBy    UserFollow[] @relation("Following")
+  following     UserFollow[] @relation("Follower")
+  challenges    ReadingChallenge[]
+  challengeParticipations ChallengeParticipant[]
+  activityLogs  ActivityLog[]
 
   @@index([email])
   @@index([oauthProvider, oauthProviderId])
@@ -190,15 +198,19 @@ model Collection {
   description String?
   coverImage  String?
   isSmart     Boolean  @default(false)
+  isPublic    Boolean  @default(false)  // Public visibility for social features
   smartRules  Json?    // Array of { field: 'rating' | 'format' | 'tags' | 'status' | 'year', operator: 'equals' | 'notEquals' | 'greaterThan' | 'lessThan' | 'contains', value: string | number | string[] }
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   books       CollectionBook[]
+  shares      CollectionShare[]
+  shareLinks  ShareLink[]
 
   @@unique([userId, name])
   @@index([userId])
   @@index([isSmart])
+  @@index([isPublic])
 }
 
 // Many-to-many relationship between collections and books
@@ -265,7 +277,110 @@ model CoverImage {
   mimeType  String   @default("image/jpeg")
   size      Int?
   createdAt DateTime @default(now())
-  
+   
   @@index([bookId])
   @@index([userId])
+}
+
+// ============================================================================
+// Social Features Models
+// ============================================================================
+
+// User follow relationships
+model UserFollow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// Collection sharing with specific users
+model CollectionShare {
+  id                String     @id @default(cuid())
+  collectionId      String
+  collection        Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  sharedWithUserId  String
+  permission        String     @default("view") // 'view' | 'edit'
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([collectionId, sharedWithUserId])
+  @@index([collectionId])
+  @@index([sharedWithUserId])
+}
+
+// Public share links for collections
+model ShareLink {
+  id          String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  token       String     @unique
+  expiresAt   DateTime?
+  maxViews    Int?
+  viewCount   Int        @default(0)
+  allowEdit   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+
+  @@index([collectionId])
+  @@index([token])
+}
+
+// Reading challenges
+model ReadingChallenge {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  targetBooks   Int
+  currentBooks  Int      @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  isPublic      Boolean  @default(false)
+  isCompleted   Boolean  @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participants  ChallengeParticipant[]
+
+  @@index([userId])
+  @@index([isPublic])
+}
+
+// Community challenge participants
+model ChallengeParticipant {
+  id          String          @id @default(cuid())
+  challengeId String
+  challenge   ReadingChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booksRead   Int             @default(0)
+  progress    Int             @default(0)
+  lastUpdated DateTime        @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([userId])
+}
+
+// Activity feed entries
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // 'book.read', 'book.started', 'collection.created', 'challenge.completed', 'challenge.joined', etc.
+  bookId    String?
+  metadata  Json?    // Additional activity data
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
