@@ -15,8 +15,23 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  password  String?  // Hashed password for credentials auth
+  image     String?
+  emailVerified DateTime? @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Authentication related fields
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  
+  // OAuth accounts
+  oauthProvider    String?  // 'google' | 'github' | 'discord' | 'apple'
+  oauthProviderId  String?
+  
+  // Last login tracking
+  lastLoginAt      DateTime?
+  loginCount       Int      @default(0)
 
   settings      UserSettings?
   books         Book[]
@@ -25,6 +40,9 @@ model User {
   collections   Collection[]
   readingLogs   ReadingLog[]
   syncOperations SyncOperation[]
+
+  @@index([email])
+  @@index([oauthProvider, oauthProviderId])
 }
 
 // User preferences and settings

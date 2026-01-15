@@ -12,6 +12,31 @@ import {
   tagService,
   readingLogService 
 } from './database';
+import {
+  queueSyncOperation,
+  getPendingOperations,
+  processSyncBatch,
+  getChangesSince,
+  fullSync,
+  getSyncStatus,
+  markOperationsSynced,
+  clearSyncedOperations
+} from './syncService';
+import { 
+  createUser, 
+  loginUser, 
+  refreshAccessToken,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
+  updateUserProfile,
+  deleteUserAccount,
+  isEmailRegistered,
+  getUserById,
+  findOrCreateOAuthUser,
+  validatePasswordStrength
+} from './auth';
+import { authMiddleware } from './authMiddleware';
 
 dotenv.config();
 
@@ -362,101 +387,699 @@ app.post('/api/tags', async (req: Request, res: Response) => {
   }
 });
 
-// Sync endpoints
-app.post('/api/sync/operations', async (req: Request, res: Response, next: NextFunction) => {
+// ==================== AUTHENTICATION ENDPOINTS ====================
+
+// Register new user
+app.post('/api/auth/register', async (req: Request, res: Response) => {
   try {
-    const { userId, operations } = req.body;
+    const { email, password, name } = req.body;
     
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Email and password are required' 
+      });
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_EMAIL',
+        message: 'Please enter a valid email address'
+      });
+    }
+    
+    const result = await createUser({ email, password, name });
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'REGISTRATION_FAILED',
+      message: 'Failed to register user'
+    });
+  }
+});
+
+// Login user
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Email and password are required' 
+      });
+    }
+    
+    const result = await loginUser({ email, password });
+    
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'LOGIN_FAILED',
+      message: 'Failed to login'
+    });
+  }
+});
+
+// Refresh access token
+app.post('/api/auth/refresh', async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Refresh token is required'
+      });
+    }
+    
+    const result = await refreshAccessToken(refreshToken);
+    
+    if (!result.success) {
+      return res.status(401).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'REFRESH_FAILED',
+      message: 'Failed to refresh token'
+    });
+  }
+});
+
+// Check email availability
+app.get('/api/auth/check-email', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Email is required'
+      });
+    }
+    
+    const isRegistered = await isEmailRegistered(email);
+    
+    res.json({
+      success: true,
+      available: !isRegistered,
+      email
+    });
+  } catch (error) {
+    console.error('Email check error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CHECK_FAILED',
+      message: 'Failed to check email availability'
+    });
+  }
+});
+
+// Request password reset
+app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Email is required'
+      });
+    }
+    
+    const result = await requestPasswordReset(email);
+    
+    // Always return success to prevent email enumeration
+    res.json({
+      success: true,
+      message: 'If an account exists with this email, a password reset link will be sent.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'REQUEST_FAILED',
+      message: 'Failed to process password reset request'
+    });
+  }
+});
+
+// Reset password with token
+app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+    
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Token and new password are required'
+      });
+    }
+    
+    const result = await resetPassword(token, password);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'RESET_FAILED',
+      message: 'Failed to reset password'
+    });
+  }
+});
+
+// Get current user profile (authenticated)
+app.get('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+    
+    const user = await getUserById(req.user.userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'USER_NOT_FOUND',
+        message: 'User not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'PROFILE_FAILED',
+      message: 'Failed to get user profile'
+    });
+  }
+});
+
+// Update user profile (authenticated)
+app.put('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+    
+    const { name, image } = req.body;
+    const result = await updateUserProfile(req.user.userId, { name, image });
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'UPDATE_FAILED',
+      message: 'Failed to update profile'
+    });
+  }
+});
+
+// Change password (authenticated)
+app.post('/api/auth/change-password', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+    
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Current password and new password are required'
+      });
+    }
+    
+    const result = await changePassword(req.user.userId, currentPassword, newPassword);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CHANGE_FAILED',
+      message: 'Failed to change password'
+    });
+  }
+});
+
+// Delete account (authenticated)
+app.delete('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      });
+    }
+    
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Password is required to delete account'
+      });
+    }
+    
+    const result = await deleteUserAccount(req.user.userId, password);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'DELETE_FAILED',
+      message: 'Failed to delete account'
+    });
+  }
+});
+
+// OAuth callback (Google, GitHub, Discord, Apple)
+app.post('/api/auth/oauth', async (req: Request, res: Response) => {
+  try {
+    const { provider, providerId, email, name, image } = req.body;
+    
+    if (!provider || !providerId || !email) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Provider, providerId, and email are required'
+      });
+    }
+    
+    const result = await findOrCreateOAuthUser(provider, providerId, email, name, image);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('OAuth error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'OAUTH_FAILED',
+      message: 'Failed to authenticate with provider'
+    });
+  }
+});
+
+// Validate password strength
+app.post('/api/auth/validate-password', async (req: Request, res: Response) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Password is required'
+      });
+    }
+    
+    const validation = validatePasswordStrength(password);
+    
+    res.json({
+      success: true,
+      ...validation
+    });
+  } catch (error) {
+    console.error('Password validation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'VALIDATION_FAILED',
+      message: 'Failed to validate password'
+    });
+  }
+});
+
+// Sync endpoints
+
+// Process sync operations
+app.post('/api/sync/operations', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { operations } = req.body;
+    
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
     }
     
     if (!Array.isArray(operations)) {
-      return res.status(400).json({ error: 'Operations must be an array' });
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Operations must be an array'
+      });
     }
     
-    // Process each operation
-    const results = [];
-    for (const operation of operations) {
-      try {
-        // Queue the sync operation in the database
-        const syncedOp = await syncService.queueOperation(userId, {
-          type: operation.type,
-          entity: operation.entity,
-          entityId: operation.entityId,
-          data: operation.data
-        });
-        
-        results.push({ 
-          id: syncedOp.id, 
-          status: 'success',
-          entity: operation.entity,
-          entityId: operation.entityId
-        });
-      } catch (error) {
-        results.push({ 
-          id: operation.id || 'unknown', 
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
+    // Process the batch of operations
+    const results = await processSyncBatch(req.user.userId, operations);
+    
+    // Mark successful operations as synced
+    const successfulIds = results
+      .filter(r => r.status === 'success')
+      .map(r => r.id);
+    
+    if (successfulIds.length > 0) {
+      await markOperationsSynced(req.user.userId, successfulIds);
     }
     
     res.json({ results });
   } catch (error) {
     console.error('Sync operations error:', error);
-    res.status(500).json({ error: 'Sync failed' });
+    res.status(500).json({
+      success: false,
+      error: 'SYNC_FAILED',
+      message: 'Failed to process sync operations'
+    });
   }
 });
 
 // Get sync status
-app.get('/api/sync/status', async (req: Request, res: Response, next: NextFunction) => {
+app.get('/api/sync/status', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
-    
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ error: 'User ID is required' });
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
     }
     
-    // Get pending operations count from database
-    const pendingOperations = await syncService.getPendingOperations(userId);
+    const status = await getSyncStatus(req.user.userId);
     
-    res.json({ 
-      status: 'ready',
-      lastSync: null,
-      pendingOperations: pendingOperations.length
+    res.json({
+      success: true,
+      ...status
     });
   } catch (error) {
     console.error('Sync status error:', error);
-    res.status(500).json({ error: 'Failed to get sync status' });
+    res.status(500).json({
+      success: false,
+      error: 'STATUS_FAILED',
+      message: 'Failed to get sync status'
+    });
   }
 });
 
-// Sync full data dump (for initial sync or complete resync)
-app.post('/api/sync/full', async (req: Request, res: Response, next: NextFunction) => {
+// Get pending operations (for client sync queue)
+app.get('/api/sync/pending', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { userId, books, collections, tags, readings } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
     }
     
-    console.log('Processing full sync with', {
+    const operations = await getPendingOperations(req.user.userId);
+    
+    res.json({
+      success: true,
+      operations
+    });
+  } catch (error) {
+    console.error('Get pending operations error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'FETCH_FAILED',
+      message: 'Failed to get pending operations'
+    });
+  }
+});
+
+// Get changes since timestamp (incremental sync)
+app.get('/api/sync/changes', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
+    }
+    
+    const { since } = req.query;
+    
+    if (!since || typeof since !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Since timestamp is required'
+      });
+    }
+    
+    const sinceDate = new Date(since);
+    const changes = await getChangesSince(req.user.userId, sinceDate);
+    
+    res.json({
+      success: true,
+      changes,
+      since: sinceDate.toISOString()
+    });
+  } catch (error) {
+    console.error('Get changes error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'FETCH_FAILED',
+      message: 'Failed to get changes'
+    });
+  }
+});
+
+// Full sync (replace all data)
+app.post('/api/sync/full', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
+    }
+    
+    const { books, collections, tags, readings, settings } = req.body;
+    
+    console.log('Processing full sync for user:', req.user.userId, {
       booksCount: books?.length || 0,
       collectionsCount: collections?.length || 0,
       tagsCount: tags?.length || 0,
-      readingsCount: readings?.length || 0
+      readingsCount: readings?.length || 0,
+      hasSettings: !!settings
     });
     
-    // TODO: Implement full sync logic with proper transaction handling
-    // For now, just return success
-    res.json({ 
-      status: 'success',
-      syncedAt: new Date().toISOString()
+    const result = await fullSync(req.user.userId, {
+      books,
+      collections,
+      tags,
+      readings,
+      settings
+    });
+    
+    // Clear synced operations after full sync
+    await clearSyncedOperations(req.user.userId);
+    
+    res.json({
+      success: true,
+      syncedAt: result.syncedAt.toISOString()
     });
   } catch (error) {
     console.error('Full sync error:', error);
-    res.status(500).json({ error: 'Full sync failed' });
+    res.status(500).json({
+      success: false,
+      error: 'FULL_SYNC_FAILED',
+      message: 'Full sync failed'
+    });
+  }
+});
+
+// Queue sync operation
+app.post('/api/sync/queue', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
+    }
+    
+    const { type, entity, entityId, data } = req.body;
+    
+    if (!type || !entity || !entityId) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Type, entity, and entityId are required'
+      });
+    }
+    
+    const operation = await queueSyncOperation(req.user.userId, {
+      type,
+      entity,
+      entityId,
+      data
+    });
+    
+    res.status(201).json({
+      success: true,
+      operation: {
+        id: operation.id,
+        type: operation.type,
+        entity: operation.entity,
+        entityId: operation.entityId,
+        timestamp: operation.timestamp,
+        synced: operation.synced
+      }
+    });
+  } catch (error) {
+    console.error('Queue sync operation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'QUEUE_FAILED',
+      message: 'Failed to queue sync operation'
+    });
+  }
+});
+
+// Mark operations as synced
+app.post('/api/sync/mark-synced', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
+    }
+    
+    const { operationIds } = req.body;
+    
+    if (!Array.isArray(operationIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Operation IDs must be an array'
+      });
+    }
+    
+    await markOperationsSynced(req.user.userId, operationIds);
+    
+    res.json({
+      success: true,
+      message: `Marked ${operationIds.length} operations as synced`
+    });
+  } catch (error) {
+    console.error('Mark synced error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'MARK_FAILED',
+      message: 'Failed to mark operations as synced'
+    });
+  }
+});
+
+// Clear synced operations
+app.delete('/api/sync/clear', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Authentication required'
+      });
+    }
+    
+    await clearSyncedOperations(req.user.userId);
+    
+    res.json({
+      success: true,
+      message: 'Cleared synced operations'
+    });
+  } catch (error) {
+    console.error('Clear synced operations error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CLEAR_FAILED',
+      message: 'Failed to clear synced operations'
+    });
   }
 });
 
