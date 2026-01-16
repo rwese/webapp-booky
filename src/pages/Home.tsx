@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Book, Plus, ArrowRight, Library, TrendingUp, Clock } from 'lucide-react';
+import { Plus, ArrowRight, Library, TrendingUp, Clock } from 'lucide-react';
+import { Book } from 'lucide-react';
 import { Card, Badge } from '../components/common/Button';
 import { useBooks } from '../hooks/useBooks';
 import { useSyncStatus } from '../hooks/useSync';
 import { useNavigate } from 'react-router-dom';
+import { BookCover } from '../components/image/BookCover';
+import type { Book as BookType } from '../types';
 
 export function HomePage() {
   const books = useBooks();
@@ -214,14 +217,7 @@ function EmptyState({ icon, title, description, action }: EmptyStateProps) {
 }
 
 interface BookCardProps {
-  book: {
-    id: string;
-    title: string;
-    authors: string[];
-    coverUrl?: string;
-    format: string;
-    readingStatus?: string;
-  };
+  book: BookType;
   navigate: ReturnType<typeof useNavigate>;
 }
 
@@ -229,19 +225,7 @@ function BookCard({ book, navigate }: BookCardProps) {
   return (
     <Card hover className="overflow-hidden" onClick={() => navigate(`/book/${book.id}`)}>
       <div className="flex p-4 gap-4">
-        <div className="flex-shrink-0 w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-          {book.coverUrl ? (
-            <img 
-              src={book.coverUrl} 
-              alt={book.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Book className="text-gray-400" size={24} />
-            </div>
-          )}
-        </div>
+        <BookCover book={book} className="w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden" />
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 dark:text-white truncate">{book.title}</h4>
           <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
