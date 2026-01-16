@@ -155,8 +155,7 @@ export function useConflictResolution() {
   const resolveConflict = useCallback(async (
     conflictId: string,
     resolution: 'keep_local' | 'keep_server' | 'merge',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mergedData?: any
+    mergedData?: ConflictData['localData']
   ) => {
     const conflict = conflicts.find(c => c.id === conflictId);
     if (!conflict) return false;

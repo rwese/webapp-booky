@@ -4,7 +4,8 @@ import {
 } from '../lib/db';
 import { useToastStore } from '../store/useStore';
 import type { 
-  OfflineAction, 
+  OfflineAction,
+  OfflineActionData,
   SyncStatus, 
   ConflictData,
   ConflictResolution,
@@ -36,8 +37,8 @@ export function useOnlineStatus(): boolean {
 
     // Listen for network changes (more comprehensive)
     if ('connection' in navigator) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const connection = (navigator as any).connection;
+      // Network Information API - properly typed for browser compatibility
+      const connection = (navigator as Navigator & { connection?: { addEventListener: (event: string, handler: () => void) => void; removeEventListener: (event: string, handler: () => void) => void } }).connection;
       const handleConnectionChange = () => {
         const online = navigator.onLine;
         setIsOnline(online);
@@ -125,8 +126,7 @@ export function useOfflineQueue() {
   const queueOfflineAction = useCallback(async (
     type: OfflineAction['type'],
     entityId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: any
+    data: OfflineActionData
   ) => {
     const action: OfflineAction = {
       id: crypto.randomUUID(),
@@ -167,10 +167,8 @@ export function useConflictResolution() {
   const detectConflict = useCallback(async (
     entity: string,
     entityId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    localData: any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    serverData?: any
+    localData: { updatedAt: Date },
+    serverData?: { updatedAt: Date }
   ): Promise<ConflictData | null> => {
     // Check if there's a conflict based on timestamps
     if (serverData && localData.updatedAt > serverData.updatedAt) {
@@ -190,8 +188,7 @@ export function useConflictResolution() {
   const resolveConflict = useCallback(async (
     conflictId: string,
     resolution: ConflictResolution['resolution'],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mergedData?: any
+    mergedData?: { updatedAt: Date }
   ) => {
     setIsResolving(true);
     try {

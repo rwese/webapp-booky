@@ -76,6 +76,7 @@ interface FetchResult<T> {
 }
 
 // Helper function to safely parse JSON with content-type checking
+// Using any because API responses have dynamic structures that vary by endpoint
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function safeJsonParse(response: Response): Promise<FetchResult<any>> {
   const contentType = response.headers.get('content-type') || '';

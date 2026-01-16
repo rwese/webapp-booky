@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useOnlineStatus } from './useOffline';
 import { db, syncOperations, readingLogOperations } from '../lib/db';
 import { syncService } from '../services/syncService';
+import type { SyncOperationData } from '../types';
 
 // Enhanced hook for sync status with real-time updates
 export function useSyncStatus() {
@@ -124,8 +125,7 @@ export function useQueueSync() {
     type: 'create' | 'update' | 'delete',
     entity: 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
     entityId: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: any
+    data: SyncOperationData
   ) => {
     await syncOperations.queueOperation({
       type,
