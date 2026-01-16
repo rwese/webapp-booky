@@ -8,6 +8,7 @@ import { db } from '../lib/db';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
+import type { ThemeMode, BookFormat } from '../types';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
@@ -79,7 +80,7 @@ export function SettingsPage() {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => updateSettings({ theme: option.value as any })}
+                        onClick={() => updateSettings({ theme: option.value as ThemeMode })}
                         className={clsx(
                           'flex flex-col items-center gap-2 p-4 rounded-lg border transition-all',
                           'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -206,7 +207,7 @@ export function SettingsPage() {
                 <select
                   id="default-format"
                   value={settings.defaultFormat}
-                  onChange={(e) => updateSettings({ defaultFormat: e.target.value as any })}
+                  onChange={(e) => updateSettings({ defaultFormat: e.target.value as BookFormat })}
                   className="input"
                 >
                   <option value="physical">Physical Book</option>
@@ -225,7 +226,7 @@ export function SettingsPage() {
                 <select
                   id="rating-display"
                   value={settings.ratingDisplay}
-                  onChange={(e) => updateSettings({ ratingDisplay: e.target.value as any })}
+                  onChange={(e) => updateSettings({ ratingDisplay: e.target.value as 'stars' | 'numbers' })}
                   className="input"
                 >
                   <option value="stars">Stars (★★★★★)</option>

@@ -176,7 +176,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
   }, [state.queue, lookupBookByISBN]);
 
   // Function to create book in database
-  const createBookInDatabase = useCallback(async (bookData: any): Promise<boolean> => {
+  const createBookInDatabase = useCallback(async (bookData: Book): Promise<boolean> => {
     try {
       // Check for duplicates in database
       const existingByIsbn13 = bookData.isbn13 ? await bookOperations.getByIsbn(bookData.isbn13) : null;

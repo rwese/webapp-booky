@@ -1,6 +1,6 @@
 // Sync Service - handles online/offline monitoring and sync operations
 import { syncOperations } from '../lib/db';
-import type { SyncOperation } from '../types';
+import type { SyncOperation, SyncOperationData } from '../types';
 
 const SYNC_INTERVAL = 30000; // 30 seconds
 const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
@@ -74,13 +74,13 @@ class SyncService {
     entity: 'book' | 'rating' | 'tag' | 'collection' | 'readingLog', 
     entityId: string, 
     type: 'create' | 'update' | 'delete',
-    data?: any
+    data?: SyncOperationData | undefined
   ) {
     await syncOperations.queueOperation({
       entity,
       entityId,
       type,
-      data
+      data: data ?? {}
     });
 
     console.log(`Queued ${type} operation for ${entity}:${entityId}`);

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { ScanResult, ScanQueueItem } from '../../types';
+import type { ScanResult, ScanQueueItem, Book } from '../../types';
 import { CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, RefreshCw } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
@@ -444,13 +444,36 @@ function ManualISBNEntry({
 }
 
 // Batch Scan Queue Component
+interface BatchScanQueueProps {
+  batchScan: {
+    state: {
+      queue: Array<{
+        id: string;
+        isbn: string;
+        status: 'pending' | 'success' | 'error' | 'duplicate' | 'created';
+        bookData?: Book;
+        error?: string;
+        scannedAt: Date;
+      }>;
+      isProcessing: boolean;
+      currentProgress: number;
+      totalItems: number;
+      errors: string[];
+    };
+    lookupAndAddToQueue: (isbn: string) => Promise<'success' | 'error' | 'duplicate' | false>;
+    removeFromQueue: (id: string) => void;
+    clearQueue: () => void;
+    processQueue: () => Promise<void>;
+    createBooks: () => Promise<void>;
+    retryItem: (id: string) => void;
+  };
+  onAddIsbn: (isbn: string) => void;
+}
+
 function BatchScanQueue({ 
   batchScan, 
   onAddIsbn 
-}: { 
-  batchScan: any; 
-  onAddIsbn: (isbn: string) => void;
-}) {
+}: BatchScanQueueProps) {
   const [inputValue, setInputValue] = useState('');
 
   const handleAdd = () => {

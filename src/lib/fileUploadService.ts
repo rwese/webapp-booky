@@ -8,6 +8,13 @@
 import { authService } from './backendAuth';
 import { db } from './db';
 
+interface StorageUsageData {
+  totalSize: number;
+  imagesSize: number;
+  dataSize: number;
+  lastCleanup: string;
+}
+
 const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
 
 /**
@@ -136,9 +143,9 @@ export class FileUploadService {
   /**
    * Get storage usage for current user
    */
-  async getStorageUsage(): Promise<{ success: boolean; usage?: any; error?: string }> {
+  async getStorageUsage(): Promise<{ success: boolean; usage?: StorageUsageData; error?: string }> {
     try {
-      const usage = await authService.authenticatedFetch<any>(`${BACKEND_API}/files/usage`);
+      const usage = await authService.authenticatedFetch<StorageUsageData>(`${BACKEND_API}/files/usage`);
       return { success: true, usage };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to get storage usage' };

@@ -49,7 +49,7 @@ export function requestBackgroundSync(tag: string) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(registration => {
       if ('sync' in registration) {
-        return (registration as any).sync.register(tag)
+        return (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag)
           .then(() => {
             console.log('Background sync registered for:', tag);
           })

@@ -7,7 +7,7 @@ import { useLibraryStore, useToastStore } from '../store/useStore';
 import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
 import { bookOperations } from '../lib/db';
 import { BookCover } from '../components/image';
-import type { Book as BookType, FilterConfig, SortConfig } from '../types';
+import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
 
 export function LibraryPage() {
@@ -187,14 +187,14 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
                 aria-label={`Filter by ${format} format`}
                 onClick={() => {
                   const currentFormats = filterConfig.formats || [];
-                  const newFormats = currentFormats.includes(format as any)
+                  const newFormats = currentFormats.includes(format as BookFormat)
                     ? currentFormats.filter(f => f !== format)
-                    : [...currentFormats, format as any];
+                    : [...currentFormats, format as BookFormat];
                   onFilterChange({ ...filterConfig, formats: newFormats });
                 }}
                 className={clsx(
                   'px-3 py-1 rounded-full text-sm transition-colors',
-                  filterConfig.formats?.includes(format as any)
+                  filterConfig.formats?.includes(format as BookFormat)
                     ? 'bg-primary-600 text-white'
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 )}

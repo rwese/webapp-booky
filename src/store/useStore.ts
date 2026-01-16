@@ -38,8 +38,8 @@ interface LibraryState {
 // Modal state
 interface ModalState {
   activeModal: string | null;
-  modalData: any;
-  openModal: (modalId: string, data?: any) => void;
+  modalData: Record<string, unknown> | null;
+  openModal: (modalId: string, data?: Record<string, unknown> | null) => void;
   closeModal: () => void;
 }
 

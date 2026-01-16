@@ -7,7 +7,7 @@ import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
 import { useDebounce } from '../hooks/usePerformance';
-import type { Book as BookType } from '../types';
+import type { Book as BookType, BookFormat } from '../types';
 import { clsx } from 'clsx';
 
 export function AddBookPage() {
@@ -307,7 +307,7 @@ export function AddBookPage() {
                 <select
                   id="book-format"
                   value={newBook.format}
-                  onChange={(e) => setNewBook({ ...newBook, format: e.target.value as any })}
+                  onChange={(e) => setNewBook({ ...newBook, format: e.target.value as BookFormat })}
                   className="input"
                 >
                   <option value="physical">Physical Book</option>

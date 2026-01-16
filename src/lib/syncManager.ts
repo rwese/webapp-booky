@@ -8,7 +8,7 @@
 import { authService } from './backendAuth';
 import { booksApi, booksSync } from './booksApi';
 import { db } from './db';
-import type { Book, SyncOperation, SyncStatus, UserSettings } from '../types';
+import type { Book, SyncOperation, SyncStatus, UserSettings, Collection, Tag } from '../types';
 
 // Settings interface for sync metadata
 interface SyncSettings {
@@ -112,9 +112,9 @@ export class SyncManager {
       const lastSync = this.lastSyncTime || new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24 hours
       const pullResult = await booksSync.pullChanges(user.id, lastSync);
       
-      if (pullResult.success && pullResult.changes?.changes) {
+      if (pullResult.success && pullResult.changes) {
         // Apply remote changes to local database
-        await this.applyRemoteChanges(pullResult.changes.changes);
+        await this.applyRemoteChanges(pullResult.changes);
       }
 
       // Step 3: Perform full sync if needed
@@ -158,7 +158,7 @@ export class SyncManager {
   /**
    * Apply remote changes to local database
    */
-  private async applyRemoteChanges(changes: any): Promise<void> {
+  private async applyRemoteChanges(changes: { books?: { created?: Book[]; updated?: Book[]; deleted?: string[] }; collections?: { created?: Collection[] }; tags?: { created?: Tag[] } }): Promise<void> {
     if (!changes) return;
 
     // Apply book changes

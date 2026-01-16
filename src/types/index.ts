@@ -177,23 +177,27 @@ export interface NotificationConfig {
 }
 
 // Sync Operation Types
+export type SyncOperationData = Partial<Book> | Partial<Rating> | Partial<Tag> | Partial<Collection> | Partial<ReadingLog>;
+
 export interface SyncOperation {
   id: string;
   type: 'create' | 'update' | 'delete';
   entity: 'book' | 'rating' | 'tag' | 'collection' | 'readingLog';
   entityId: string;
-  data: any;
+  data: SyncOperationData;
   timestamp: Date;
   synced: boolean;
   conflictResolution?: 'local' | 'server' | 'merge';
 }
 
 // Offline-specific Types
+export type OfflineActionData = Partial<Book> | Partial<Rating> | Partial<Tag> | Partial<Collection> | { status: ReadingStatus };
+
 export interface OfflineAction {
   id: string;
   type: 'book_add' | 'book_update' | 'book_delete' | 'rating_update' | 'tag_add' | 'tag_remove' | 'collection_add' | 'collection_remove' | 'status_update';
   entityId: string;
-  data: any;
+  data: OfflineActionData;
   timestamp: Date;
   synced: boolean;
   retryCount: number;
@@ -282,8 +286,8 @@ export interface ResponsiveConfig {
 // Conflict Resolution Types
 export interface ConflictData {
   id: string;
-  localData: any;
-  serverData?: any;
+  localData: Record<string, unknown>;
+  serverData?: Record<string, unknown>;
   localTimestamp: Date;
   serverTimestamp?: Date;
   entity: string;
@@ -293,7 +297,7 @@ export interface ConflictData {
 export interface ConflictResolution {
   conflictId: string;
   resolution: 'keep_local' | 'keep_server' | 'merge';
-  mergedData?: any;
+  mergedData?: Record<string, unknown>;
   resolvedAt: Date;
 }
 

@@ -7,7 +7,7 @@
 
 import { authService } from './backendAuth';
 import { db } from './db';
-import type { Book, SyncOperation } from '../types';
+import type { Book, SyncOperation, Collection, Tag } from '../types';
 
 const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
 
@@ -67,17 +67,15 @@ export class BooksApiService {
   /**
    * Fetch collections for a user
    */
-  async fetchCollections(userId: string): Promise<any[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return authService.authenticatedFetch<any[]>(`${BACKEND_API}/collections?userId=${userId}`);
+  async fetchCollections(userId: string): Promise<Collection[]> {
+    return authService.authenticatedFetch<Collection[]>(`${BACKEND_API}/collections?userId=${userId}`);
   }
 
   /**
    * Create a collection
    */
-  async createCollection(data: { name: string; description?: string; bookIds?: string[] }): Promise<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return authService.authenticatedFetch<any>(`${BACKEND_API}/collections`, {
+  async createCollection(data: { name: string; description?: string; bookIds?: string[] }): Promise<Collection> {
+    return authService.authenticatedFetch<Collection>(`${BACKEND_API}/collections`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -86,17 +84,15 @@ export class BooksApiService {
   /**
    * Fetch tags for a user
    */
-  async fetchTags(userId: string): Promise<any[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return authService.authenticatedFetch<any[]>(`${BACKEND_API}/tags?userId=${userId}`);
+  async fetchTags(userId: string): Promise<Tag[]> {
+    return authService.authenticatedFetch<Tag[]>(`${BACKEND_API}/tags?userId=${userId}`);
   }
 
   /**
    * Create a tag
    */
-  async createTag(data: { name: string; color?: string }): Promise<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return authService.authenticatedFetch<any>(`${BACKEND_API}/tags`, {
+  async createTag(data: { name: string; color?: string }): Promise<Tag> {
+    return authService.authenticatedFetch<Tag>(`${BACKEND_API}/tags`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -158,17 +154,15 @@ export class BooksSyncService {
   /**
    * Pull changes from backend since last sync
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async pullChanges(userId: string, since: Date): Promise<{ success: boolean; changes: any }> {
+  async pullChanges(userId: string, since: Date): Promise<{ success: boolean; changes: { books?: { created?: Book[]; updated?: Book[]; deleted?: string[] }; collections?: { created?: Collection[] }; tags?: { created?: Tag[] } } }> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const changes = await authService.authenticatedFetch<any>(
+      const changes = await authService.authenticatedFetch<{ books?: { created?: Book[]; updated?: Book[]; deleted?: string[] }; collections?: { created?: Collection[] }; tags?: { created?: Tag[] } }>(
         `${BACKEND_API}/sync/changes?since=${since.toISOString()}`
       );
       return { success: true, changes };
     } catch (error) {
       console.error('Pull changes failed:', error);
-      return { success: false, changes: null };
+      return { success: false, changes: {} };
     }
   }
 
@@ -185,8 +179,7 @@ export class BooksSyncService {
       const localSettings = await db.settings.get('userSettings');
 
       // Perform full sync
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await authService.authenticatedFetch<any>(`${BACKEND_API}/sync/full`, {
+      const result = await authService.authenticatedFetch<{ success: boolean }>(`${BACKEND_API}/sync/full`, {
         method: 'POST',
         body: JSON.stringify({
           books: localBooks,
@@ -213,9 +206,8 @@ export class BooksSyncService {
   /**
    * Get sync status
    */
-  async getSyncStatus(_userId: string): Promise<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return authService.authenticatedFetch<any>(`${BACKEND_API}/sync/status`);
+  async getSyncStatus(_userId: string): Promise<{ isOnline: boolean; lastSyncTime: Date | null; pendingOperations: number; isSyncing: boolean; syncError: string | null }> {
+    return authService.authenticatedFetch<{ isOnline: boolean; lastSyncTime: Date | null; pendingOperations: number; isSyncing: boolean; syncError: string | null }>(`${BACKEND_API}/sync/status`);
   }
 
   /**

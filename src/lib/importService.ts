@@ -579,7 +579,7 @@ export const bookImportService = new BookImportService();
 
 // File system utilities for Node.js (for backend/preview)
 // These are not used in the web environment but may be needed for preprocessing
-export async function readJsonFile(filePath: string): Promise<any> {
+export async function readJsonFile(filePath: string): Promise<ImportMetadata> {
   try {
     // This would use Node.js fs in a Node environment
     // For browser, we use fetch
