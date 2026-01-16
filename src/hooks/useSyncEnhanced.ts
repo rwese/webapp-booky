@@ -350,15 +350,25 @@ export function useBackgroundSync() {
 }
 
 // Hook for sync progress tracking
+type SyncProgressPhase = 'idle' | 'pushing' | 'pulling' | 'resolving' | 'complete' | 'error';
+
+interface SyncProgress {
+  phase: SyncProgressPhase;
+  total: number;
+  current: number;
+  message: string;
+}
+
 export function useSyncProgress() {
-  const [progress, setProgress] = useState({
-    phase: 'idle' as 'idle' | 'pushing' | 'pulling' | 'resolving' | 'complete' | 'error',
+  const [progress, setProgress] = useState<SyncProgress>({
+    phase: 'idle',
     total: 0,
     current: 0,
     message: ''
   });
 
-  const updateProgress = useCallback((phase: typeof progress.phase, current: number, total: number, message = '') => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const updateProgress = useCallback((phase: SyncProgressPhase, current: number, total: number, message = '') => {
     setProgress({ phase, current, total, message });
   }, []);
 

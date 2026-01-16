@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ImportBookData } from '../../types';
 import { bookImportService } from '../../lib/importService';
 import { formatImportStatus, formatRatingForDisplay } from '../../lib/importUtils';
@@ -27,11 +27,7 @@ export function ImportPreview({ importData, onImport, onCancel }: ImportPreviewP
   const [loading, setLoading] = useState(true);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
 
-  useEffect(() => {
-    loadPreview();
-  }, [importData]);
-
-  const loadPreview = async () => {
+  const loadPreview = useCallback(async () => {
     setLoading(true);
     try {
       const previewData = await bookImportService.previewImport(importData);
@@ -41,7 +37,11 @@ export function ImportPreview({ importData, onImport, onCancel }: ImportPreviewP
     } finally {
       setLoading(false);
     }
-  };
+  }, [importData]);
+
+  useEffect(() => {
+    loadPreview();
+  }, [loadPreview]);
 
   const handleImport = () => {
     onImport({ skipDuplicates });

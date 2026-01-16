@@ -18,21 +18,22 @@ export function useDebounce<T>(value: T, delay: number): T {
 }
 
 // Throttle hook
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useThrottle<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
 ): T {
   const lastRun = useRef(Date.now());
 
-  return useCallback(
-    ((...args) => {
-      if (Date.now() - lastRun.current >= delay) {
-        callback(...args);
-        lastRun.current = Date.now();
-      }
-    }) as T,
-    [callback, delay]
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const throttledCallback = useCallback((...args: Parameters<T>) => {
+    if (Date.now() - lastRun.current >= delay) {
+      callback(...args);
+      lastRun.current = Date.now();
+    }
+  }, [callback, delay]);
+
+  return throttledCallback as T;
 }
 
 // Intersection Observer hook for lazy loading

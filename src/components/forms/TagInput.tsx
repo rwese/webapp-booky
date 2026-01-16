@@ -102,7 +102,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
     } else if (event.key === 'Backspace' && !inputValue && selectedTags.length > 0) {
       handleRemoveTag(selectedTags[selectedTags.length - 1].id);
     }
-  }, [inputValue, selectedTags, handleSelectExistingTag, handleCreateTag, handleRemoveTag]);
+  }, [inputValue, selectedTags, suggestions, handleSelectExistingTag, handleCreateTag, handleRemoveTag]);
 
   const getColorClasses = (colorValue: string) => {
     const colorObj = TAG_COLORS.find(c => c.value === colorValue);

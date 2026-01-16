@@ -41,4 +41,18 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    files: ['src/__tests__/**/*'],
+    languageOptions: {
+      parser: require('@typescript-eslint/parser'),
+      parserOptions: {
+        project: ['./tsconfig.test.json'],
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
 ];
