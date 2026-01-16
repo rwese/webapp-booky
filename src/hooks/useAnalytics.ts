@@ -246,10 +246,48 @@ export function useGenreRanking(limit: number = 10) {
   }));
 }
 
-// Hook for format distribution  
+// Hook for tag distribution - counts tags across all books using junction table
+export function useTagDistribution() {
+  const bookTags = useLiveQuery(() => db.bookTags.toArray());
+  const tags = useLiveQuery(() => db.tags.toArray());
+
+  return bookTags?.reduce((acc, bookTag) => {
+    const tag = tags?.find(t => t.id === bookTag.tagId);
+    if (tag) {
+      acc[tag.name] = (acc[tag.name] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>) || {};
+}
+
+// Hook for tag ranking - returns tags sorted by usage count
+export function useTagRanking(limit: number = 10) {
+  const distribution = useTagDistribution();
+
+  const ranking = Object.entries(distribution)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .slice(0, limit)
+    .map(([tag, count], index) => ({
+      rank: index + 1,
+      tag,
+      count,
+      percentage: 0 // Will be calculated when total is available
+    }));
+
+  // Calculate total for percentage
+  const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
+  // Add percentages
+  return ranking.map(item => ({
+    ...item,
+    percentage: total > 0 ? Math.round((item.count / total) * 100) : 0
+  }));
+}
+
+// Hook for format distribution
 export function useFormatDistribution() {
   const books = useLiveQuery(() => bookOperations.getAll());
-  
+
   return books?.reduce((acc, book) => {
     acc[book.format] = (acc[book.format] || 0) + 1;
     return acc;
