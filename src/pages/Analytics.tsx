@@ -16,7 +16,8 @@ import {
   useReadingAnalytics, 
   useFormatDistribution, 
   useRatingDistribution,
-  useReadingStreak 
+  useReadingStreak,
+  useGenreRanking 
 } from '../hooks/useAnalytics';
 import { useToastStore } from '../store/useStore';
 import { format, startOfYear, endOfYear, eachMonthOfInterval, getYear, getMonth } from 'date-fns';
@@ -44,6 +45,7 @@ export function AnalyticsPage() {
   const formatDistribution = useFormatDistribution();
   const ratingDistribution = useRatingDistribution();
   const readingStreak = useReadingStreak();
+  const genreRanking = useGenreRanking(10); // Top 10 genres
   const { addToast } = useToastStore();
   
   // Time range filter for charts
@@ -159,6 +161,15 @@ export function AnalyticsPage() {
     
     return data;
   }, []);
+  
+  // Genre ranking data for chart
+  const genreRankingData = useMemo(() => {
+    return genreRanking.map(item => ({
+      genre: item.genre.length > 15 ? item.genre.substring(0, 15) + '...' : item.genre,
+      count: item.count,
+      percentage: item.percentage
+    }));
+  }, [genreRanking]);
   
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
@@ -373,6 +384,68 @@ export function AnalyticsPage() {
               </div>
             </div>
           </Card>
+          
+          {/* Genre Ranking Chart */}
+          {genreRanking.length > 0 && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Genre Ranking</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={genreRankingData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                    <XAxis type="number" tick={{ fontSize: 12 }} />
+                    <YAxis 
+                      dataKey="genre" 
+                      type="category" 
+                      tick={{ fontSize: 12 }}
+                      width={100}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value: React.ReactNode, name: string) => [
+                        value, 
+                        name === 'count' ? 'Books' : 'Percentage'
+                      ]}
+                      labelFormatter={(label: string) => label}
+                    />
+                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]}>
+                      {genreRankingData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={`rgba(16, 185, 129, ${1 - (index * 0.08)})`} 
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Genre legend */}
+              <div className="mt-4 space-y-1">
+                {genreRankingData.map((item, index) => (
+                  <div key={item.genre} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{index + 1}.</span>
+                      <span className="text-gray-600 dark:text-gray-400">{item.genre}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{item.count} books</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">({item.percentage}%)</span>
+                    </div>
+                  </div>
+                ))}
+                {genreRankingData.length > 5 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    +{genreRankingData.length - 5} more genres...
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
           
           {/* Rating Distribution (Histogram) */}
           <Card className="p-6">

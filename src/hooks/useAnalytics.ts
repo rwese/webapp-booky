@@ -204,12 +204,46 @@ export function useGenreDistribution() {
   const books = useLiveQuery(() => bookOperations.getAll());
   
   return books?.reduce((acc, book) => {
-    // For now, we'll derive genres from tags or format
-    // In a real implementation, you'd have a proper genre field
-    const genre = book.format; // Using format as a proxy for genre distribution
-    acc[genre] = (acc[genre] || 0) + 1;
+    // Use primary genre field if available
+    if (book.genre) {
+      acc[book.genre] = (acc[book.genre] || 0) + 1;
+    }
+    
+    // Also aggregate categories from ISBN metadata
+    if (book.categories && book.categories.length > 0) {
+      book.categories.forEach(category => {
+        if (category) {
+          acc[category] = (acc[category] || 0) + 1;
+        }
+      });
+    }
+    
     return acc;
   }, {} as Record<string, number>) || {};
+}
+
+// Hook for genre ranking - returns genres sorted by count
+export function useGenreRanking(limit: number = 10) {
+  const distribution = useGenreDistribution();
+  
+  const ranking = Object.entries(distribution)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .slice(0, limit)
+    .map(([genre, count], index) => ({
+      rank: index + 1,
+      genre,
+      count,
+      percentage: 0 // Will be calculated when total is available
+    }));
+  
+  // Calculate total for percentage
+  const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+  
+  // Add percentages
+  return ranking.map(item => ({
+    ...item,
+    percentage: total > 0 ? Math.round((item.count / total) * 100) : 0
+  }));
 }
 
 // Hook for format distribution  
