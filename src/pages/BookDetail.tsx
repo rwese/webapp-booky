@@ -4,7 +4,7 @@ import {
   ArrowLeft, Edit, Trash2, Book, Calendar, Building, 
   Tag, Clock, ExternalLink, Share2, Heart, RefreshCw
 } from 'lucide-react';
-import { Button, Card, Badge, Input } from '../components/common/Button';
+import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { TagBadge, TagManager } from '../components/forms/TagInput';
@@ -14,7 +14,6 @@ import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
-import { clsx } from 'clsx';
 import { BookCover } from '../components/image';
 
 export function BookDetailPage() {
@@ -30,7 +29,6 @@ export function BookDetailPage() {
   const [bookTags, setBookTags] = useState<TagType[]>([]);
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
-  const [previousRating, setPreviousRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
 
   // Metadata refresh hook
@@ -79,7 +77,6 @@ export function BookDetailPage() {
         ]);
         
         setBookTags(tags);
-        setPreviousRating(rating?.stars || 0);
         setCurrentRating(rating?.stars || 0);
         setCurrentReview(rating?.review || '');
         
@@ -113,7 +110,6 @@ export function BookDetailPage() {
       
       await ratingOperations.upsert(ratingRecord);
       setCurrentRating(rating);
-      setPreviousRating(rating);
       
       addToast({ type: 'success', message: 'Rating saved!' });
     } catch (error) {
@@ -147,31 +143,7 @@ export function BookDetailPage() {
       addToast({ type: 'error', message: 'Failed to save review' });
     }
   }, [book, currentRating, currentReview, addToast]);
-
-  // Handle tags change
-  const handleTagsChange = useCallback(async (tags: TagType[]) => {
-    if (!book) return;
-    
-    try {
-      // Remove all existing tags
-      const existingTags = await tagOperations.getBookTags(book.id);
-      for (const tag of existingTags) {
-        await tagOperations.removeTagFromBook(book.id, tag.id);
-      }
-      
-      // Add new tags
-      for (const tag of tags) {
-        await tagOperations.addTagToBook(book.id, tag.id);
-      }
-      
-      setBookTags(tags);
-      addToast({ type: 'success', message: 'Tags updated!' });
-    } catch (error) {
-      console.error('Failed to update tags:', error);
-      addToast({ type: 'error', message: 'Failed to update tags' });
-    }
-  }, [book, addToast]);
-
+  
 
   // Handle book deletion
   const handleDelete = useCallback(async () => {
@@ -382,12 +354,12 @@ export function BookDetailPage() {
           <Card className="p-4 mb-6">
             <h3 className="font-semibold mb-3">Add to Collections</h3>
             <CollectionSelector
-              selectedCollections={bookCollections}
-              onCollectionsChange={async (collections) => {
-                // This would need implementation to add/remove from collections
-                await loadBookCollections(book.id);
-              }}
-            />
+            selectedCollections={bookCollections}
+            onCollectionsChange={async (_collections) => {
+              // This would need implementation to add/remove from collections
+              await loadBookCollections(book.id);
+            }}
+          />
           </Card>
         )}
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react'; 
 import { 
   syncOperations
 } from '../lib/db';
+import { useToastStore } from '../store/useStore';
 import type { 
   OfflineAction, 
   SyncStatus, 
@@ -192,13 +193,6 @@ export function useConflictResolution() {
       const conflict = conflicts.find(c => c.id === conflictId);
       if (!conflict) return false;
 
-      const resolutionRecord: ConflictResolution = {
-        conflictId,
-        resolution,
-        mergedData,
-        resolvedAt: new Date()
-      };
-
       // Apply resolution
       if (resolution === 'keep_local') {
         // Keep local data, mark as needing sync
@@ -319,7 +313,7 @@ export function useImageCache() {
     }
   }, []);
 
-  const getCachedImage = useCallback(async (bookId: string): Promise<string | null> => {
+  const getCachedImage = useCallback(async (_bookId: string): Promise<string | null> => {
     // Retrieve cached image path
     return null;
   }, []);
@@ -410,5 +404,3 @@ export function useConnectivityHandler() {
 
   return { isOnline };
 }
-
-import { useToastStore } from '../store/useStore';

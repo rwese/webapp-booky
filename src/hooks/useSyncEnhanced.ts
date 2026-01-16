@@ -5,7 +5,7 @@ import { syncApi } from '../services/api';
 import { db, syncOperations, bookOperations, collectionOperations, tagOperations, readingLogOperations } from '../lib/db';
 import { useOnlineStatus } from './useOffline';
 import { syncService } from '../services/syncService';
-import type { SyncOperation, ConflictData } from '../types';
+import type { ConflictData } from '../types';
 
 // Hook for comprehensive sync status
 export function useSyncStatus() {

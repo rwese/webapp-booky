@@ -10,8 +10,6 @@ import { booksApi, booksSync } from './booksApi';
 import { db } from './db';
 import type { Book, SyncOperation, SyncStatus, UserSettings } from '../types';
 
-const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
-
 // Settings interface for sync metadata
 interface SyncSettings {
   id: string;

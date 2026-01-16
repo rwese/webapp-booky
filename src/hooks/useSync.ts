@@ -15,7 +15,7 @@ export function useSyncStatus() {
 
   useEffect(() => {
     // Subscribe to sync service for real-time updates
-    const unsubscribe = syncService.subscribe((online) => {
+    const unsubscribe = syncService.subscribe((_online) => {
       // This will trigger re-render when online status changes
     });
 

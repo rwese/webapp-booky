@@ -15,7 +15,7 @@ export function EditBookPage() {
   const [book, setBook] = useState<BookType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { isRefreshing, refreshMetadata, lastRefreshedData } = useBookMetadataRefresh();
+  const { isRefreshing, refreshMetadata } = useBookMetadataRefresh();
 
   useEffect(() => {
     const loadBook = async () => {

@@ -2,7 +2,6 @@ import type {
   Book, 
   Rating, 
   ReadingLog, 
-  Tag,
   ImportBookData,
   ImportMetadata,
   ImportResult,
@@ -12,7 +11,6 @@ import {
   bookOperations, 
   ratingOperations, 
   readingLogOperations,
-  tagOperations,
   coverImageOperations
 } from './db';
 import { 
@@ -229,7 +227,7 @@ class BookImportService {
 
     try {
       // In a web environment, we'll read the file and store it
-      const sourcePath = `${this.coverImagesPath}${filename}`;
+      const _sourcePath = `${this.coverImagesPath}${filename}`;
       
       // For now, return the local path where the image should be stored
       const extension = getFileExtension(filename);

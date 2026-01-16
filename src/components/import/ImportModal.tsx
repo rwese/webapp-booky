@@ -257,7 +257,7 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
 }
 
 // Simple import button component for easy integration
-export function ImportButton({ onImport }: { onImport: (data: ImportBookData[]) => void }) {
+export function ImportButton({ onImport: _onImport }: { onImport: (data: ImportBookData[]) => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (

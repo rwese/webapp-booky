@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
-import { useSettingsStore, useUIStore } from '../store/useStore';
+import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
 import { useToastStore } from '../store/useStore';
 import { db } from '../lib/db';

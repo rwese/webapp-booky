@@ -3,7 +3,6 @@ import { CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle,
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
 import { useBatchScanning } from '../../hooks/useBatchScanning';
-import { useBookLookup } from '../../hooks/useBookLookup';
 import { useModalStore, useToastStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';

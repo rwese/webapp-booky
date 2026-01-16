@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { clsx } from 'clsx';
 
 // Debounce hook
 export function useDebounce<T>(value: T, delay: number): T {

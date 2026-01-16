@@ -14,7 +14,7 @@ import { db } from '../lib/db';
 
 // Re-export useBooks from existing hook for compatibility
 export { useBooks } from './useBooks';
-import { format, startOfYear, endOfYear, subMonths, startOfMonth, endOfMonth, isWithinInterval, getYear, getMonth, parseISO, isAfter, isBefore } from 'date-fns';
+import { format, startOfYear, endOfYear, startOfMonth, endOfMonth, isWithinInterval, getYear, parseISO } from 'date-fns';
 
 // Comprehensive reading statistics hook
 export function useReadingAnalytics() {

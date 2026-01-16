@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';

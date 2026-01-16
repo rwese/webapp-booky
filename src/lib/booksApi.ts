@@ -7,7 +7,7 @@
 
 import { authService } from './backendAuth';
 import { db } from './db';
-import type { Book, BookFormat, SyncOperation } from '../types';
+import type { Book, SyncOperation } from '../types';
 
 const BACKEND_API = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001/api';
 
@@ -109,7 +109,7 @@ export class BooksSyncService {
   /**
    * Sync all pending changes to backend
    */
-  async syncPendingChanges(userId: string): Promise<{ success: boolean; synced: number; failed: number }> {
+  async syncPendingChanges(_userId: string): Promise<{ success: boolean; synced: number; failed: number }> {
     try {
       // Get pending operations from IndexedDB
       const pendingOperations = await db.syncQueue
@@ -169,7 +169,7 @@ export class BooksSyncService {
   /**
    * Perform full sync - push local changes and pull remote changes
    */
-  async fullSync(userId: string): Promise<{ success: boolean; error?: string }> {
+  async fullSync(_userId: string): Promise<{ success: boolean; error?: string }> {
     try {
       // Get all local data
       const localBooks = await db.books.toArray();
@@ -206,7 +206,7 @@ export class BooksSyncService {
   /**
    * Get sync status
    */
-  async getSyncStatus(userId: string): Promise<any> {
+  async getSyncStatus(_userId: string): Promise<any> {
     return authService.authenticatedFetch<any>(`${BACKEND_API}/sync/status`);
   }
 

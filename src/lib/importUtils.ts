@@ -1,13 +1,12 @@
 import type { 
   Book, 
   Rating, 
-  Tag, 
-  BookTag, 
   ReadingLog,
   ReadingStatus,
-  ImportBookData 
+  ImportBookData,
+  Tag
 } from '../types';
-import { bookOperations, tagOperations, ratingOperations, collectionOperations } from './db';
+import { bookOperations, tagOperations } from './db';
 
 // Author extraction utilities
 export function extractAuthorName(authorInput: string): string {
