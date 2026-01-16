@@ -33,12 +33,11 @@ export function BookCover({ book, className = '', alt }: BookCoverProps) {
           const url = await coverImageOperations.getUrl(book.localCoverPath);
           if (url) {
             setCoverUrl(url);
-            console.log(`[DEBUG] BookCover: Loaded local cover for ${book.id}`);
           } else {
-            console.warn(`[DEBUG] BookCover: Cover ID ${book.localCoverPath} not found in IndexedDB`);
+            console.warn(`Cover ID ${book.localCoverPath} not found in IndexedDB`);
           }
-        } catch (error) {
-          console.error('[DEBUG] BookCover: Error loading cover from IndexedDB:', error);
+          } catch (error) {
+            console.error('Error loading cover from IndexedDB:', error);
         } finally {
           setLoading(false);
         }

@@ -403,7 +403,6 @@ class BookImportService {
     try {
       // Extract ZIP contents
       const { metadata, coverImages } = await this.extractZipFile(file);
-      console.log(`[DEBUG] Extracted ${coverImages.size} cover images from ZIP`);
 
       // Store cover images and update book data
       const importDataWithCovers: (ImportBookData & { _coverId?: string })[] = await Promise.all(
@@ -413,7 +412,6 @@ class BookImportService {
             if (coverBlob) {
               // Store cover image and get ID
               const coverId = await coverImageOperations.store(coverBlob);
-              console.log(`[DEBUG] Stored cover image: ${book.coverFilename} -> ID: ${coverId}`);
               // Store the coverId in a way we can retrieve it during import
               // We'll use a temporary property
               return {
@@ -421,7 +419,7 @@ class BookImportService {
                 _coverId: coverId  // Temporary property, will be used during import
               };
             } else {
-              console.log(`[DEBUG] Cover filename ${book.coverFilename} not found in ZIP cover images`);
+              // Cover file not found in ZIP
             }
           }
           return book;
@@ -532,10 +530,6 @@ class BookImportService {
           : undefined
       );
       
-      console.log(`[DEBUG] Importing book: ${importBook.title}`);
-      console.log(`[DEBUG] localCoverPath set to: ${localCoverPath}`);
-      console.log(`[DEBUG] coverUrl is: ${(transformed.book as Book).coverUrl || 'undefined'}`);
-
       const book: Book = {
         ...transformed.book as Book,
         id: newBookId,

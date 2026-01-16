@@ -183,7 +183,6 @@ export function BarcodeScannerModal() {
   }, [lastScan, showBatchMode, batchScan, addToast, navigate, handleClose]);
 
   const onScan = useCallback((result: ScanResult) => {
-    console.log('[BarcodeScannerModal] Scan detected:', result.text, result.format);
     setLastScan(result);
     handleScan(result);
   }, [handleScan]);
