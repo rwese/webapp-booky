@@ -313,75 +313,28 @@ export function useRatingDistribution() {
   return distribution;
 }
 
-// Hook for reading streak calculation
-export function useReadingStreak() {
-  const readingLogs = useLiveQuery(() => db.readingLogs.toArray());
-  
-  return calculateReadingStreak(readingLogs || []);
+// Hook for star count/rating ranking - returns star ratings sorted by count
+export function useStarCountRanking(limit: number = 10) {
+  const distribution = useRatingDistribution();
+
+  const ranking = Object.entries(distribution)
+    .sort((a, b) => b[1] - a[1]) // Sort by count descending
+    .slice(0, limit)
+    .map(([stars, count], index) => ({
+      rank: index + 1,
+      stars: parseFloat(stars),
+      starsDisplay: `${stars} ★`,
+      count,
+      percentage: 0 // Will be calculated when total is available
+    }));
+
+  // Calculate total for percentage
+  const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
+  // Add percentages
+  return ranking.map(item => ({
+    ...item,
+    percentage: total > 0 ? Math.round((item.count / total) * 100) : 0
+  }));
 }
 
-// Helper function to calculate reading streak
-function calculateReadingStreak(logs: ReadingLog[]) {
-  const readDates = logs
-    .filter(log => log.status === 'read' && log.finishedAt)
-    .map(log => {
-      const date = log.finishedAt instanceof Date ? log.finishedAt : parseISO(log.finishedAt as unknown as string);
-      return format(date, 'yyyy-MM-dd');
-    });
-  
-  // Remove duplicates
-  const uniqueDates = [...new Set(readDates)].sort();
-  
-  let currentStreak = 0;
-  let longestStreak = 0;
-  let currentDate = new Date();
-  
-  // Check if read today
-  const today = format(currentDate, 'yyyy-MM-dd');
-  if (uniqueDates.includes(today)) {
-    currentStreak = 1;
-  }
-  
-  // Calculate streaks backwards from today
-  for (let i = 0; i < 365; i++) {
-    const checkDate = format(currentDate, 'yyyy-MM-dd');
-    
-    if (uniqueDates.includes(checkDate)) {
-      currentStreak++;
-    } else if (i > 0) { // Don't break on first day if not read today
-      break;
-    }
-    
-    currentDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
-  }
-  
-  // Calculate longest streak
-  let tempStreak = 0;
-  let lastDate: Date | null = null;
-  
-  uniqueDates.forEach(dateStr => {
-    const date = parseISO(dateStr);
-    
-    if (lastDate) {
-      const daysDiff = Math.floor((date.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff === 1) {
-        tempStreak++;
-      } else {
-        longestStreak = Math.max(longestStreak, tempStreak);
-        tempStreak = 1;
-      }
-    } else {
-      tempStreak = 1;
-    }
-    
-    lastDate = date;
-  });
-  
-  longestStreak = Math.max(longestStreak, tempStreak);
-  
-  return {
-    currentStreak,
-    longestStreak,
-    totalReadingDays: uniqueDates.length
-  };
-}

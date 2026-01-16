@@ -16,7 +16,6 @@ import {
   useReadingAnalytics, 
   useFormatDistribution, 
   useRatingDistribution,
-  useReadingStreak,
   useGenreRanking 
 } from '../hooks/useAnalytics';
 import { useToastStore } from '../store/useStore';
@@ -44,7 +43,6 @@ export function AnalyticsPage() {
   const analytics = useReadingAnalytics();
   const formatDistribution = useFormatDistribution();
   const ratingDistribution = useRatingDistribution();
-  const readingStreak = useReadingStreak();
   const genreRanking = useGenreRanking(10); // Top 10 genres
   const { addToast } = useToastStore();
   
@@ -62,8 +60,7 @@ export function AnalyticsPage() {
         averageRating: analytics.averageRating,
         pagesReadEstimate: analytics.pagesReadEstimate,
         dnfCount: analytics.totalDNF,
-        reReadCount: analytics.reReadCount,
-        readingStreak: readingStreak
+        reReadCount: analytics.reReadCount
       },
       formatDistribution,
       ratingDistribution,
@@ -241,7 +238,7 @@ export function AnalyticsPage() {
         </div>
         
         {/* Secondary Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           <SmallStatWidget
             icon={<TrendingUp className="text-green-500" />}
             label="Pages Read"
@@ -256,16 +253,6 @@ export function AnalyticsPage() {
             icon={<RotateCcwIcon className="text-indigo-500" />}
             label="Re-reads"
             value={analytics.reReadCount}
-          />
-          <SmallStatWidget
-            icon={<Flame className="text-orange-500" />}
-            label="Current Streak"
-            value={`${readingStreak.currentStreak} days`}
-          />
-          <SmallStatWidget
-            icon={<Award className="text-yellow-500" />}
-            label="Best Streak"
-            value={`${readingStreak.longestStreak} days`}
           />
         </div>
         
