@@ -10,7 +10,6 @@ dotenv.config();
 const JWT_SECRET = process.env.AUTH_SECRET || 'development-secret-change-in-production';
 const JWT_EXPIRES_IN = process.env.AUTH_JWT_EXPIRES_IN || '30d';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.AUTH_REFRESH_TOKEN_EXPIRES_IN || '60d';
-const PASSWORD_RESET_EXPIRES_IN = process.env.AUTH_PASSWORD_RESET_EXPIRES_IN || '1h';
 const BCRYPT_ROUNDS = parseInt(process.env.AUTH_BCRYPT_ROUNDS || '12');
 
 // Types

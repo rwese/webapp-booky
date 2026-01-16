@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 export default [
   {
     files: ['**/*.{ts,tsx}'],
+    ignores: ['backend/**/*', 'mobile/**/*', 'dist/**/*', 'node_modules/**/*', '*.config.ts', 'playwright.config.ts', 'regression-tests.test.ts', 'service-worker-test.test.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -38,7 +39,7 @@ export default [
       ...require('@typescript-eslint/eslint-plugin').configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
   {

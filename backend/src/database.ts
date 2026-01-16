@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -6,17 +6,17 @@ dotenv.config();
 
 // Extend PrismaClient to include models from our schema
 export interface ExtendedPrismaClient extends PrismaClient {
-  user: any;
-  book: any;
-  rating: any;
-  tag: any;
-  bookTag: any;
-  collection: any;
-  collectionBook: any;
-  readingLog: any;
-  syncOperation: any;
-  userSettings: any;
-  coverImage: any;
+  user: PrismaClient['user'];
+  book: PrismaClient['book'];
+  rating: PrismaClient['rating'];
+  tag: PrismaClient['tag'];
+  bookTag: PrismaClient['bookTag'];
+  collection: PrismaClient['collection'];
+  collectionBook: PrismaClient['collectionBook'];
+  readingLog: PrismaClient['readingLog'];
+  syncOperation: PrismaClient['syncOperation'];
+  userSettings: PrismaClient['userSettings'];
+  coverImage: PrismaClient['coverImage'];
 }
 
 // Create a singleton Prisma client

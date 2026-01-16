@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
@@ -27,11 +27,6 @@ export function SettingsPage() {
       }
     }
   };
-
-  const handleImportSuccess = useCallback(() => {
-    addToast({ type: 'success', message: 'Books imported successfully!' });
-    setIsImportModalOpen(false);
-  }, [addToast]);
   
   const handleExportData = () => {
     // Export data as JSON

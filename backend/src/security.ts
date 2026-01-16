@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import cors from 'cors';
 import { z, ZodError } from 'zod';
-import crypto from 'crypto';
 
 // ==================== RATE LIMITING ====================
 
@@ -522,7 +520,7 @@ export const requestTimeout = (timeoutMs: number = 30000) => {
 // ==================== ERROR HANDLING ====================
 
 // Security error handler
-export const securityErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const securityErrorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   // Log security-related errors
   console.error('[SECURITY ERROR]', err.message);
   

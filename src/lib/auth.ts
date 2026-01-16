@@ -128,7 +128,7 @@ export const authConfig: NextAuthOptions = {
     /**
      * Sign in callback - control who can sign in
      */
-    async signIn({ user, account, profile }) {
+    async signIn({ user: _user, account, profile: _profile }) {
       // Allow sign in from configured providers
       if (account?.provider) {
         const providerEnabled = process.env[`AUTH_ENABLE_${account.provider.toUpperCase()}`];
@@ -151,14 +151,14 @@ export const authConfig: NextAuthOptions = {
     /**
      * Sign in event - called on successful sign in
      */
-    async signIn({ user, account, isNewUser }) {
-      console.log(`User signed in: ${user.email} via ${account?.provider}`);
+    async signIn({ user: _user, account, isNewUser: _isNewUser }) {
+      console.log(`User signed in via ${account?.provider}`);
     },
 
     /**
      * Sign out event - called on sign out
      */
-    async signOut({ token }) {
+    async signOut({ token: _token }) {
       console.log('User signed out');
     }
   },

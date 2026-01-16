@@ -115,8 +115,8 @@ export class CacheService {
           options.host = url.hostname;
           options.port = parseInt(url.port, 10);
         } catch {
-          // Fallback: just use the URL as-is for v5
-          (options as any).url = redisUrl;
+          // URL parsing failed, Redis will use default connection
+          logger.warn(`Failed to parse Redis URL: ${redisUrl}`);
         }
       }
 
@@ -445,7 +445,7 @@ export const cacheService = new CacheService();
  * Higher-order function for caching middleware
  * Wraps an async function with caching logic
  */
-export function withCache<T, Args extends unknown[]>(
+export function withCache<Args extends unknown[]>(
   cacheKeyFn: (...args: Args) => string,
   ttlSeconds?: number
 ) {

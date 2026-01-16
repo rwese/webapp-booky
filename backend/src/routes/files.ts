@@ -12,7 +12,6 @@ import {
   initializeStorage
 } from '../fileStorage';
 import { authMiddleware } from '../authMiddleware';
-import { searchRateLimiter } from '../security';
 
 const router = Router();
 

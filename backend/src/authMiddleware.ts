@@ -2,11 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from './auth';
 
 // Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: TokenPayload;
-    }
+declare module 'express' {
+  interface Request {
+    user?: TokenPayload;
   }
 }
 

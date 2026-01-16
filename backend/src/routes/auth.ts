@@ -128,7 +128,9 @@ router.post('/forgot-password', async (req, res) => {
       });
     }
     
-    const result = await requestPasswordReset(email);
+    // Call requestPasswordReset but don't use the result to prevent email enumeration
+    // The function will handle the case where the email doesn't exist
+    await requestPasswordReset(email);
     
     // Always return success to prevent email enumeration
     res.json({

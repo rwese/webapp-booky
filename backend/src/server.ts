@@ -1,17 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { register, recordRequest, activeConnections } from './metrics';
 import { 
   initializeDatabase, 
   bookService, 
-  syncService,
   collectionService,
-  tagService,
-  readingLogService 
+  tagService
 } from './database';
 import {
   queueSyncOperation,
@@ -50,8 +46,7 @@ import {
   schemas,
   versionMiddleware,
   versionAwareResponse,
-  requestTimeout,
-  securityErrorHandler
+  requestTimeout
 } from './security';
 import fileRoutes from './routes/files';
 import { cacheService, CacheKeys, CACHE_CONFIG } from './cache';
@@ -320,7 +315,7 @@ app.post('/api/social/challenges', authMiddleware, async (req: Request, res: Res
   try {
     const { createChallenge } = await import('./social');
     const userId = (req as any).user?.id || req.body.userId;
-    const { name, description, targetBooks, startDate, endDate, isPublic } = req.body;
+    const { name, description, targetBooks, startDate, endDate, _isPublic } = req.body;
     const challenge = await createChallenge(userId, { name, description, targetBooks, startDate, endDate });
     // Update isPublic separately if needed
     res.status(201).json(challenge);
@@ -464,7 +459,7 @@ function isValidISBN(isbn: string): boolean {
 }
 
 // Error handling middleware
-const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 };
@@ -904,7 +899,8 @@ app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
       });
     }
     
-    const result = await requestPasswordReset(email);
+    // Call requestPasswordReset but don't use the result to prevent email enumeration
+    await requestPasswordReset(email);
     
     // Always return success to prevent email enumeration
     res.json({

@@ -40,9 +40,6 @@ export function getExtensionFromMimeType(mimeType: string): string {
   return mimeToExt[mimeType] || 'jpg';
 }
 
-// Extract file extension from filename
-import { getFileExtension } from './importUtils';
-
 // Validate cover image file
 export function isValidCoverImage(file: File): boolean {
   const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

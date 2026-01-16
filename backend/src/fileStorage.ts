@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Configuration
-const STORAGE_TYPE = process.env.STORAGE_TYPE || 'local'; // 'local' or 's3'
+const _STORAGE_TYPE = process.env.STORAGE_TYPE || 'local'; // 'local' or 's3'
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10MB default
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const COVER_SIZES = {
@@ -117,9 +117,9 @@ const storeLocal = async (
 };
 
 /**
- * Delete local file
+ * Delete local file - reserved for future S3 implementation
  */
-const deleteLocal = async (filePath: string): Promise<boolean> => {
+const _deleteLocal = async (filePath: string): Promise<boolean> => {
   const basePath = getStoragePath();
   const fullPath = path.join(basePath, filePath);
   
@@ -131,9 +131,9 @@ const deleteLocal = async (filePath: string): Promise<boolean> => {
 };
 
 /**
- * Read local file
+ * Read local file - reserved for future S3 implementation
  */
-const readLocal = async (filePath: string): Promise<Buffer | null> => {
+const _readLocal = async (filePath: string): Promise<Buffer | null> => {
   const basePath = getStoragePath();
   const fullPath = path.join(basePath, filePath);
   
@@ -144,18 +144,18 @@ const readLocal = async (filePath: string): Promise<Buffer | null> => {
 };
 
 /**
- * Check if local file exists
+ * Check if local file exists - reserved for future S3 implementation
  */
-const existsLocal = (filePath: string): boolean => {
+const _existsLocal = (filePath: string): boolean => {
   const basePath = getStoragePath();
   const fullPath = path.join(basePath, filePath);
   return fs.existsSync(fullPath);
 };
 
 /**
- * Get local file stats
+ * Get local file stats - reserved for future S3 implementation
  */
-const statsLocal = async (filePath: string): Promise<{ size: number; mtime: Date } | null> => {
+const _statsLocal = async (filePath: string): Promise<{ size: number; mtime: Date } | null> => {
   const basePath = getStoragePath();
   const fullPath = path.join(basePath, filePath);
   
@@ -196,7 +196,7 @@ const processImage = async (
 const generateVariants = async (
   buffer: Buffer,
   mimeType: string,
-  baseId: string
+  _baseId: string
 ): Promise<{ [key: string]: Buffer }> => {
   const variants: { [key: string]: Buffer } = {};
   
@@ -379,7 +379,7 @@ export async function uploadFile(
 /**
  * Delete file and its variants
  */
-export async function deleteFile(fileId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteFile(fileId: string, _userId: string): Promise<{ success: boolean; error?: string }> {
   try {
     // In a real implementation, you'd look up the file in the database
     // For now, we'll just try to delete the file based on the ID
@@ -396,12 +396,10 @@ export async function deleteFile(fileId: string, userId: string): Promise<{ succ
       `avatars/${fileId}`
     ];
     
-    let deleted = false;
     for (const pattern of patterns) {
       const fullPath = path.join(basePath, pattern);
       if (fs.existsSync(fullPath)) {
         await fs.promises.unlink(fullPath);
-        deleted = true;
       }
     }
     
