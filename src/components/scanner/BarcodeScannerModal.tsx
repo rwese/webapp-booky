@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, Plus, RefreshCw } from 'lucide-react';
+import { CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, RefreshCw } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
 import { useBatchScanning } from '../../hooks/useBatchScanning';
@@ -77,7 +77,6 @@ export function BarcodeScannerModal() {
 
   const manualISBN = useManualISBNEntry();
   const batchScan = useBatchScanning();
-  const bookLookup = useBookLookup();
 
   // Camera status indicator
   const getCameraStatusIndicator = () => {

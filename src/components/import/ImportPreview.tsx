@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { ImportBookData, ImportProgress } from '../../types';
+import type { ImportBookData } from '../../types';
 import { bookImportService } from '../../lib/importService';
-import { formatImportStatus, formatRatingForDisplay, validateImportBook } from '../../lib/importUtils';
+import { formatImportStatus, formatRatingForDisplay } from '../../lib/importUtils';
 
 interface ImportPreviewProps {
   importData: ImportBookData[];

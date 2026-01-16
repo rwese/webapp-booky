@@ -31,8 +31,6 @@ const REFRESHABLE_FIELDS = [
   'externalIds'
 ] as const;
 
-type RefreshableField = typeof REFRESHABLE_FIELDS[number];
-
 /**
  * Error types for better error handling
  */

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { X, Plus, Tag, Search } from 'lucide-react';
-import { Button, Input } from '../common/Button';
+import { Button } from '../common/Button';
 import { tagOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Tag as TagType } from '../../types';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
+import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';

@@ -6,8 +6,6 @@ import {
   X, 
   Crop as CropIcon, 
   RefreshCw, 
-  Image as ImageIcon,
-  Check,
   Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -40,7 +38,6 @@ export function CoverUpload({
   const [isProcessing, setIsProcessing] = useState(false);
   const [cropError, setCropError] = useState<string | null>(null);
   const [isUsingCamera, setIsUsingCamera] = useState(false);
-  const [cameraBlob, setCameraBlob] = useState<Blob | null>(null);
   const [cameraFileName, setCameraFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +92,6 @@ export function CoverUpload({
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (blob: Blob, fileName: string) => {
-    setCameraBlob(blob);
     setCameraFileName(fileName);
     
     // Create preview URL for cropping
@@ -124,7 +120,6 @@ export function CoverUpload({
       // Reset cropping state
       setIsCropping(false);
       setSelectedFile(null);
-      setCameraBlob(null);
       setCameraFileName(null);
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
@@ -142,7 +137,6 @@ export function CoverUpload({
   const handleCropCancel = useCallback(() => {
     setIsCropping(false);
     setSelectedFile(null);
-    setCameraBlob(null);
     setCameraFileName(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);

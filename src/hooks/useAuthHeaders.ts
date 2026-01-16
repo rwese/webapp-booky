@@ -117,7 +117,7 @@ export function useAuthApi() {
  * @param permission - Permission to check
  * @returns Whether user has the permission
  */
-export function useHasPermission(permission: string): boolean {
+export function useHasPermission(_permission: string): boolean {
   const { session, isAuthenticated } = useAuth();
 
   // For now, any authenticated user has all permissions

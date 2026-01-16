@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { Plus, Edit, Trash2, Book, MoreVertical, Filter, ChevronDown, X, Settings, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Book, X, Search } from 'lucide-react';
 import { Button, Input, Card, Badge } from '../common/Button';
-import { collectionOperations, bookOperations } from '../../lib/db';
+import { collectionOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Collection, SmartRule, Book as BookType } from '../../types';
+import type { Collection, SmartRule } from '../../types';
 import { clsx } from 'clsx';
 
 // Smart collection rule operators

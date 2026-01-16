@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useCallback, useEffect, useState } from 'react';
-import { Camera, RotateCcw, Check, X, Camera as CameraIcon, Flashlight, RefreshCw } from 'lucide-react';
+import { Camera, RotateCcw, Check, X, Camera as CameraIcon, RefreshCw } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useCameraCapture, CameraCaptureConfig } from '../../hooks/useCameraCapture';

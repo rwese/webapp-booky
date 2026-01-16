@@ -6,7 +6,6 @@
  */
 
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { BarcodeStringFormat } from 'react-qr-barcode-scanner';
 import type { ScanResult, ScanConfig } from '../../types';
 
 // Scanner props interface matching our existing API

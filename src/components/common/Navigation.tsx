@@ -4,7 +4,6 @@ import {
   Home, 
   Library, 
   Scan, 
-  BarChart2, 
   Settings, 
   Menu,
   X,
@@ -13,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useUIStore, useModalStore } from '../../store/useStore';
 import { useOnlineStatus, useSyncStatus } from '../../hooks/useOffline';
-import { SyncStatusIndicator, MobileMenuOverlay } from './NavigationComponents';
+import { SyncStatusIndicator } from './NavigationComponents';
 import { clsx } from 'clsx';
 
 // Floating Action Buttons Component
@@ -59,9 +58,6 @@ export function SidebarNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
-  const { openModal } = useModalStore();
-  const isOnline = useOnlineStatus();
-  const syncStatus = useSyncStatus();
 
   const navItems = [
     { icon: <Home size={20} />, label: 'Home', path: '/' },

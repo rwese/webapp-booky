@@ -20,7 +20,7 @@ export function SyncStatusDashboard({ onOpenSettings, compact = false }: SyncSta
     fullSync 
   } = useSyncStatus();
   
-  const { isSyncing: isBackgroundSyncing, syncError: bgSyncError, triggerSync } = useBackgroundSync();
+  const { isSyncing: isBackgroundSyncing, syncError: bgSyncError } = useBackgroundSync();
   const { conflicts, resolveConflict, isResolving } = useConflictResolution();
   const { progress, percentage, isInProgress } = useSyncProgress();
   const [showDetails, setShowDetails] = useState(false);

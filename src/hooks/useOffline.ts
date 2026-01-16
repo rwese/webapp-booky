@@ -1,15 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { 
-  syncOperations, 
-  bookOperations, 
-  ratingOperations,
-  tagOperations,
-  collectionOperations,
-  readingLogOperations 
+  syncOperations
 } from '../lib/db';
 import type { 
-  SyncOperation, 
   OfflineAction, 
   SyncStatus, 
   ConflictData,

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Shield, Download, Trash2, Palette, Eye, Type, Zap, Volume2, VolumeX, Upload } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore, useUIStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Plus, ArrowRight, Library, TrendingUp, Clock } from 'lucide-react';
-import { Book } from 'lucide-react';
 import { Card, Badge } from '../components/common/Button';
 import { useBooks } from '../hooks/useBooks';
 import { useSyncStatus } from '../hooks/useSync';

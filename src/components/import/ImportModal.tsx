@@ -260,11 +260,6 @@ export function ImportModal({ isOpen, onClose, importData: initialData }: Import
 export function ImportButton({ onImport }: { onImport: (data: ImportBookData[]) => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleImportComplete = (data: ImportBookData[]) => {
-    onImport(data);
-    setIsOpen(false);
-  };
-
   return (
     <>
       <button

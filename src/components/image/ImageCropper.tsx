@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Cropper from 'react-easy-crop';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { X, Check, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import { X, Check, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface ImageCropperProps {
   image: string | File;
@@ -24,8 +24,7 @@ export function ImageCropper({
   aspectRatio = 16 / 9,
   aspectLabel = '16:9',
   maxZoom = 3,
-  minZoom = 1,
-  cropperSize = { width: 300, height: 200 }
+  minZoom = 1
 }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);

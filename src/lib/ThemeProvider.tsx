@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { useSettingsStore, useUIStore } from '../store/useStore';
+import { useSettingsStore } from '../store/useStore';
 import type { ThemeMode } from '../types';
 
 interface ThemeContextType {

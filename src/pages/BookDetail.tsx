@@ -1,19 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Edit, Trash2, Book, Calendar, User, Building, 
-  Tag, Star, Clock, Check, X, ExternalLink, Share2, Heart, RefreshCw
+  ArrowLeft, Edit, Trash2, Book, Calendar, Building, 
+  Tag, Clock, ExternalLink, Share2, Heart, RefreshCw
 } from 'lucide-react';
 import { Button, Card, Badge, Input } from '../components/common/Button';
-import { StarRating, StarRatingDisplay } from '../components/forms/StarRating';
-import { ReviewEditor, ReviewDisplay } from '../components/forms/ReviewEditor';
-import { TagInput, TagBadge, TagManager } from '../components/forms/TagInput';
+import { StarRating } from '../components/forms/StarRating';
+import { ReviewEditor } from '../components/forms/ReviewEditor';
+import { TagBadge, TagManager } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { bookOperations, ratingOperations, tagOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/barcodeUtils';
-import { useToastStore, useLibraryStore } from '../store/useStore';
+import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import { useLiveQuery } from 'dexie-react-hooks';
 import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
 import { clsx } from 'clsx';
 import { BookCover } from '../components/image';

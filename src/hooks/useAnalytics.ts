@@ -1,12 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   bookOperations, 
-  ratingOperations, 
-  collectionOperations
+  ratingOperations
 } from '../lib/db';
 import type { 
   Book,  
-  ReadingStatus, 
   FilterConfig, 
   SortConfig,
   BookFormat,

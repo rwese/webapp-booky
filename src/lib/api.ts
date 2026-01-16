@@ -1,5 +1,5 @@
 import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat } from '../types';
-import { validateISBN, formatISBN } from './barcodeUtils';
+import { validateISBN } from './barcodeUtils';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
 const GOOGLE_BOOKS_API_KEY = import.meta.env.GOOGLE_BOOKS_API_KEY;
@@ -306,7 +306,6 @@ export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null
     // Extract ISBN-13 from industryIdentifiers
     const industryIdentifiers = volumeInfo.industryIdentifiers || [];
     const isbn13 = industryIdentifiers.find(id => id.type === 'ISBN_13')?.identifier;
-    const isbn10 = industryIdentifiers.find(id => id.type === 'ISBN_10')?.identifier;
     
     return {
       success: true,
