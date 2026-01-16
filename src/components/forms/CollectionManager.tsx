@@ -538,7 +538,7 @@ export function CollectionSelector({ selectedCollections, onCollectionsChange, c
               >
                 <Plus size={16} className="text-primary-600" />
                 <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                  Create new collection "{inputValue.trim()}"
+                  Create new collection &quot;{inputValue.trim()}&quot;
                 </span>
               </button>
             )}

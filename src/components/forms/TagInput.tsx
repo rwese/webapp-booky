@@ -223,7 +223,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                   className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                 >
                   <Plus size={16} className="text-primary-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">"{inputValue}"</span>
+                  <span className="text-sm text-gray-900 dark:text-white">&quot;{inputValue}&quot;</span>
                   <span className="text-xs text-gray-500">({selectedColor.name})</span>
                 </button>
               </>
@@ -415,9 +415,9 @@ export function TagManager({ onClose, className }: TagManagerProps) {
                       className="w-full px-3 py-2 text-left hover:bg-primary-50 dark:hover:bg-primary-900 flex items-center gap-2 rounded"
                     >
                       <Plus size={16} className="text-primary-600" />
-                      <span className="text-sm text-primary-600 dark:text-primary-400">
-                        "{searchQuery}"
-                      </span>
+<span className="text-sm text-primary-600 dark:text-primary-400">
+                         &quot;{searchQuery}&quot;
+                       </span>
                     </button>
                   </div>
                 );

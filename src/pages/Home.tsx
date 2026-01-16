@@ -23,7 +23,7 @@ export function HomePage() {
             Welcome Back
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Here's an overview of your book collection
+            Here&apos;s an overview of your book collection
           </p>
         </div>
       </header>
