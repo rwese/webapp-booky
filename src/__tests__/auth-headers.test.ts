@@ -20,6 +20,7 @@ const mockSession = {
     image: 'https://example.com/avatar.jpg',
   },
   accessToken: 'access-token-456',
+  expires: '2024-12-31T23:59:59.999Z',
 };
 
 const mockEmptySession = {
@@ -29,6 +30,7 @@ const mockEmptySession = {
     email: null,
     image: null,
   },
+  expires: '2024-12-31T23:59:59.999Z',
 };
 
 vi.mock('next-auth', async () => {
@@ -39,6 +41,7 @@ vi.mock('next-auth', async () => {
 });
 
 // Import after mocking
+import type { Session } from 'next-auth';
 import { 
   createAuthHeaders, 
   sanitizeHeaderValue, 
@@ -80,7 +83,7 @@ describe('Auth Headers Service', () => {
 
   describe('createAuthHeaders', () => {
     it('should create headers from session', () => {
-      const headers = createAuthHeaders(mockSession as any);
+      const headers = createAuthHeaders(mockSession as Session);
 
       expect(headers[AUTH_HEADERS.USER_ID]).toBe('user-123');
       expect(headers[AUTH_HEADERS.USER_EMAIL]).toBe('test@example.com');
@@ -89,7 +92,7 @@ describe('Auth Headers Service', () => {
     });
 
     it('should not include undefined values', () => {
-      const headers = createAuthHeaders(mockEmptySession as any);
+      const headers = createAuthHeaders(mockEmptySession as Session);
 
       // Empty strings and null values should not be added
       expect(headers[AUTH_HEADERS.USER_ID]).toBeUndefined();
@@ -105,7 +108,7 @@ describe('Auth Headers Service', () => {
 
   describe('createAuthInterceptor', () => {
     it('should create interceptor that adds headers', () => {
-      const interceptor = createAuthInterceptor(mockSession as any);
+      const interceptor = createAuthInterceptor(mockSession as Session);
       const config: RequestInit = {
         method: 'GET',
         headers: {},
@@ -119,7 +122,7 @@ describe('Auth Headers Service', () => {
     });
 
     it('should preserve existing headers', () => {
-      const interceptor = createAuthInterceptor(mockSession as any);
+      const interceptor = createAuthInterceptor(mockSession as Session);
       const config: RequestInit = {
         method: 'POST',
         headers: {
@@ -137,7 +140,7 @@ describe('Auth Headers Service', () => {
 
   describe('AuthenticatedApiClient', () => {
     it('should create API client', () => {
-      const client = createAuthApiClient('/api', mockSession as any);
+      const client = createAuthApiClient('/api', mockSession as Session);
       expect(client).toBeDefined();
       expect(typeof client.get).toBe('function');
       expect(typeof client.post).toBe('function');

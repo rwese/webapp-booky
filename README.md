@@ -108,9 +108,9 @@ npm run build
 npm run preview
 
 # Run tests
-npm test              # Unit tests only (55 tests)
+npm test              # Unit tests only (108 tests)
 npm run test:e2e      # E2E tests only (8 essential tests)
-npm test && npm run test:e2e  # All tests (63 tests)
+npm test && npm run test:e2e  # All tests (116 tests)
 ```
 
 ### E2E Test Setup
@@ -184,7 +184,7 @@ The Playwright configuration (`playwright.config.ts`) includes a `webServer` sec
 - [x] Performance optimization
 - [x] Accessibility audit
 - [x] Bug fixing and testing
-- [x] **Test Infrastructure** (55 unit + 8 e2e tests)
+- [x] **Test Infrastructure** (108 unit + 8 e2e tests)
 
 ## API Integrations
 

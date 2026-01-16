@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { Book } from '../types';
 
 // Import the hook module and spy on its functions
 // Since we can't import the hook directly in tests without React rendering,
@@ -166,8 +167,8 @@ describe('Refreshable Fields Logic', () => {
   });
 
   it('should correctly extract only refreshable fields from a book object', () => {
-    const extractRefreshableFields = (sourceBook: any): Partial<any> => {
-      const extracted: any = {};
+    const extractRefreshableFields = (sourceBook: Record<string, unknown>): Record<string, unknown> => {
+      const extracted: Record<string, unknown> = {};
       
       for (const field of REFRESHABLE_FIELDS) {
         if (field in sourceBook && sourceBook[field] !== undefined) {
@@ -222,8 +223,8 @@ describe('Refreshable Fields Logic', () => {
   });
 
   it('should handle missing and undefined fields correctly', () => {
-    const extractRefreshableFields = (sourceBook: any): Partial<any> => {
-      const extracted: any = {};
+    const extractRefreshableFields = (sourceBook: Record<string, unknown>): Record<string, unknown> => {
+      const extracted: Record<string, unknown> = {};
       
       for (const field of REFRESHABLE_FIELDS) {
         if (field in sourceBook && sourceBook[field] !== undefined) {
@@ -595,9 +596,9 @@ describe('State Management', () => {
   });
 
   it('should manage lastRefreshedData state', () => {
-    let lastRefreshedData: any = null;
+    let lastRefreshedData: { title: string; authors: string[] } | null = null;
     
-    const setData = (data: any) => { lastRefreshedData = data; };
+    const setData = (data: { title: string; authors: string[] }) => { lastRefreshedData = data; };
     const clearData = () => { lastRefreshedData = null; };
     
     expect(lastRefreshedData).toBeNull();

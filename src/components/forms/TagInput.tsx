@@ -32,8 +32,12 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
   const currentWrapper = wrapperRef.current;
   
   // Get all existing tags
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const allTagsRaw = useLiveQuery(() => tagOperations.getAll()) || [];
-  const allTags = useMemo(() => allTagsRaw, [allTagsRaw]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allTags = useMemo(() => {
+    return allTagsRaw;
+  }, [allTagsRaw]);
   const existingTags = allTags;
   
   // Filter suggestions based on input
@@ -287,8 +291,12 @@ interface TagManagerProps {
 }
 
 export function TagManager({ onClose, className }: TagManagerProps) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const allTagsRaw = useLiveQuery(() => tagOperations.getAll()) || [];
-  const allTags = useMemo(() => allTagsRaw, [allTagsRaw]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allTags = useMemo(() => {
+    return allTagsRaw;
+  }, [allTagsRaw]);
   const [editTag, setEditTag] = useState<TagType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 

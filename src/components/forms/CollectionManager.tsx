@@ -356,7 +356,9 @@ interface CollectionSelectorProps {
 }
 
 export function CollectionSelector({ selectedCollections, onCollectionsChange, className }: CollectionSelectorProps) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const allCollectionsRaw = useLiveQuery(() => collectionOperations.getAll()) || [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const allCollections = useMemo(() => allCollectionsRaw, [allCollectionsRaw]);
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
