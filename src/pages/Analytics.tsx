@@ -7,15 +7,15 @@ import {
   Download, 
   Star,
   Clock,
-  Target,
-  Award
+  Target
 } from 'lucide-react';
 import { Card, Button } from '../components/common/Button';
 import { 
   useReadingAnalytics, 
   useFormatDistribution, 
   useRatingDistribution,
-  useGenreRanking 
+  useGenreRanking,
+  useStarCountRanking
 } from '../hooks/useAnalytics';
 import { useToastStore } from '../store/useStore';
 import { format, startOfYear, endOfYear, eachMonthOfInterval, getYear, getMonth } from 'date-fns';
@@ -40,6 +40,7 @@ export function AnalyticsPage() {
   const formatDistribution = useFormatDistribution();
   const ratingDistribution = useRatingDistribution();
   const genreRanking = useGenreRanking(10); // Top 10 genres
+  const starCountRanking = useStarCountRanking(10); // Top 10 star ratings
   const { addToast } = useToastStore();
   
   // Time range filter for charts
@@ -95,7 +96,7 @@ export function AnalyticsPage() {
     
     const monthData = analytics.readingHistory.monthData;
     
-    return months.map((date, index) => {
+    return months.map((date, _index) => {
       const monthKey = format(date, 'yyyy-MM');
       return {
         month: format(date, 'MMM'),
@@ -118,7 +119,7 @@ export function AnalyticsPage() {
       other: '#14b8a6'
     };
     
-    return Object.entries(formatDistribution).map(([name, value], index) => ({
+    return Object.entries(formatDistribution).map(([name, value], _index) => ({
       name: name.charAt(0).toUpperCase() + name.slice(1),
       value: value as number,
       color: colors[name] || '#6b7280'
@@ -141,6 +142,16 @@ export function AnalyticsPage() {
       percentage: item.percentage
     }));
   }, [genreRanking]);
+  
+  // Star count ranking data for chart
+  const starCountRankingData = useMemo(() => {
+    return starCountRanking.map(item => ({
+      stars: item.starsDisplay,
+      starsValue: item.stars,
+      count: item.count,
+      percentage: item.percentage
+    }));
+  }, [starCountRanking]);
   
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
@@ -434,6 +445,58 @@ export function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
           </Card>
+          
+          {/* Star Count Ranking */}
+          {starCountRanking.length > 0 && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Star Rating Ranking</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={starCountRankingData}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
+                    <XAxis dataKey="stars" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                      formatter={(value: React.ReactNode, name: string) => [
+                        value, 
+                        name === 'count' ? 'Number of Books' : 'Percentage'
+                      ]}
+                      labelFormatter={(label: string) => `Rating: ${label}`}
+                    />
+                    <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]}>
+                      {starCountRankingData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${entry.stars}`}
+                          fill={`rgba(245, 158, 11, ${1 - (index * 0.08)})`} 
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Star count legend */}
+              <div className="mt-4 space-y-1">
+                {starCountRankingData.map((item, index) => (
+                  <div key={item.stars} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white">{index + 1}.</span>
+                      <span className="text-gray-600 dark:text-gray-400">{item.stars}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{item.count} books</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">({item.percentage}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
         
         {/* Empty State */}
