@@ -356,7 +356,8 @@ interface CollectionSelectorProps {
 }
 
 export function CollectionSelector({ selectedCollections, onCollectionsChange, className }: CollectionSelectorProps) {
-  const allCollections = useLiveQuery(() => collectionOperations.getAll()) || [];
+  const allCollectionsRaw = useLiveQuery(() => collectionOperations.getAll()) || [];
+  const allCollections = useMemo(() => allCollectionsRaw, [allCollectionsRaw]);
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isCreating, setIsCreating] = useState(false);

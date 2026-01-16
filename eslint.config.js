@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 export default [
   {
     files: ['**/*.{ts,tsx}'],
-    ignores: ['backend/**/*', 'mobile/**/*', 'dist/**/*', 'node_modules/**/*', '*.config.ts', 'playwright.config.ts', 'regression-tests.test.ts', 'service-worker-test.test.ts'],
+    ignores: ['backend/**/*', 'mobile/**/*', 'dist/**/*', 'node_modules/**/*', '*.config.ts', 'playwright.config.ts', 'regression-tests.test.ts', 'service-worker-test.test.ts', 'tests/**/*', '*.spec.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

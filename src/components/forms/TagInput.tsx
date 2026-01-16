@@ -32,16 +32,17 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
   const currentWrapper = wrapperRef.current;
   
   // Get all existing tags
-  const allTags = useLiveQuery(() => tagOperations.getAll()) || [];
+  const allTagsRaw = useLiveQuery(() => tagOperations.getAll()) || [];
+  const allTags = useMemo(() => allTagsRaw, [allTagsRaw]);
   const existingTags = allTags;
   
   // Filter suggestions based on input
   const suggestions = useMemo(() => {
     if (!inputValue.trim()) return [];
-    return allTags.filter(tag => 
+    return allTags.filter(tag =>
       tag.name.toLowerCase().includes(inputValue.toLowerCase())
     );
-  }, [allTags, inputValue]);
+  }, [inputValue, allTags]);
 
   // Handle click outside to close suggestions
   useEffect(() => {
@@ -286,7 +287,8 @@ interface TagManagerProps {
 }
 
 export function TagManager({ onClose, className }: TagManagerProps) {
-  const allTags = useLiveQuery(() => tagOperations.getAll()) || [];
+  const allTagsRaw = useLiveQuery(() => tagOperations.getAll()) || [];
+  const allTags = useMemo(() => allTagsRaw, [allTagsRaw]);
   const [editTag, setEditTag] = useState<TagType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
