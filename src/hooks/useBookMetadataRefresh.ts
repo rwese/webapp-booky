@@ -96,6 +96,8 @@ export function useBookMetadataRefresh(): UseBookMetadataRefreshReturn {
 
     for (const field of REFRESHABLE_FIELDS) {
       if (field in sourceBook && sourceBook[field as keyof Book] !== undefined) {
+        // Type assertion needed because we're dynamically accessing keys
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (extracted as any)[field] = sourceBook[field as keyof Book];
       }
     }

@@ -68,6 +68,7 @@ export class BooksApiService {
    * Fetch collections for a user
    */
   async fetchCollections(userId: string): Promise<any[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return authService.authenticatedFetch<any[]>(`${BACKEND_API}/collections?userId=${userId}`);
   }
 
@@ -75,6 +76,7 @@ export class BooksApiService {
    * Create a collection
    */
   async createCollection(data: { name: string; description?: string; bookIds?: string[] }): Promise<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return authService.authenticatedFetch<any>(`${BACKEND_API}/collections`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -85,6 +87,7 @@ export class BooksApiService {
    * Fetch tags for a user
    */
   async fetchTags(userId: string): Promise<any[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return authService.authenticatedFetch<any[]>(`${BACKEND_API}/tags?userId=${userId}`);
   }
 
@@ -92,6 +95,7 @@ export class BooksApiService {
    * Create a tag
    */
   async createTag(data: { name: string; color?: string }): Promise<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return authService.authenticatedFetch<any>(`${BACKEND_API}/tags`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -154,8 +158,10 @@ export class BooksSyncService {
   /**
    * Pull changes from backend since last sync
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async pullChanges(userId: string, since: Date): Promise<{ success: boolean; changes: any }> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const changes = await authService.authenticatedFetch<any>(
         `${BACKEND_API}/sync/changes?since=${since.toISOString()}`
       );
@@ -179,6 +185,7 @@ export class BooksSyncService {
       const localSettings = await db.settings.get('userSettings');
 
       // Perform full sync
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await authService.authenticatedFetch<any>(`${BACKEND_API}/sync/full`, {
         method: 'POST',
         body: JSON.stringify({
@@ -207,6 +214,7 @@ export class BooksSyncService {
    * Get sync status
    */
   async getSyncStatus(_userId: string): Promise<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return authService.authenticatedFetch<any>(`${BACKEND_API}/sync/status`);
   }
 

@@ -314,7 +314,9 @@ export function usePerformanceMetrics() {
         let clsValue = 0;
         const clsObserver = new PerformanceObserver((entryList) => {
           for (const entry of entryList.getEntries()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!(entry as any).hadRecentInput) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               clsValue += (entry as any).value;
               setMetrics((prev) => ({ ...prev, cls: clsValue }));
             }
@@ -325,6 +327,7 @@ export function usePerformanceMetrics() {
         // First Input Delay
         const fidObserver = new PerformanceObserver((entryList) => {
           for (const entry of entryList.getEntries()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             setMetrics((prev) => ({ ...prev, fid: (entry as any).processingStart - entry.startTime }));
           }
         });

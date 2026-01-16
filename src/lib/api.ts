@@ -76,6 +76,7 @@ interface FetchResult<T> {
 }
 
 // Helper function to safely parse JSON with content-type checking
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function safeJsonParse(response: Response): Promise<FetchResult<any>> {
   const contentType = response.headers.get('content-type') || '';
   
@@ -195,7 +196,7 @@ export async function searchByISBN(isbn: string): Promise<Book | null> {
         id: crypto.randomUUID(),
         title: data.title,
         subtitle: data.subtitle,
-        authors: data.authors?.map((a: any) => a.name) || [],
+        authors: data.authors?.map((a: { name: string }) => a.name) || [],
         isbn13: isbn, // Use input ISBN as ISBN-13
         coverUrl: data.covers?.[0]
           ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg`

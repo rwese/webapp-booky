@@ -36,6 +36,7 @@ export function useOnlineStatus(): boolean {
 
     // Listen for network changes (more comprehensive)
     if ('connection' in navigator) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const connection = (navigator as any).connection;
       const handleConnectionChange = () => {
         const online = navigator.onLine;
@@ -124,6 +125,7 @@ export function useOfflineQueue() {
   const queueOfflineAction = useCallback(async (
     type: OfflineAction['type'],
     entityId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any
   ) => {
     const action: OfflineAction = {
@@ -139,7 +141,7 @@ export function useOfflineQueue() {
     await syncOperations.queueOperation({
       type: type.includes('delete') ? 'delete' : 
             type.includes('add') ? 'create' : 'update',
-      entity: type.split('_')[1] as any,
+      entity: (type.split('_')[1] || 'book') as 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
       entityId,
       data
     });
@@ -165,7 +167,9 @@ export function useConflictResolution() {
   const detectConflict = useCallback(async (
     entity: string,
     entityId: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     localData: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     serverData?: any
   ): Promise<ConflictData | null> => {
     // Check if there's a conflict based on timestamps
@@ -186,6 +190,7 @@ export function useConflictResolution() {
   const resolveConflict = useCallback(async (
     conflictId: string,
     resolution: ConflictResolution['resolution'],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mergedData?: any
   ) => {
     setIsResolving(true);
@@ -198,7 +203,7 @@ export function useConflictResolution() {
         // Keep local data, mark as needing sync
         await syncOperations.queueOperation({
           type: 'update',
-          entity: conflict.entity as any,
+          entity: conflict.entity as 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
           entityId: conflict.entityId,
           data: conflict.localData
         });
@@ -209,7 +214,7 @@ export function useConflictResolution() {
         // Merge and sync
         await syncOperations.queueOperation({
           type: 'update',
-          entity: conflict.entity as any,
+          entity: conflict.entity as 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
           entityId: conflict.entityId,
           data: mergedData
         });

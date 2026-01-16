@@ -8,7 +8,8 @@ import type {
   FilterConfig, 
   SortConfig,
   BookFormat,
-  ReadingLog
+  ReadingLog,
+  Rating
 } from '../types';
 import { db } from '../lib/db';
 
@@ -65,14 +66,14 @@ export function useReadingAnalytics() {
 }
 
 // Helper function to calculate average rating
-function calculateAverageRating(ratings: any[] | undefined): number {
+function calculateAverageRating(ratings: Rating[] | undefined): number {
   if (!ratings || ratings.length === 0) return 0;
   const total = ratings.reduce((sum, rating) => sum + (rating.stars || 0), 0);
   return Math.round((total / ratings.length) * 10) / 10;
 }
 
 // Helper function to estimate pages read
-function calculatePagesRead(books: Book[], ratings: any[]): number {
+function calculatePagesRead(books: Book[], ratings: Rating[]): number {
   return books.reduce((total, book) => {
     const bookRating = ratings.find(r => r.bookId === book.id);
     if (bookRating) {

@@ -155,6 +155,7 @@ export function useConflictResolution() {
   const resolveConflict = useCallback(async (
     conflictId: string,
     resolution: 'keep_local' | 'keep_server' | 'merge',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mergedData?: any
   ) => {
     const conflict = conflicts.find(c => c.id === conflictId);
@@ -166,7 +167,7 @@ export function useConflictResolution() {
       if (resolution === 'keep_local') {
         await syncOperations.queueOperation({
           type: 'update',
-          entity: conflict.entity as any,
+          entity: conflict.entity as 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
           entityId: conflict.entityId,
           data: conflict.localData
         });
@@ -178,7 +179,7 @@ export function useConflictResolution() {
       } else if (resolution === 'merge' && mergedData) {
         await syncOperations.queueOperation({
           type: 'update',
-          entity: conflict.entity as any,
+          entity: conflict.entity as 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
           entityId: conflict.entityId,
           data: mergedData
         });

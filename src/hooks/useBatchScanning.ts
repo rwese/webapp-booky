@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import type { Book } from '../types';
 import { cleanISBN, ScanQueueItem, BatchScanState, defaultBatchScanConfig, BatchScanConfig } from '../lib/barcodeUtils';
 import { bookOperations } from '../lib/db';
 
@@ -67,7 +68,7 @@ export function useBatchScanning(config?: Partial<BatchScanConfig>) {
   }, []);
 
   // Function to lookup book by ISBN using Open Library and Google Books APIs
-  const lookupBookByISBN = useCallback(async (isbn: string): Promise<any | null> => {
+  const lookupBookByISBN = useCallback(async (isbn: string): Promise<Book | null> => {
     try {
       // Dynamic import to avoid circular dependencies
       const { searchByISBN, searchGoogleBooksByISBN } = await import('../lib/api');

@@ -8,8 +8,9 @@ import { AddBookPage } from './pages/AddBook';
 import { AnalyticsPage } from './pages/Analytics';
 import { BookDetailPage } from './pages/BookDetail';
 import { EditBookPage } from './pages/EditBook';
+import type { ComponentType } from 'react';
 // Lazy load Settings page
-const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage })) as Promise<{ default: React.ComponentType<any> }>);
+const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
 import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';

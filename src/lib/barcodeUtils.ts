@@ -4,6 +4,8 @@
  * Utility functions for barcode format handling and ISBN validation/formatting.
  */
 
+import type { Book } from '../types';
+
 // Barcode format constants
 export const barcodeFormats = {
   EAN_13: 'ean_13' as const,
@@ -182,7 +184,7 @@ export interface ScanQueueItem {
   id: string;
   isbn: string; // ISBN-13 (canonical field)
   status: 'pending' | 'success' | 'error' | 'duplicate' | 'created';
-  bookData?: any;
+  bookData?: Book;
   error?: string;
   scannedAt: Date;
 }

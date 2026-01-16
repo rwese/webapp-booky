@@ -202,7 +202,7 @@ export interface OfflineAction {
 export interface ScanQueueItem {
   id: string;
   isbn: string; // ISBN-13 (canonical field)
-  status: 'pending' | 'success' | 'error' | 'duplicate';
+  status: 'pending' | 'success' | 'error' | 'duplicate' | 'created';
   bookData?: Book;
   error?: string;
   scannedAt: Date;

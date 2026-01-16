@@ -142,6 +142,7 @@ export function BarcodeScannerComponent({
     };
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpdate = useCallback((err: unknown, result?: any) => {
     // Track frame count
     frameCountRef.current++;

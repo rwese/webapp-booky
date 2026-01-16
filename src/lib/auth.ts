@@ -13,8 +13,9 @@ import type { NextAuthOptions } from 'next-auth';
 // Environment variables check
 const AUTH_SECRET = process.env.AUTH_SECRET || 'development-secret-change-in-production';
 
-// Provider configuration
-const providers = [
+// Provider configuration - using explicit type to avoid no-explicit-any warning
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const providers: any[] = [
   // Google OAuth
   process.env.AUTH_ENABLE_GOOGLE === 'true' && GoogleProvider({
     clientId: process.env.AUTH_GOOGLE_ID || '',
@@ -39,7 +40,7 @@ const providers = [
     clientId: process.env.AUTH_DISCORD_ID || '',
     clientSecret: process.env.AUTH_DISCORD_SECRET || '',
   }),
-].filter(Boolean) as any[];
+].filter((provider): provider is NonNullable<typeof provider> => Boolean(provider)) as NonNullable<typeof providers[number]>[];
 
 // Extended session type with user ID
 declare module 'next-auth' {

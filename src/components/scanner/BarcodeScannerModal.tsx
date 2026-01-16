@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import type { ScanResult, ScanQueueItem } from '../../types';
 import { CameraOff, Flashlight, FlashlightOff, X, RotateCcw, Check, AlertCircle, Clock, BookOpen, RefreshCw } from 'lucide-react';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { useManualISBNEntry } from '../../hooks/useManualISBNEntry';
@@ -17,6 +18,7 @@ function provideScanFeedback() {
   
   // Play beep sound using Web Audio API
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -46,7 +48,7 @@ export function BarcodeScannerModal() {
   const navigate = useNavigate();
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showBatchMode, setShowBatchMode] = useState(false);
-  const [lastScan, setLastScan] = useState<any>(null);
+  const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const processedScanRef = useRef<string | null>(null);
   const [isCameraMirrored, setIsCameraMirrored] = useState(true); // Default to mirrored
   
@@ -180,7 +182,7 @@ export function BarcodeScannerModal() {
     }
   }, [lastScan, showBatchMode, batchScan, addToast, navigate, handleClose]);
 
-  const onScan = useCallback((result: any) => {
+  const onScan = useCallback((result: ScanResult) => {
     console.log('[BarcodeScannerModal] Scan detected:', result.text, result.format);
     setLastScan(result);
     handleScan(result);
@@ -371,14 +373,29 @@ export function BarcodeScannerModal() {
 }
 
 // Manual ISBN Entry Component
+interface ManualISBNEntryProps {
+  isbn: string;
+  setIsbn: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isValid: boolean;
+  error: string | null;
+  handleSubmit: () => Promise<string | null>;
+  clearInput: () => void;
+  formatISBN: (input: string) => string;
+  validateISBN: (input: string) => boolean;
+  onSubmit?: (isbn: string) => void;
+}
+
 function ManualISBNEntry({ 
   isbn, 
   setIsbn, 
   isValid, 
   error, 
   handleSubmit, 
-  clearInput 
-}: any) {
+  clearInput,
+  formatISBN: _formatISBN,
+  validateISBN: _validateISBN,
+  onSubmit: _onSubmit
+}: ManualISBNEntryProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSubmit();
@@ -471,7 +488,7 @@ function BatchScanQueue({
 
       {/* Queue List */}
       <div className="max-h-48 overflow-y-auto space-y-2">
-        {batchScan.state.queue.map((item: any) => (
+        {batchScan.state.queue.map((item: ScanQueueItem) => (
           <div 
             key={item.id}
             className="flex items-center justify-between p-2 bg-white/10 rounded-lg"
@@ -537,7 +554,7 @@ function BatchScanQueue({
       {batchScan.state.queue.length > 0 && (
         <div className="flex gap-2">
           {/* Create All Books Button - shows when there are successfully looked up books */}
-          {batchScan.state.queue.some((item: any) => item.status === 'success' || item.status === 'created') && (
+          {batchScan.state.queue.some((item: ScanQueueItem) => item.status === 'success' || item.status === 'created') && (
             <button
               type="button"
               onClick={() => batchScan.createBooks()}
@@ -551,7 +568,7 @@ function BatchScanQueue({
             >
               {batchScan.state.isProcessing 
                 ? `Creating ${batchScan.state.currentProgress}/${batchScan.state.totalItems}`
-                : `Save ${batchScan.state.queue.filter((item: any) => item.status === 'success').length} books`
+                : `Save ${batchScan.state.queue.filter((item: ScanQueueItem) => item.status === 'success').length} books`
               }
             </button>
           )}
