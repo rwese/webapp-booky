@@ -8,8 +8,7 @@ import {
   Star,
   Clock,
   Target,
-  Award,
-  Flame
+  Award
 } from 'lucide-react';
 import { Card, Button } from '../components/common/Button';
 import { 
@@ -33,10 +32,7 @@ import {
   Cell,
   LineChart,
   Line,
-  Legend,
-  ScatterChart,
-  Scatter,
-  ZAxis
+  Legend
 } from 'recharts';
 
 export function AnalyticsPage() {
@@ -136,28 +132,6 @@ export function AnalyticsPage() {
       percentage: analytics.totalBooksRead > 0 ? (count / analytics.totalBooksRead) * 100 : 0
     })).reverse();
   }, [ratingDistribution, analytics.totalBooksRead]);
-  
-  const readingHeatmapData = useMemo(() => {
-    // Generate heatmap data for the last 365 days
-    const data = [];
-    const today = new Date();
-    
-    for (let i = 364; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateKey = format(date, 'yyyy-MM-dd');
-      
-      // This would be populated with actual reading data
-      data.push({
-        date: dateKey,
-        value: Math.random() > 0.8 ? Math.floor(Math.random() * 5) : 0, // Placeholder
-        dayOfWeek: format(date, 'EEE'),
-        month: format(date, 'MMM')
-      });
-    }
-    
-    return data;
-  }, []);
   
   // Genre ranking data for chart
   const genreRankingData = useMemo(() => {
@@ -460,68 +434,6 @@ export function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
           </Card>
-          
-          {/* Reading Streak Calendar (Heat Map) */}
-          <Card className="p-6 lg:col-span-2">
-            <h3 className="text-lg font-semibold mb-4">Reading Streak Calendar</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-10" />
-                  <XAxis 
-                    dataKey="dayOfWeek" 
-                    name="Day" 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <YAxis 
-                    dataKey="month" 
-                    name="Month" 
-                    tick={{ fontSize: 12 }}
-                    interval={0}
-                  />
-                  <ZAxis 
-                    dataKey="value" 
-                    range={[0, 5]} 
-                    name="Books Read" 
-                  />
-                  <Tooltip 
-                    content={<CustomTooltip />}
-                  />
-                  <Scatter 
-                    data={readingHeatmapData} 
-                    fill="#3b82f6"
-                    shape={(props: { cx?: number; cy?: number; payload?: { value: number } }) => {
-                      const { cx = 0, cy = 0, payload } = props;
-                      const opacity = (payload?.value || 0) / 5;
-                      return (
-                        <rect
-                          x={cx - 8}
-                          y={cy - 8}
-                          width={16}
-                          height={16}
-                          rx={2}
-                          fill={`rgba(59, 130, 246, ${opacity})`}
-                        />
-                      );
-                    }}
-                  />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-4 mt-4">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Less</span>
-              <div className="flex gap-1">
-                {[0, 1, 2, 3, 4, 5].map(intensity => (
-                  <div
-                    key={intensity}
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: `rgba(59, 130, 246, ${intensity / 5})` }}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600 dark:text-gray-400">More</span>
-            </div>
-          </Card>
         </div>
         
         {/* Empty State */}
@@ -627,20 +539,4 @@ function RotateCcwIcon({ className }: { className?: string }) {
       <path d="M8 16H3v5" />
     </svg>
   );
-}
-
-// Custom Tooltip Component for ScatterChart
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { date: string; value: number } }> }) {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        <p className="font-medium">{data.date}</p>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Books read: {data.value}
-        </p>
-      </div>
-    );
-  }
-  return null;
-}
+ }
