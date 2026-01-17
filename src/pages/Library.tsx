@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
+import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon, X } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
 import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
 import { bookOperations } from '../lib/db';
 import { BookCover } from '../components/image';
+import { TagListing, type TagWithCount } from '../components/forms/TagListing';
 import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
 
@@ -45,6 +46,29 @@ export function LibraryPage() {
   
   const handleEditBook = (bookId: string) => {
     navigate(`/edit/${bookId}`);
+  };
+
+  const handleTagClick = (tag: TagWithCount) => {
+    // Toggle tag filter: if already filtered by this tag, clear it
+    if (filterConfig.tags?.includes(tag.id)) {
+      setFilterConfig({
+        ...filterConfig,
+        tags: filterConfig.tags.filter(id => id !== tag.id)
+      });
+    } else {
+      setFilterConfig({
+        ...filterConfig,
+        tags: [...(filterConfig.tags || []), tag.id]
+      });
+    }
+    setShowFilters(true);
+  };
+
+  const handleClearTagFilter = () => {
+    setFilterConfig({
+      ...filterConfig,
+      tags: undefined
+    });
   };
   
   return (
@@ -126,6 +150,31 @@ export function LibraryPage() {
       
       {/* Book Grid/List */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
+        {/* Tags Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <TagIcon size={20} />
+              Tags
+            </h2>
+            {filterConfig.tags && filterConfig.tags.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={handleClearTagFilter}>
+                <X size={14} />
+                Clear filter
+              </Button>
+            )}
+          </div>
+          <TagListing
+            showCounts={true}
+            onTagClick={handleTagClick}
+          />
+          {filterConfig.tags && filterConfig.tags.length > 0 && (
+            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Filtering by {filterConfig.tags.length} tag{filterConfig.tags.length > 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+
         {paginatedBooks && paginatedBooks.length > 0 ? (
           <>
             <div className={clsx(

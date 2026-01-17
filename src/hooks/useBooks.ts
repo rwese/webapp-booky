@@ -28,7 +28,7 @@ export function useFilteredBooks(
 ) {
   return useLiveQuery(async () => {
     let books = await bookOperations.getAll();
-    
+
     // Apply search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
@@ -37,37 +37,48 @@ export function useFilteredBooks(
         book.authors.some(author => author.toLowerCase().includes(searchLower))
       );
     }
-    
+
     // Apply tag filter
     if (filters.tags && filters.tags.length > 0) {
-      books = books.filter(async book => {
-        const bookTags = await tagOperations.getBookTags(book.id);
-        return filters.tags!.some(tagId => 
-          bookTags.some(bt => bt.id === tagId)
-        );
-      });
+      // Get tags for all books first
+      const booksWithTags = await Promise.all(
+        books.map(async (book) => {
+          const bookTags = await tagOperations.getBookTags(book.id);
+          return {
+            book,
+            hasMatchingTag: filters.tags!.some(tagId =>
+              bookTags.some(bt => bt.id === tagId)
+            )
+          };
+        })
+      );
+
+      // Filter books that have at least one matching tag
+      books = booksWithTags
+        .filter(({ hasMatchingTag }) => hasMatchingTag)
+        .map(({ book }) => book);
     }
-    
+
     // Apply format filter
     if (filters.formats && filters.formats.length > 0) {
       books = books.filter(book => filters.formats!.includes(book.format));
     }
-    
+
     // Apply sorting
     books.sort((a, b) => {
       const field = sortConfig.field as keyof Book;
       const aVal = a[field] ?? '';
       const bVal = b[field] ?? '';
-      
+
       // Handle dates
       const aDate = aVal instanceof Date ? aVal.getTime() : aVal;
       const bDate = bVal instanceof Date ? bVal.getTime() : bVal;
-      
+
       if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-    
+
     return books;
   }, [filters, sortConfig]);
 }

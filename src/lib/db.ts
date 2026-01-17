@@ -180,6 +180,25 @@ export const tagOperations = {
       .where('[bookId+tagId]')
       .equals([bookId, tagId])
       .delete();
+  },
+
+  async getAllWithCount() {
+    const tags = await db.tags.toArray();
+    const bookTags = await db.bookTags.toArray();
+
+    // Count books per tag
+    const tagCounts = new Map<string, number>();
+    for (const bt of bookTags) {
+      tagCounts.set(bt.tagId, (tagCounts.get(bt.tagId) || 0) + 1);
+    }
+
+    // Combine tags with counts and sort alphabetically
+    return tags
+      .map(tag => ({
+        ...tag,
+        bookCount: tagCounts.get(tag.id) || 0
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 };
 
