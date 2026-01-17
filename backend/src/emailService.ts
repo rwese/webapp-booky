@@ -1,5 +1,6 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 dotenv.config();
 
@@ -132,7 +133,21 @@ async function sendMailgunEmail(options: EmailOptions): Promise<EmailResult> {
 }
 
 // AWS SES provider
-// Note: For production use, install @aws-sdk/client-ses and use proper SDK
+let sesClient: SESClient | null = null;
+
+function getSESClient(): SESClient {
+  if (!sesClient) {
+    sesClient = new SESClient({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: AWS_ACCESS_KEY_ID!,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY!
+      }
+    });
+  }
+  return sesClient;
+}
+
 async function sendSESEmail(options: EmailOptions): Promise<EmailResult> {
   if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
     return {
@@ -141,10 +156,45 @@ async function sendSESEmail(options: EmailOptions): Promise<EmailResult> {
     };
   }
 
-  // TODO: Implement proper AWS SES SDK integration
-  // For now, fall back to console mode with a warning
-  console.warn('AWS SES provider requires @aws-sdk/client-ses. Using console mode.');
-  return sendConsoleEmail(options);
+  try {
+    const client = getSESClient();
+
+    const command = new SendEmailCommand({
+      Source: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
+      Destination: {
+        ToAddresses: [options.to]
+      },
+      Message: {
+        Subject: {
+          Data: options.subject,
+          Charset: 'UTF-8'
+        },
+        Body: {
+          Html: {
+            Data: options.html,
+            Charset: 'UTF-8'
+          },
+          Text: {
+            Data: options.text || '',
+            Charset: 'UTF-8'
+          }
+        }
+      }
+    });
+
+    const response = await client.send(command);
+
+    return {
+      success: true,
+      messageId: response.MessageId
+    };
+  } catch (error: any) {
+    console.error('AWS SES error:', error.message);
+    return {
+      success: false,
+      error: error.message || 'SES request failed'
+    };
+  }
 }
 
 // Main send function - dispatches to the appropriate provider
