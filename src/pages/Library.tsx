@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon, X } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks } from '../hooks/useBooks';
@@ -10,22 +10,57 @@ import { BookCover } from '../components/image';
 import { TagListing, type TagWithCount } from '../components/forms/TagListing';
 import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
+import { useUrlFilterSync, urlParamsToFilters } from '../hooks/useUrlFilterSync';
 
 export function LibraryPage() {
-  const { viewMode, setViewMode, sortConfig, setSortConfig, filterConfig, setFilterConfig, clearFilters } = useLibraryStore();
+  const { viewMode, setViewMode, sortConfig, setSortConfig, filterConfig, setFilterConfig } = useLibraryStore();
   const { addToast } = useToastStore();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [localSearch, setLocalSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(localSearch, 300);
   const isTouchDevice = useIsTouchDevice();
-  
-  // Apply filters and sorting
-  const filteredBooks = useFilteredBooks(
+
+  // Initialize filters from URL on mount
+  // Intentionally not listing all deps - we only want this to run on mount
+  useEffect(() => {
+    const { filterConfig: urlFilterConfig, sortConfig: urlSortConfig } = urlParamsToFilters(searchParams);
+
+    // Apply URL params to store if they differ from current state
+    const hasFilterChanges =
+      urlFilterConfig.search !== filterConfig.search ||
+      JSON.stringify(urlFilterConfig.tags) !== JSON.stringify(filterConfig.tags) ||
+      JSON.stringify(urlFilterConfig.collections) !== JSON.stringify(filterConfig.collections) ||
+      JSON.stringify(urlFilterConfig.formats) !== JSON.stringify(filterConfig.formats) ||
+      JSON.stringify(urlFilterConfig.statuses) !== JSON.stringify(filterConfig.statuses);
+
+    if (hasFilterChanges) {
+      setFilterConfig({ ...filterConfig, ...urlFilterConfig });
+    }
+
+    if (urlSortConfig.field || urlSortConfig.direction) {
+      setSortConfig({ ...sortConfig, ...urlSortConfig });
+    }
+  }, []);
+
+  // URL filter sync
+  const { clearFilters: clearFiltersAndUrl } = useUrlFilterSync(
     { ...filterConfig, search: debouncedSearch },
-    sortConfig
+    sortConfig,
+    setFilterConfig,
+    setSortConfig
   );
-  
+
+  // Use search from filterConfig (which may come from URL) or local state
+  const effectiveFilterConfig = {
+    ...filterConfig,
+    search: filterConfig.search || debouncedSearch,
+  };
+
+  // Apply filters and sorting
+  const filteredBooks = useFilteredBooks(effectiveFilterConfig, sortConfig);
+
   // Pagination
   const itemsPerPage = isTouchDevice ? 10 : 20;
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,7 +69,7 @@ export function LibraryPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  
+
   const handleDeleteBook = async (bookId: string) => {
     try {
       await bookOperations.delete(bookId);
@@ -43,7 +78,7 @@ export function LibraryPage() {
       addToast({ type: 'error', message: 'Failed to remove book' });
     }
   };
-  
+
   const handleEditBook = (bookId: string) => {
     navigate(`/edit/${bookId}`);
   };
@@ -70,7 +105,10 @@ export function LibraryPage() {
       tags: undefined
     });
   };
-  
+
+  // Get search query for display (from URL or local state)
+  const searchQuery = filterConfig.search || localSearch;
+
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
@@ -85,21 +123,21 @@ export function LibraryPage() {
                 {filteredBooks?.length || 0} books
               </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={() => setShowFilters(!showFilters)}>
                 <Filter size={20} />
                 {!isTouchDevice && 'Filters'}
               </Button>
-              
+
               <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setViewMode('grid')}
                   className={clsx(
                     'p-2 transition-colors',
-                    viewMode === 'grid' 
-                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
+                    viewMode === 'grid'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                       : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   )}
                 >
@@ -110,8 +148,8 @@ export function LibraryPage() {
                   onClick={() => setViewMode('list')}
                   className={clsx(
                     'p-2 transition-colors',
-                    viewMode === 'list' 
-                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
+                    viewMode === 'list'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
                       : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                   )}
                 >
@@ -120,7 +158,7 @@ export function LibraryPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Search Bar */}
           <div className="mt-4">
             <div className="relative">
@@ -128,13 +166,13 @@ export function LibraryPage() {
               <input
                 type="text"
                 placeholder="Search books by title or author..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 className="input pl-10"
               />
             </div>
           </div>
-          
+
           {/* Filters Panel */}
           {showFilters && (
             <FiltersPanel
@@ -142,12 +180,12 @@ export function LibraryPage() {
               sortConfig={sortConfig}
               onFilterChange={setFilterConfig}
               onSortChange={setSortConfig}
-              onClearFilters={clearFilters}
+              onClearFilters={clearFiltersAndUrl}
             />
           )}
         </div>
       </header>
-      
+
       {/* Book Grid/List */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
         {/* Tags Section */}
@@ -178,8 +216,8 @@ export function LibraryPage() {
         {paginatedBooks && paginatedBooks.length > 0 ? (
           <>
             <div className={clsx(
-              viewMode === 'grid' 
-                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' 
+              viewMode === 'grid'
+                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
                 : 'space-y-4'
             )}>
               {paginatedBooks.map((book) => (
@@ -193,7 +231,7 @@ export function LibraryPage() {
                 />
               ))}
             </div>
-            
+
             {/* Pagination */}
             {totalPages > 1 && (
               <Pagination
@@ -221,7 +259,7 @@ interface FiltersPanelProps {
 
 function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, onClearFilters }: FiltersPanelProps) {
   const formats = ['physical', 'kindle', 'kobo', 'audible', 'audiobook', 'pdf', 'other'];
-  
+
   return (
     <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
       <div className="flex flex-wrap gap-4">
@@ -253,7 +291,7 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
             ))}
           </div>
         </div>
-        
+
         {/* Sort */}
         <div className="space-y-2">
           <label htmlFor="sort-select" className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort By</label>
@@ -269,7 +307,7 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
             <option value="publishedYear">Published Year</option>
           </select>
         </div>
-        
+
         {/* Clear Filters */}
         <div className="flex items-end">
           <Button variant="ghost" onClick={onClearFilters}>
@@ -300,7 +338,7 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
           <div className="flex-1 min-w-0 py-1">
             <div className="flex items-start justify-between">
               <div>
-                <Link 
+                <Link
                   to={`/book/${book.id}`}
                   className="text-lg font-semibold text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 truncate"
                 >
@@ -316,11 +354,11 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
               <Link to={`/book/${book.id}`} className="btn-secondary text-sm">
                 View Details
               </Link>
-              <Button variant="ghost" size="sm" onClick={onEdit}>
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Edit size={14} />
                 Edit
               </Button>
-              <Button variant="ghost" size="sm" onClick={onDelete}>
+              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
                 Remove
               </Button>
             </div>
@@ -329,7 +367,7 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
       </Card>
     );
   }
-  
+
   return (
     <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700">
@@ -342,9 +380,9 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
         <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
           {book.authors.join(', ')}
         </p>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="mt-2 w-full"
           onClick={(e) => {
             e.stopPropagation();
@@ -376,7 +414,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
       >
         <ChevronLeft size={20} />
       </Button>
-      
+
       <div className="flex items-center gap-1">
         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
           let pageNum: number;
@@ -389,7 +427,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
           } else {
             pageNum = currentPage - 2 + i;
           }
-          
+
           return (
             <button
               type="button"
@@ -407,7 +445,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
           );
         })}
       </div>
-      
+
       <Button
         variant="ghost"
         size="sm"
@@ -434,7 +472,7 @@ function EmptyLibraryState({ searchQuery }: EmptyLibraryStateProps) {
         {searchQuery ? 'No books found' : 'Your library is empty'}
       </h3>
       <p className="text-gray-600 dark:text-gray-400 mb-4">
-        {searchQuery 
+        {searchQuery
           ? 'Try adjusting your search or filters'
           : 'Start building your collection by adding your first book'}
       </p>
