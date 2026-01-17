@@ -112,6 +112,94 @@ export const bookOperations = {
         book.authors.some(author => author.toLowerCase().includes(lowerQuery))
       )
       .toArray();
+  },
+
+  /**
+   * Merge update: Apply partial book data to an existing book
+   * Preserves immutable fields and handles array merging
+   */
+  async mergeUpdate(id: string, changes: Partial<Book>): Promise<void> {
+    const existing = await db.books.get(id);
+    if (!existing) {
+      throw new Error(`Book with id ${id} not found`);
+    }
+
+    // Fields that should be treated as arrays and merged with deduplication
+    const arrayFields: (keyof Book)[] = ['subjects', 'categories', 'authors'];
+
+    // Build merged changes
+    const mergedChanges: Partial<Book> = {};
+
+    // Process each field in changes
+    for (const [key, value] of Object.entries(changes)) {
+      const field = key as keyof Book;
+
+      // Skip immutable fields
+      if (field === 'id' || field === 'addedAt' || field === 'localOnly') {
+        continue;
+      }
+
+      // Handle array fields with merge and deduplication
+      if (arrayFields.includes(field) && Array.isArray(value)) {
+        const existingArray = (Array.isArray(existing[field]) ? existing[field] : []) as string[];
+        const newArray = value as string[];
+        // Merge and deduplicate
+        const merged = [...new Set([...existingArray, ...newArray])];
+        (mergedChanges as Record<string, unknown>)[field] = merged;
+      }
+      // Handle externalIds - merge with existing, prefer non-empty values
+      else if (field === 'externalIds' && typeof value === 'object' && value !== null) {
+        const existingIds = existing.externalIds || {};
+        const newIds = value as Record<string, string | undefined>;
+        mergedChanges.externalIds = {
+          ...existingIds,
+          ...Object.fromEntries(
+            Object.entries(newIds).filter(([_, v]) => v !== undefined && v !== '')
+          )
+        };
+      }
+      // Handle cover URL - prefer localCoverPath if exists, otherwise use coverUrl
+      else if (field === 'coverUrl' || field === 'localCoverPath') {
+        // localCoverPath takes precedence over coverUrl
+        if (field === 'localCoverPath' && value) {
+          mergedChanges.localCoverPath = value as string;
+          // If we have a local cover, we might want to keep the existing coverUrl
+          if (!mergedChanges.coverUrl && existing.coverUrl) {
+            mergedChanges.coverUrl = existing.coverUrl;
+          }
+        } else if (field === 'coverUrl' && value) {
+          // Only set coverUrl if we don't have a local cover
+          if (!existing.localCoverPath) {
+            mergedChanges.coverUrl = value as string;
+          }
+        }
+      }
+      // All other fields - replace with new value
+      else {
+        (mergedChanges as Record<string, unknown>)[field] = value;
+      }
+    }
+
+    // Always update sync flags
+    mergedChanges.needsSync = true;
+    mergedChanges.lastSyncedAt = undefined;
+
+    // Preserve immutable fields explicitly
+    mergedChanges.id = existing.id;
+    mergedChanges.addedAt = existing.addedAt;
+    mergedChanges.localOnly = existing.localOnly;
+
+    // Perform the update
+    await db.books.update(id, mergedChanges);
+
+    // Queue sync operation
+    await syncOperations.queueOperation({
+      type: 'update',
+      entity: 'book',
+      entityId: id,
+      data: mergedChanges,
+      conflictResolution: 'merge'
+    });
   }
 };
 
