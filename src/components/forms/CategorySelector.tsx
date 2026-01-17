@@ -1,12 +1,12 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Plus, X, Search, Folder } from 'lucide-react';
-import { Button, Input, Card } from '../common/Button';
+import { Button } from '../common/Button';
 import { bookOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { clsx } from 'clsx';
 
 interface CategorySelectorProps {
-  bookId: string;
+  _bookId: string;
   selectedCategories: string[];
   onCategoriesChange: (categories: string[]) => void;
   className?: string;
@@ -14,11 +14,13 @@ interface CategorySelectorProps {
 
 // Get all unique categories from all books in the library
 function useAllCategories() {
-  const books = useLiveQuery(() => bookOperations.getAll()) || [];
+  const books = useLiveQuery(() => bookOperations.getAll());
   
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => {
     const categorySet = new Set<string>();
-    for (const book of books) {
+    const allBooks = books ?? [];
+    for (const book of allBooks) {
       if (book.categories && Array.isArray(book.categories)) {
         for (const cat of book.categories) {
           categorySet.add(cat);
@@ -29,7 +31,7 @@ function useAllCategories() {
   }, [books]);
 }
 
-export function CategorySelector({ bookId, selectedCategories, onCategoriesChange, className }: CategorySelectorProps) {
+export function CategorySelector({ _bookId, selectedCategories, onCategoriesChange, className }: CategorySelectorProps) {
   const allCategories = useAllCategories();
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
