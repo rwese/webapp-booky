@@ -6,7 +6,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Essential E2E Tests', () => {
-  
+   
   test.describe('Page Loading', () => {
     test('should load library page', async ({ page }) => {
       await page.goto('/library');
@@ -40,9 +40,9 @@ test.describe('Essential E2E Tests', () => {
     test('should have main navigation buttons', async ({ page }) => {
       await page.goto('/library');
       
-      // Check main action buttons exist
-      await expect(page.getByRole('button', { name: 'Add new book' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Scan barcode' })).toBeVisible();
+      // Check main action buttons exist using aria-labels
+      await expect(page.locator('button[aria-label="Add new book"]')).toBeVisible();
+      await expect(page.locator('button[aria-label="Scan barcode"]')).toBeVisible();
     });
   });
 
@@ -56,7 +56,7 @@ test.describe('Essential E2E Tests', () => {
       // Check form fields exist (search for inputs after clicking manual entry)
       await page.getByRole('button', { name: 'Manual Entry' }).click();
       await expect(page.getByPlaceholder('Enter book title')).toBeVisible();
-      await expect(page.getByPlaceholder('Enter author name')).toBeVisible();
+      await expect(page.getByPlaceholder('Enter author name(s), separated by commas')).toBeVisible();
     });
 
     test('should accept ISBN input', async ({ page }) => {
