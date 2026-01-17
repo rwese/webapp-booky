@@ -141,7 +141,7 @@ export function TagListing({
 
       {effectiveSearch.trim() && displayedTags.length === 0 && (
         <p className="text-sm text-gray-500 mt-2">
-          No tags found matching "{effectiveSearch}"
+          No tags found matching &quot;{effectiveSearch}&quot;
         </p>
       )}
 
