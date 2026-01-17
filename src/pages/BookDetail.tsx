@@ -7,13 +7,13 @@ import {
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
-import { TagBadge, TagManager } from '../components/forms/TagInput';
+import { TagBadge } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
-import { bookOperations, ratingOperations, tagOperations, collectionOperations } from '../lib/db';
+import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import type { Book as BookType, Rating, Tag as TagType, Collection } from '../types';
+import type { Book as BookType, Rating, Collection } from '../types';
 import { BookCover } from '../components/image';
 
 export function BookDetailPage() {
@@ -23,10 +23,8 @@ export function BookDetailPage() {
   
   const [book, setBook] = useState<BookType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showTagManager, setShowTagManager] = useState(false);
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
   const [showReviewEditor, setShowReviewEditor] = useState(false);
-  const [bookTags, setBookTags] = useState<TagType[]>([]);
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
@@ -69,16 +67,6 @@ export function BookDetailPage() {
           return;
         }
         setBook(loadedBook);
-        
-        // Load related data
-        const [tags, rating] = await Promise.all([
-          tagOperations.getBookTags(id),
-          ratingOperations.getByBookId(id)
-        ]);
-        
-        setBookTags(tags);
-        setCurrentRating(rating?.stars || 0);
-        setCurrentReview(rating?.review || '');
         
         // Load collections
         await loadBookCollections(id);
@@ -336,15 +324,6 @@ export function BookDetailPage() {
                 <Tag size={16} />
                 Collections
               </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowTagManager(true)}
-              >
-                <Tag size={16} />
-                Manage Tags
-              </Button>
             </div>
           </div>
         </div>
@@ -361,21 +340,6 @@ export function BookDetailPage() {
             }}
           />
           </Card>
-        )}
-
-        {/* Tags Section */}
-        {bookTags.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Tag size={16} />
-              <h3 className="font-semibold text-gray-900 dark:text-white">Tags</h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {bookTags.map(tag => (
-                <TagBadge key={tag.id} tag={tag} />
-              ))}
-            </div>
-          </div>
         )}
 
         {/* Collections Section */}
@@ -509,13 +473,6 @@ export function BookDetailPage() {
           <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Reading History</h3>
         </Card>
       </main>
-
-      {/* Tag Manager Modal */}
-      {showTagManager && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <TagManager onClose={() => setShowTagManager(false)} />
-        </div>
-      )}
 
       {/* Review Editor Modal */}
       {showReviewEditor && (
