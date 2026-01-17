@@ -72,7 +72,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
-      console.debug(`[useCameraCapture] Found ${videoDevices.length} camera devices`);
       setState(prev => ({ ...prev, cameraDevices: videoDevices }));
       
       return videoDevices;
@@ -85,7 +84,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
 
   // Start camera stream
   const startCamera = useCallback(async (deviceId?: string) => {
-    console.debug('[useCameraCapture] Starting camera...');
     
     try {
       // Stop any existing stream
@@ -158,19 +156,11 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
 
   // Stop camera stream
   const stopCamera = useCallback(() => {
-    console.debug('[useCameraCapture] Stopping camera...');
-    
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          track.stop();
-        });
-        streamRef.current = null;
-      }
-    
-    setState(prev => ({
-      ...prev,
-      isStreaming: false
-    }));
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setState(prev => ({ ...prev, isStreaming: false, isCapturing: false }));
   }, []);
 
   // Capture photo from video stream

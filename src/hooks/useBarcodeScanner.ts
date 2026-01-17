@@ -30,17 +30,10 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   const scanCooldown = 1000; // 1 second between duplicate scans
 
   const handleScan = useCallback((result: ScanResult) => {
-    console.debug('[useBarcodeScanner] Processing scan result:', {
-      text: result.text,
-      format: result.format,
-      timestamp: result.timestamp.toISOString()
-    });
-    
     const now = Date.now();
     
     // Debounce duplicate scans
     if (result.text === state.lastScan?.text && now - lastScanTimeRef.current < scanCooldown) {
-      console.debug('[useBarcodeScanner] Duplicate scan detected, skipping:', result.text);
       return;
     }
 
@@ -53,7 +46,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   }, [state.lastScan]);
 
   const handleError = useCallback((error: Error) => {
-    console.warn('[useBarcodeScanner] Scanner error:', error.message);
     setState(prev => ({ 
       ...prev, 
       error: error.message 
@@ -61,7 +53,6 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
   }, []);
 
   const startScanning = useCallback(async () => {
-    console.debug('[useBarcodeScanner] Starting scanner...');
     setState(prev => ({ 
       ...prev, 
       isScanning: true, 
@@ -72,16 +63,13 @@ export function useBarcodeScanner(config?: Partial<ScanConfig>) {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      console.debug(`[useBarcodeScanner] Found ${videoDevices.length} camera devices`);
       setState(prev => ({ ...prev, cameraDevices: videoDevices }));
     } catch (err) {
-      console.warn('[useBarcodeScanner] Failed to enumerate devices:', err);
       setState(prev => ({ ...prev, cameraDevices: [] }));
     }
   }, []);
 
   const stopScanning = useCallback(() => {
-    console.debug('[useBarcodeScanner] Stopping scanner...');
     setState(prev => ({ 
       ...prev, 
       isScanning: false 

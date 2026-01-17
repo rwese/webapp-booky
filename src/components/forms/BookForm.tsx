@@ -2,14 +2,16 @@ import { useState, type FormEvent } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../common/Button';
 import { CoverUpload } from '../image/CoverUpload';
-import type { Book as BookType, BookFormat } from '../../types';
+import { TagInput } from './TagInput';
+import type { Book as BookType, BookFormat, Tag as TagType } from '../../types';
 
 interface BookFormProps {
   initialData?: Partial<BookType>;
-  onSubmit: (book: BookType) => Promise<void>;
+  onSubmit: (book: BookType, tags: TagType[]) => Promise<void>;
   onCancel?: () => void;
   isLoading?: boolean;
   submitLabel?: string;
+  initialTags?: TagType[];
 }
 
 export function BookForm({ 
@@ -17,7 +19,8 @@ export function BookForm({
   onSubmit, 
   onCancel, 
   isLoading = false,
-  submitLabel = 'Add Book' 
+  submitLabel = 'Add Book',
+  initialTags = []
 }: BookFormProps) {
   const [formData, setFormData] = useState<Partial<BookType>>({
     title: initialData?.title || '',
@@ -37,6 +40,8 @@ export function BookForm({
     averageRating: initialData?.averageRating,
     ratingsCount: initialData?.ratingsCount,
   });
+  
+  const [selectedTags, setSelectedTags] = useState<TagType[]>(initialTags);
 
   const handleCoverChange = (coverUrl: string) => {
     setFormData({ ...formData, coverUrl });
@@ -74,7 +79,7 @@ export function BookForm({
       ratingsCount: formData.ratingsCount,
     };
 
-    await onSubmit(book);
+    await onSubmit(book, selectedTags);
   };
 
   return (
@@ -250,6 +255,17 @@ export function BookForm({
               placeholder="Enter book description (optional)"
               className="input min-h-[100px] resize-y"
               rows={4}
+            />
+          </div>
+          
+          {/* Tags Section */}
+          <div className="space-y-1">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tags
+            </span>
+            <TagInput
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
             />
           </div>
         </div>

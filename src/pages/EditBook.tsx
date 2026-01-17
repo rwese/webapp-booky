@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { BookForm } from '../components/forms/BookForm';
-import { bookOperations } from '../lib/db';
+import { bookOperations, tagOperations } from '../lib/db';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import type { Book as BookType } from '../types';
+import type { Book as BookType, Tag as TagType } from '../types';
 
 export function EditBookPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +13,7 @@ export function EditBookPage() {
   const { addToast } = useToastStore();
   
   const [book, setBook] = useState<BookType | null>(null);
+  const [tags, setTags] = useState<TagType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { isRefreshing, refreshMetadata } = useBookMetadataRefresh();
@@ -33,6 +34,10 @@ export function EditBookPage() {
           return;
         }
         setBook(loadedBook);
+        
+        // Load existing tags for this book
+        const bookTags = await tagOperations.getBookTags(id);
+        setTags(bookTags);
       } catch (error) {
         console.error('Failed to load book:', error);
         addToast({ type: 'error', message: 'Failed to load book' });
@@ -45,12 +50,32 @@ export function EditBookPage() {
     loadBook();
   }, [id, navigate, addToast]);
 
-  const handleSave = async (updatedBook: BookType) => {
+  const handleSave = async (updatedBook: BookType, selectedTags: TagType[]) => {
     if (!id) return;
 
     setSaving(true);
     try {
       await bookOperations.update(id, updatedBook);
+      
+      // Sync tags: get current tags and update associations
+      const currentTags = await tagOperations.getBookTags(id);
+      const currentTagIds = new Set(currentTags.map(t => t.id));
+      const newTagIds = new Set(selectedTags.map(t => t.id));
+      
+      // Remove tags that are no longer associated
+      for (const currentTag of currentTags) {
+        if (!newTagIds.has(currentTag.id)) {
+          await tagOperations.removeTagFromBook(id, currentTag.id);
+        }
+      }
+      
+      // Add new tags
+      for (const newTag of selectedTags) {
+        if (!currentTagIds.has(newTag.id)) {
+          await tagOperations.addTagToBook(id, newTag.id);
+        }
+      }
+      
       addToast({ type: 'success', message: 'Book updated successfully!' });
       navigate(`/book/${id}`);
     } catch (error) {
@@ -132,6 +157,7 @@ export function EditBookPage() {
         {book && (
           <BookForm
             initialData={book}
+            initialTags={tags}
             onSubmit={handleSave}
             onCancel={() => navigate(`/book/${id}`)}
             isLoading={saving}
