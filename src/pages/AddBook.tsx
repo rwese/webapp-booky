@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';
 import { CoverUpload } from '../components/image/CoverUpload';
+import { MergeView } from '../components/merge';
 import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
@@ -27,6 +28,12 @@ export function AddBookPage() {
     isbn13: '',
     format: 'physical',
   });
+
+  // Merge state
+  const [showMergeView, setShowMergeView] = useState(false);
+  const [existingBook, setExistingBook] = useState<BookType | null>(null);
+  const [pendingBook, setPendingBook] = useState<BookType | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
   
   const debouncedQuery = useDebounce(searchQuery, 500);
   
@@ -80,28 +87,38 @@ export function AddBookPage() {
   // ISBN lookup
   const handleIsbnLookup = async () => {
     const cleanIsbn = isbnInput.replace(/[-\s]/g, '');
-    
+
     if (!isValidISBN(cleanIsbn)) {
       addToast({ type: 'error', message: 'Please enter a valid ISBN' });
       return;
     }
-    
+
     setLoading(true);
     try {
       // Try Open Library first
       let book = await searchByISBN(cleanIsbn);
-      
+
       // Fallback to Google Books
       if (!book) {
         const googleResults = await searchBooks(cleanIsbn);
-        book = googleResults.find(b => b.isbn13 === cleanIsbn) || null;
+        book = googleResults.find((b) => b.isbn13 === cleanIsbn) || null;
       }
-      
+
       if (book) {
-        setSearchResults([book]);
+        // Check if book already exists in collection
+        const existingBook = await bookOperations.getByIsbn(cleanIsbn);
+        if (existingBook) {
+          // Trigger merge flow
+          setExistingBook(existingBook);
+          setPendingBook(book);
+          setShowMergeView(true);
+        } else {
+          // Book doesn't exist, show in search results
+          setSearchResults([book]);
+        }
       } else {
         // No book found, offer manual entry
-        setNewBook(prev => ({ ...prev, isbn: cleanIsbn }));
+        setNewBook((prev) => ({ ...prev, isbn13: cleanIsbn }));
         setManualEntry(true);
         addToast({ type: 'info', message: 'Book not found. Please enter details manually.' });
       }
@@ -117,18 +134,48 @@ export function AddBookPage() {
     try {
       // Check for duplicates
       const existingByIsbn = book.isbn13 ? await bookOperations.getByIsbn(book.isbn13) : null;
-      
+
       if (existingByIsbn) {
-        addToast({ type: 'warning', message: 'This book is already in your collection' });
+        // Trigger merge flow instead of showing warning
+        setExistingBook(existingByIsbn);
+        setPendingBook(book);
+        setShowMergeView(true);
         return;
       }
-      
+
       await bookOperations.add(book);
       addToast({ type: 'success', message: 'Book added to your collection!' });
       navigate('/library');
     } catch (error) {
       addToast({ type: 'error', message: 'Failed to add book. Please try again.' });
     }
+  };
+
+  // Handle merge operation
+  const handleMerge = async (mergedBook: BookType) => {
+    setIsMerging(true);
+    try {
+      await bookOperations.mergeUpdate(existingBook!.id, mergedBook);
+      addToast({ type: 'success', message: 'Book updated successfully!' });
+      setShowMergeView(false);
+      setExistingBook(null);
+      setPendingBook(null);
+      navigate('/library');
+    } catch (error) {
+      addToast({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to merge book. Please try again.',
+      });
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  // Handle merge cancellation
+  const handleMergeCancel = () => {
+    setShowMergeView(false);
+    setExistingBook(null);
+    setPendingBook(null);
   };
   
   // Manual entry
@@ -157,7 +204,19 @@ export function AddBookPage() {
     
     await handleAddBook(book);
   };
-  
+
+  // Show MergeView when duplicates are detected
+  if (showMergeView && existingBook && pendingBook) {
+    return (
+      <MergeView
+        existingBook={existingBook}
+        fetchedBook={pendingBook}
+        onMerge={handleMerge}
+        onCancel={handleMergeCancel}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       {/* Header */}
