@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button, Card } from './Button';
+import { initErrorTracking, reportError } from '@/lib/errorTracking';
 
 interface Props {
   children: ReactNode;
@@ -50,25 +51,25 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private reportError(error: Error, errorInfo: ErrorInfo) {
     // In production, send to error tracking service
-    // Example: Sentry, LogRocket, etc.
+    // Check if we're in production and Sentry is configured
+    if (import.meta.env.PROD) {
+      reportError(error, errorInfo);
+    }
+
+    // Always log error data for debugging
     const errorData = {
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
       timestamp: new Date().toISOString(),
-      url: window.location.href,
-      userAgent: navigator.userAgent
+      url: typeof window !== 'undefined' ? window.location.href : '',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
     };
 
-    // Log to console in development
-    console.log('Error reported:', errorData);
-    
-    // TODO: Send to error tracking service
-    // fetch('/api/errors', {
-    //   method: 'POST',
-    //   body: JSON.stringify(errorData),
-    //   headers: { 'Content-Type': 'application/json' }
-    // }).catch(console.error);
+    // Log to console in development or when no error tracking is configured
+    if (import.meta.env.DEV || !import.meta.env.PROD) {
+      console.log('Error reported:', errorData);
+    }
   }
 
   private handleRetry = () => {
@@ -196,6 +197,10 @@ export class AsyncErrorBoundary extends React.Component<
 
   public componentDidCatch(error: Error): void {
     console.error('Async operation error:', error);
+    // Report to error tracking service in production
+    if (import.meta.env.PROD) {
+      reportError(error);
+    }
   }
 
   public render() {
@@ -203,8 +208,9 @@ export class AsyncErrorBoundary extends React.Component<
       return this.props.fallback || (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-red-800 dark:text-red-200">
-            Failed to load content. 
-            <button 
+            Failed to load content.
+            <button
+              type="button"
               onClick={() => {
                 this.setState({ hasError: false, error: null });
                 this.props.onReset?.();
@@ -221,3 +227,11 @@ export class AsyncErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+
+// Initialize error tracking in production
+if (typeof window !== 'undefined' && import.meta.env.PROD) {
+  initErrorTracking({});
+}
+
+// Re-export Sentry's ErrorBoundary for advanced use cases
+export { ErrorBoundary as SentryErrorBoundary } from '@sentry/react';

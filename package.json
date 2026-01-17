@@ -18,6 +18,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
     "@rwese/agent-loop-plugin": "rwese/agent-loop-plugin",
+    "@sentry/react": "^10.34.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
     "dexie": "^3.2.4",
