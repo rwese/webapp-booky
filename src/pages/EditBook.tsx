@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { BookForm } from '../components/forms/BookForm';
-import { bookOperations, tagOperations } from '../lib/db';
+import { bookOperations, tagOperations, coverImageOperations } from '../lib/db';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import type { Book as BookType, Tag as TagType } from '../types';
@@ -33,6 +33,16 @@ export function EditBookPage() {
           navigate('/library');
           return;
         }
+
+        // Resolve localCoverPath to a URL if coverUrl is not set
+        // This ensures cover images from imports are visible in the edit view
+        if (!loadedBook.coverUrl && loadedBook.localCoverPath) {
+          const coverUrl = await coverImageOperations.getUrl(loadedBook.localCoverPath);
+          if (coverUrl) {
+            loadedBook.coverUrl = coverUrl;
+          }
+        }
+
         setBook(loadedBook);
         
         // Load existing tags for this book
