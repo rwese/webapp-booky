@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Tag, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Tag, X, Search } from 'lucide-react';
 import { Card } from '../common/Button';
 import { tagOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -31,6 +31,9 @@ interface TagListingProps {
   className?: string;
   showCounts?: boolean;
   maxTags?: number;
+  showSearch?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export function TagListing({
@@ -38,8 +41,15 @@ export function TagListing({
   onTagDelete,
   className,
   showCounts = true,
-  maxTags
+  maxTags,
+  showSearch = false,
+  searchQuery = '',
+  onSearchChange
 }: TagListingProps) {
+  const [localSearch, setLocalSearch] = useState('');
+  const effectiveSearch = showSearch && onSearchChange ? searchQuery : localSearch;
+  const handleSearchChange = showSearch && onSearchChange ? onSearchChange : setLocalSearch;
+
   const tagsWithCounts = useLiveQuery(
     () => tagOperations.getAllWithCount(),
     []
@@ -47,11 +57,21 @@ export function TagListing({
 
   const displayedTags = useMemo(() => {
     if (!tagsWithCounts) return [];
-    if (maxTags) {
-      return tagsWithCounts.slice(0, maxTags);
+
+    // Filter by search query
+    let filtered = tagsWithCounts;
+    if (effectiveSearch.trim()) {
+      const query = effectiveSearch.toLowerCase();
+      filtered = tagsWithCounts.filter(tag =>
+        tag.name.toLowerCase().includes(query)
+      );
     }
-    return tagsWithCounts;
-  }, [tagsWithCounts, maxTags]);
+
+    if (maxTags) {
+      return filtered.slice(0, maxTags);
+    }
+    return filtered;
+  }, [tagsWithCounts, maxTags, effectiveSearch]);
 
   const getColorClasses = (colorValue: string) => {
     const colorObj = TAG_COLORS.find(c => c.value === colorValue);
@@ -86,6 +106,22 @@ export function TagListing({
 
   return (
     <div className={className}>
+      {/* Search Input */}
+      {showSearch && (
+        <div className="mb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search tags..."
+              value={effectiveSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="input pl-9 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {displayedTags.map(tag => {
           const colorClasses = getColorClasses(tag.color);
@@ -103,7 +139,13 @@ export function TagListing({
         })}
       </div>
 
-      {maxTags && tagsWithCounts.length > maxTags && (
+      {effectiveSearch.trim() && displayedTags.length === 0 && (
+        <p className="text-sm text-gray-500 mt-2">
+          No tags found matching "{effectiveSearch}"
+        </p>
+      )}
+
+      {maxTags && tagsWithCounts.length > maxTags && !effectiveSearch.trim() && (
         <p className="text-sm text-gray-500 mt-2">
           Showing {maxTags} of {tagsWithCounts.length} tags
         </p>

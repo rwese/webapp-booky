@@ -18,6 +18,7 @@ export function LibraryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [localSearch, setLocalSearch] = useState('');
+  const [tagSearch, setTagSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const debouncedSearch = useDebounce(localSearch, 300);
   const isTouchDevice = useIsTouchDevice();
@@ -188,24 +189,27 @@ export function LibraryPage() {
 
       {/* Book Grid/List */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
-        {/* Tags Section */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <TagIcon size={20} />
-              Tags
-            </h2>
-            {filterConfig.tags && filterConfig.tags.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={handleClearTagFilter}>
-                <X size={14} />
-                Clear filter
-              </Button>
-            )}
-          </div>
-          <TagListing
-            showCounts={true}
-            onTagClick={handleTagClick}
-          />
+          {/* Tags Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <TagIcon size={20} />
+                Tags
+              </h2>
+              {filterConfig.tags && filterConfig.tags.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleClearTagFilter}>
+                  <X size={14} />
+                  Clear filter
+                </Button>
+              )}
+            </div>
+            <TagListing
+              showCounts={true}
+              showSearch={true}
+              searchQuery={tagSearch}
+              onSearchChange={setTagSearch}
+              onTagClick={handleTagClick}
+            />
           {filterConfig.tags && filterConfig.tags.length > 0 && (
             <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               Filtering by {filterConfig.tags.length} tag{filterConfig.tags.length > 1 ? 's' : ''}
