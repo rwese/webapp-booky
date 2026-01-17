@@ -202,7 +202,7 @@ export function getImageDimensions(file: File | Blob): Promise<{ width: number; 
 export function imageNeedsCropping(
   width: number, 
   height: number,
-  targetAspectRatio: number = 16 / 9,
+  targetAspectRatio: number = 6 / 9,
   maxDimension: number = 2000
 ): boolean {
   const currentAspectRatio = width / height;

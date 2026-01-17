@@ -24,7 +24,7 @@ export function CameraCapture({
   onCancel,
   config,
   className,
-  aspectRatio = 16 / 9
+  aspectRatio = 6 / 9
 }: CameraCaptureProps) {
   const {
     state,

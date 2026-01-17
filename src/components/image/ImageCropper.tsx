@@ -8,7 +8,7 @@ interface ImageCropperProps {
   image: string | File;
   onCropComplete: (croppedBlob: Blob) => void;
   onCancel: () => void;
-  aspectRatio?: number; // width/height ratio (16/9 = 1.777...)
+  aspectRatio?: number; // width/height ratio (6/9 = 0.666...)
   aspectLabel?: string;
   maxZoom?: number;
   minZoom?: number;
@@ -21,8 +21,8 @@ export function ImageCropper({
   image,
   onCropComplete,
   onCancel,
-  aspectRatio = 16 / 9,
-  aspectLabel = '16:9',
+  aspectRatio = 6 / 9,
+  aspectLabel = '6:9',
   maxZoom = 3,
   minZoom = 1
 }: ImageCropperProps) {

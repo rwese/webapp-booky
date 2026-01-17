@@ -63,7 +63,7 @@ export function CoverUpload({
       const needsCropping = imageNeedsCropping(
         dimensions.width, 
         dimensions.height, 
-        16 / 9, 
+        6 / 9, 
         2000
       );
 
@@ -213,8 +213,8 @@ export function CoverUpload({
               image={previewUrl || selectedFile!}
               onCropComplete={handleCropComplete}
               onCancel={handleCropCancel}
-              aspectRatio={16 / 9}
-              aspectLabel="16:9"
+              aspectRatio={6 / 9}
+              aspectLabel="6:9"
             />
           )}
         </div>
@@ -226,7 +226,7 @@ export function CoverUpload({
           {value ? (
             // Show current cover with options
             <div className="relative group">
-              <div className="relative aspect-[16/9] w-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
+              <div className="relative aspect-[6/9] w-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden">
                 <img
                   src={value}
                   alt="Book cover"
@@ -261,7 +261,7 @@ export function CoverUpload({
             <div
               className={twMerge(
                 clsx(
-                  'relative aspect-[16/9] w-full border-2 border-dashed rounded-xl transition-colors',
+                  'relative aspect-[6/9] w-full border-2 border-dashed rounded-xl transition-colors',
                   'flex flex-col items-center justify-center gap-3 cursor-pointer',
                   'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800',
                   'border-gray-300 dark:border-gray-600',
