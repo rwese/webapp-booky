@@ -57,14 +57,14 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     // Always log error data for debugging
-    const errorData = {
+    console.debug({
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
       timestamp: new Date().toISOString(),
       url: typeof window !== 'undefined' ? window.location.href : '',
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
-    };
+    });
   }
 
   private handleRetry = () => {

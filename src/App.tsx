@@ -23,7 +23,6 @@ import { registerServiceWorker } from './lib/serviceWorker';
 import { useModalStore } from './store/useStore';
 import { clsx } from 'clsx';
 import { SkipLink, announce } from './components/common/Accessibility';
-import { usePerformanceMetrics } from './hooks/usePerformance';
 
 // Loading skeleton component
 function PageLoader() {
@@ -61,8 +60,7 @@ function App() {
     }
   }, [syncStatus.isOnline, syncStatus.pendingOperations, syncInBackground]);
 
-  // Performance monitoring
-  const metrics = usePerformanceMetrics();
+  // Performance monitoring (metrics tracked internally)
 
   // Announce page changes for screen readers
   useEffect(() => {

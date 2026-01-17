@@ -145,13 +145,13 @@ export const authConfig: NextAuthOptions = {
     /**
      * Create user event - called when new user is created
      */
-    async createUser({ user }) {
+    async createUser({ user: _user }) {
     },
 
     /**
      * Sign in event - called on successful sign in
      */
-    async signIn({ user: _user, account, isNewUser: _isNewUser }) {
+    async signIn({ user: _user, account: _account, isNewUser: _isNewUser }) {
     },
 
     /**

@@ -205,7 +205,7 @@ export function reportError(
 export function reportMessage(
   message: string,
   level: SentrySeverityLevel = 'info',
-  extra?: Record<string, unknown>
+  _extra?: Record<string, unknown>
 ): void {
   const sentry = getSentry();
   if (hasSentry() && sentry) {
