@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
@@ -24,12 +24,17 @@ export function LibraryPage() {
   const debouncedSearch = useDebounce(localSearch, 300);
   const isTouchDevice = useIsTouchDevice();
 
-  // Initialize filters from URL on mount
-  // Intentionally not listing all deps - we only want this to run on mount
+  // Track whether we've initialized filters from URL
+  // Intentionally not listing all deps - we only want this to run once on mount
+  const initializedFromUrl = useRef(false);
+
   useEffect(() => {
+    // Only run once when URL params are available
+    if (initializedFromUrl.current) return;
+
     const { filterConfig: urlFilterConfig, sortConfig: urlSortConfig } = urlParamsToFilters(searchParams);
 
-    // Apply URL params to store if they differ from current state
+    // Apply URL params to store if they differ from initial state
     const hasFilterChanges =
       urlFilterConfig.search !== filterConfig.search ||
       JSON.stringify(urlFilterConfig.tags) !== JSON.stringify(filterConfig.tags) ||
@@ -37,12 +42,21 @@ export function LibraryPage() {
       JSON.stringify(urlFilterConfig.formats) !== JSON.stringify(filterConfig.formats) ||
       JSON.stringify(urlFilterConfig.statuses) !== JSON.stringify(filterConfig.statuses);
 
-    if (hasFilterChanges) {
-      setFilterConfig({ ...filterConfig, ...urlFilterConfig });
-    }
+    const hasSortChanges =
+      (urlSortConfig.field && urlSortConfig.field !== sortConfig.field) ||
+      (urlSortConfig.direction && urlSortConfig.direction !== sortConfig.direction);
 
-    if (urlSortConfig.field || urlSortConfig.direction) {
-      setSortConfig({ ...sortConfig, ...urlSortConfig });
+    if (hasFilterChanges || hasSortChanges) {
+      if (hasFilterChanges) {
+        setFilterConfig({ ...filterConfig, ...urlFilterConfig });
+      }
+      if (hasSortChanges) {
+        setSortConfig({ ...sortConfig, ...urlSortConfig });
+      }
+      initializedFromUrl.current = true;
+    } else {
+      // Even if no changes, mark as initialized to prevent re-running
+      initializedFromUrl.current = true;
     }
   }, [searchParams, filterConfig, sortConfig, setFilterConfig, setSortConfig]);
 

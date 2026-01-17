@@ -168,51 +168,49 @@ export function useUrlFilterSync(
   const { debounceMs = 300, excludedParams = [] } = options;
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Track if the update is from URL (to avoid infinite loops)
-  const isUpdatingFromUrl = useRef(false);
+  // Track if we've initialized from URL (to avoid infinite loops on subsequent updates)
+  const initializedFromUrl = useRef(false);
 
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Parse URL params on mount and when params change
   useEffect(() => {
+    // Only run once to apply initial URL params
+    if (initializedFromUrl.current) return;
+
     const { filterConfig: urlFilterConfig, sortConfig: urlSortConfig } =
       urlParamsToFilters(searchParams);
 
     // Only update if there are actual changes from URL
     const hasFilterChanges =
-      urlFilterConfig.search !== filterConfig.search ||
-      JSON.stringify(urlFilterConfig.tags) !== JSON.stringify(filterConfig.tags) ||
-      JSON.stringify(urlFilterConfig.collections) !== JSON.stringify(filterConfig.collections) ||
-      JSON.stringify(urlFilterConfig.formats) !== JSON.stringify(filterConfig.formats) ||
-      JSON.stringify(urlFilterConfig.statuses) !== JSON.stringify(filterConfig.statuses) ||
-      urlFilterConfig.minRating !== filterConfig.minRating ||
-      urlFilterConfig.maxRating !== filterConfig.maxRating;
+      (urlFilterConfig.search !== undefined && urlFilterConfig.search !== filterConfig.search) ||
+      (urlFilterConfig.tags && JSON.stringify(urlFilterConfig.tags) !== JSON.stringify(filterConfig.tags)) ||
+      (urlFilterConfig.collections && JSON.stringify(urlFilterConfig.collections) !== JSON.stringify(filterConfig.collections)) ||
+      (urlFilterConfig.formats && JSON.stringify(urlFilterConfig.formats) !== JSON.stringify(filterConfig.formats)) ||
+      (urlFilterConfig.statuses && JSON.stringify(urlFilterConfig.statuses) !== JSON.stringify(filterConfig.statuses)) ||
+      (urlFilterConfig.minRating !== undefined && urlFilterConfig.minRating !== filterConfig.minRating) ||
+      (urlFilterConfig.maxRating !== undefined && urlFilterConfig.maxRating !== filterConfig.maxRating);
 
     const hasSortChanges =
-      urlSortConfig.field !== sortConfig.field ||
-      urlSortConfig.direction !== sortConfig.direction;
+      (urlSortConfig.field !== undefined && urlSortConfig.field !== sortConfig.field) ||
+      (urlSortConfig.direction !== undefined && urlSortConfig.direction !== sortConfig.direction);
 
-    if (hasFilterChanges) {
-      isUpdatingFromUrl.current = true;
-      onFilterChange({ ...filterConfig, ...urlFilterConfig });
+    if (hasFilterChanges || hasSortChanges) {
+      if (hasFilterChanges) {
+        onFilterChange({ ...filterConfig, ...urlFilterConfig });
+      }
+      if (hasSortChanges) {
+        onSortChange({ ...sortConfig, ...urlSortConfig });
+      }
     }
 
-    if (hasSortChanges) {
-      isUpdatingFromUrl.current = true;
-      onSortChange({ ...sortConfig, ...urlSortConfig });
-    }
-
-    // Short timeout to reset the flag after state updates
-    const timer = setTimeout(() => {
-      isUpdatingFromUrl.current = false;
-    }, 50);
-
-    return () => clearTimeout(timer);
+    // Mark as initialized regardless of whether changes were applied
+    initializedFromUrl.current = true;
   }, [searchParams, filterConfig, sortConfig, onFilterChange, onSortChange]);
 
   // Update URL when filter/sort config changes (not from URL)
   useEffect(() => {
-    if (isUpdatingFromUrl.current) {
+    if (initializedFromUrl.current) {
       return;
     }
 
