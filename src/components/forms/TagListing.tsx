@@ -3,22 +3,10 @@ import { Tag, X, Search } from 'lucide-react';
 import { Card } from '../common/Button';
 import { tagOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { clsx } from 'clsx';
-
-// Predefined tag colors (matching TagInput.tsx)
-const TAG_COLORS = [
-  { name: 'Red', value: '#ef4444', bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' },
-  { name: 'Orange', value: '#f97316', bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
-  { name: 'Yellow', value: '#eab308', bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' },
-  { name: 'Green', value: '#22c55e', bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
-  { name: 'Blue', value: '#3b82f6', bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
-  { name: 'Purple', value: '#a855f7', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' },
-];
 
 interface TagWithCount {
   id: string;
   name: string;
-  color: string;
   createdAt: Date;
   bookCount: number;
 }
@@ -73,11 +61,6 @@ export function TagListing({
     return filtered;
   }, [tagsWithCounts, maxTags, effectiveSearch]);
 
-  const getColorClasses = (colorValue: string) => {
-    const colorObj = TAG_COLORS.find(c => c.value === colorValue);
-    return colorObj || TAG_COLORS[3]; // Default to green if not found
-  };
-
   if (!tagsWithCounts) {
     return (
       <div className={className}>
@@ -123,20 +106,15 @@ export function TagListing({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {displayedTags.map(tag => {
-          const colorClasses = getColorClasses(tag.color);
-
-          return (
+        {displayedTags.map(tag => (
             <TagItem
               key={tag.id}
               tag={tag}
-              colorClasses={colorClasses}
               showCount={showCounts}
               onClick={onTagClick ? () => onTagClick(tag) : undefined}
               onDelete={onTagDelete ? () => onTagDelete(tag.id) : undefined}
             />
-          );
-        })}
+          ))}
       </div>
 
       {effectiveSearch.trim() && displayedTags.length === 0 && (
@@ -156,27 +134,18 @@ export function TagListing({
 
 interface TagItemProps {
   tag: TagWithCount;
-  colorClasses: typeof TAG_COLORS[0];
   showCount: boolean;
   onClick?: () => void;
   onDelete?: () => void;
 }
 
-function TagItem({ tag, colorClasses, showCount, onClick, onDelete }: TagItemProps) {
+function TagItem({ tag, showCount, onClick, onDelete }: TagItemProps) {
   const content = (
     <>
       <Tag size={14} />
       <span>{tag.name}</span>
       {showCount && (
-        <span className={clsx(
-          'text-xs px-1.5 py-0.5 rounded-full',
-          colorClasses.bg === 'bg-red-100' ? 'bg-red-200/50' :
-          colorClasses.bg === 'bg-orange-100' ? 'bg-orange-200/50' :
-          colorClasses.bg === 'bg-yellow-100' ? 'bg-yellow-200/50' :
-          colorClasses.bg === 'bg-green-100' ? 'bg-green-200/50' :
-          colorClasses.bg === 'bg-blue-100' ? 'bg-blue-200/50' :
-          'bg-purple-200/50'
-        )}>
+        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-200/50 dark:bg-gray-600/50">
           {tag.bookCount}
         </span>
       )}
@@ -201,14 +170,7 @@ function TagItem({ tag, colorClasses, showCount, onClick, onDelete }: TagItemPro
       <button
         type="button"
         onClick={onClick}
-        className={clsx(
-          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all',
-          colorClasses.bg,
-          colorClasses.text,
-          colorClasses.border,
-          'cursor-pointer hover:opacity-80 hover:scale-105',
-          'ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600'
-        )}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 cursor-pointer hover:opacity-80 hover:scale-105 ring-2 ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600"
       >
         {content}
       </button>
@@ -217,12 +179,7 @@ function TagItem({ tag, colorClasses, showCount, onClick, onDelete }: TagItemPro
 
   return (
     <span
-      className={clsx(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium',
-        colorClasses.bg,
-        colorClasses.text,
-        colorClasses.border
-      )}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
     >
       {content}
     </span>

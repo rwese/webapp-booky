@@ -4,17 +4,6 @@ import { Button } from '../common/Button';
 import { tagOperations } from '../../lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Tag as TagType } from '../../types';
-import { clsx } from 'clsx';
-
-// Predefined tag colors
-export const TAG_COLORS = [
-  { name: 'Red', value: '#ef4444', bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' },
-  { name: 'Orange', value: '#f97316', bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' },
-  { name: 'Yellow', value: '#eab308', bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' },
-  { name: 'Green', value: '#22c55e', bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
-  { name: 'Blue', value: '#3b82f6', bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
-  { name: 'Purple', value: '#a855f7', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' },
-];
 
 interface TagInputProps {
   selectedTags: TagType[];
@@ -25,7 +14,6 @@ interface TagInputProps {
 export function TagInput({ selectedTags, onTagsChange, className }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(TAG_COLORS[3]); // Default green
   const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -69,20 +57,18 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
       const newTag: TagType = {
         id: crypto.randomUUID(),
         name,
-        color: selectedColor.value,
         createdAt: new Date()
       };
 
       await tagOperations.add(newTag);
       onTagsChange([...selectedTags, newTag]);
       setInputValue('');
-      setSelectedColor(TAG_COLORS[3]); // Reset to default color
     } catch (error) {
       console.error('Failed to create tag:', error);
     } finally {
       setIsCreating(false);
     }
-  }, [inputValue, selectedColor, selectedTags, onTagsChange]);
+  }, [inputValue, selectedTags, onTagsChange]);
 
   const handleSelectExistingTag = useCallback((tag: TagType) => {
     onTagsChange([...selectedTags, tag]);
@@ -107,26 +93,14 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
     }
   }, [inputValue, selectedTags, suggestions, handleSelectExistingTag, handleCreateTag, handleRemoveTag]);
 
-  const getColorClasses = (colorValue: string) => {
-    const colorObj = TAG_COLORS.find(c => c.value === colorValue);
-    return colorObj || TAG_COLORS[3]; // Default to green if not found
-  };
-
   return (
     <div ref={wrapperRef} className={className}>
       {/* Selected Tags */}
       <div className="flex flex-wrap gap-2 mb-3">
-        {selectedTags.map(tag => {
-          const colorClasses = getColorClasses(tag.color);
-          return (
+        {selectedTags.map(tag => (
             <span
               key={tag.id}
-              className={clsx(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium',
-                colorClasses.bg,
-                colorClasses.text,
-                colorClasses.border
-              )}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
             >
               <Tag size={12} />
               {tag.name}
@@ -138,8 +112,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                 <X size={14} />
               </button>
             </span>
-          );
-        })}
+          ))}
       </div>
 
       {/* Input Area */}
@@ -162,24 +135,6 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
             />
           </div>
           
-          {/* Color Picker */}
-          <div className="flex gap-1 items-center">
-            {TAG_COLORS.map(color => (
-              <button
-                key={color.value}
-                type="button"
-                onClick={() => setSelectedColor(color)}
-                className={clsx(
-                  'w-6 h-6 rounded-full transition-transform hover:scale-110',
-                  color.bg,
-                  selectedColor.value === color.value && 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-500'
-                )}
-                style={{ backgroundColor: color.value }}
-                title={`Select ${color.name} color`}
-              />
-            ))}
-          </div>
-          
           <Button 
             onClick={handleCreateTag} 
             disabled={!inputValue.trim() || isCreating}
@@ -198,20 +153,17 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                 <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                   Existing Tags
                 </div>
-                {suggestions.map(tag => {
-                  const colorClasses = getColorClasses(tag.color);
-                  return (
+                {suggestions.map(tag => (
                     <button
                       key={tag.id}
                       type="button"
                       onClick={() => handleSelectExistingTag(tag)}
                       className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     >
-                      <span className={clsx('w-3 h-3 rounded-full', colorClasses.bg)} style={{ backgroundColor: tag.color }} />
+                      <Tag size={14} className="text-gray-400" />
                       <span className="text-sm text-gray-900 dark:text-white">{tag.name}</span>
                     </button>
-                  );
-                })}
+                  ))}
               </>
             )}
             
@@ -226,8 +178,7 @@ export function TagInput({ selectedTags, onTagsChange, className }: TagInputProp
                   className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                 >
                   <Plus size={16} className="text-primary-600" />
-                  <span className="text-sm text-gray-900 dark:text-white">&quot;{inputValue}&quot;</span>
-                  <span className="text-xs text-gray-500">({selectedColor.name})</span>
+                  <span className="text-sm text-gray-900 dark:text-white">"{inputValue}"</span>
                 </button>
               </>
             )}
@@ -248,8 +199,6 @@ interface TagBadgeProps {
 }
 
 export function TagBadge({ tag, size = 'md', removable = false, onRemove, className }: TagBadgeProps) {
-  const colorObj = TAG_COLORS.find(c => c.value === tag.color) || TAG_COLORS[3];
-  
   const sizeClasses = {
     sm: 'px-1.5 py-0.5 text-xs',
     md: 'px-2 py-1 text-sm',
@@ -258,14 +207,7 @@ export function TagBadge({ tag, size = 'md', removable = false, onRemove, classN
 
   return (
     <span
-      className={clsx(
-        'inline-flex items-center gap-1 rounded-full font-medium',
-        colorObj.bg,
-        colorObj.text,
-        colorObj.border,
-        sizeClasses[size],
-        className
-      )}
+      className={`inline-flex items-center gap-1 rounded-full font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 ${sizeClasses[size]} ${className || ''}`}
     >
       <Tag size={size === 'sm' ? 10 : size === 'md' ? 12 : 14} />
       {tag.name}

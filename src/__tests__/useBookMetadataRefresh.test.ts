@@ -388,8 +388,8 @@ describe('User Data Preservation Scenarios', () => {
     ];
 
     const bookTags = [
-      { id: 'tag-1', name: 'sci-fi', color: '#3b82f6' },
-      { id: 'tag-2', name: 'classic', color: '#10b981' }
+      { id: 'tag-1', name: 'sci-fi' },
+      { id: 'tag-2', name: 'classic' }
     ];
 
     const apiMetadata = {

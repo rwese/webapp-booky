@@ -41,7 +41,7 @@ class BookCollectionDB extends Dexie {
     this.version(3).stores({
       books: 'id, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
-      tags: 'id, name, color',
+      tags: 'id, name',
       bookTags: '[bookId+tagId], bookId, tagId',
       collections: 'id, name, isSmart, createdAt, updatedAt',
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',

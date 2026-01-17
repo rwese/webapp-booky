@@ -161,7 +161,6 @@ export async function processTagsForImport(bookId: string, tagNames: string[]): 
       const newTag: Tag = {
         id: tagId,
         name: normalizedName,
-        color: generateRandomTagColor(),
         createdAt: new Date()
       };
       await tagOperations.add(newTag);
@@ -171,23 +170,6 @@ export async function processTagsForImport(bookId: string, tagNames: string[]): 
     // Create BookTag association
     await tagOperations.addTagToBook(bookId, existingTag.id);
   }
-}
-
-// Generate random color for new tags
-function generateRandomTagColor(): string {
-  const colors = [
-    '#3B82F6', // blue
-    '#10B981', // green
-    '#F59E0B', // yellow
-    '#EF4444', // red
-    '#8B5CF6', // purple
-    '#EC4899', // pink
-    '#06B6D4', // cyan
-    '#84CC16', // lime
-    '#F97316', // orange
-    '#6366F1'  // indigo
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 // Validate import book data
