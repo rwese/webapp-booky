@@ -282,4 +282,3 @@ export function TagBadge({ tag, size = 'md', removable = false, onRemove, classN
   );
 }
 
-export { TAG_COLORS };
