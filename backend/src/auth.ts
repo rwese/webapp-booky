@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { sendEmail, getPasswordResetEmailHtml, getPasswordResetEmailText } from './emailService';
 
 dotenv.config();
 
@@ -11,6 +12,14 @@ const JWT_SECRET = process.env.AUTH_SECRET || 'development-secret-change-in-prod
 const JWT_EXPIRES_IN = process.env.AUTH_JWT_EXPIRES_IN || '30d';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.AUTH_REFRESH_TOKEN_EXPIRES_IN || '60d';
 const BCRYPT_ROUNDS = parseInt(process.env.AUTH_BCRYPT_ROUNDS || '12');
+const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+
+// Rate limiting configuration for password reset
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // 15 minutes
+const RATE_LIMIT_MAX_REQUESTS = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '3');
+
+// In-memory rate limit store (use Redis in production)
+const resetRequestStore = new Map<string, { count: number; resetTime: number }>();
 
 // Types
 export interface TokenPayload {
@@ -49,6 +58,51 @@ interface TokenPair {
 const getPrismaClient = () => {
   return new PrismaClient();
 };
+
+// ==================== RATE LIMITING ====================
+
+/**
+ * Check if rate limit is exceeded for password reset
+ * Returns { allowed: true } if within limits, or { allowed: false, retryAfter: seconds } if exceeded
+ */
+function checkPasswordResetRateLimit(email: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const record = resetRequestStore.get(email);
+
+  if (!record) {
+    // First request in window
+    resetRequestStore.set(email, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (now > record.resetTime) {
+    // Window has expired, reset count
+    resetRequestStore.set(email, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    // Rate limit exceeded
+    const retryAfter = Math.ceil((record.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  // Increment count
+  record.count++;
+  return { allowed: true };
+}
+
+/**
+ * Clean up expired rate limit records (call periodically in production)
+ */
+function cleanupRateLimitStore(): void {
+  const now = Date.now();
+  for (const [email, record] of resetRequestStore.entries()) {
+    if (now > record.resetTime) {
+      resetRequestStore.delete(email);
+    }
+  }
+}
 
 // ==================== PASSWORD UTILITIES ====================
 
@@ -364,25 +418,36 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
  */
 export async function requestPasswordReset(email: string): Promise<AuthResult> {
   const prisma = getPrismaClient();
-  
+  const normalizedEmail = email.toLowerCase();
+
+  // Check rate limit
+  const rateLimit = checkPasswordResetRateLimit(normalizedEmail);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      message: 'Too many password reset requests. Please try again later.',
+      error: 'RATE_LIMIT_EXCEEDED',
+    };
+  }
+
   // Find user by email
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() }
+    where: { email: normalizedEmail }
   });
-  
+
   if (!user) {
-    // Don't reveal whether user exists
+    // Don't reveal whether user exists - still check rate limit
     return {
       success: true,
       message: 'If an account exists with this email, a password reset link will be sent.'
     };
   }
-  
+
   try {
     // Generate reset token
     const resetToken = generatePasswordResetToken();
     const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-    
+
     // Save reset token to database
     await prisma.user.update({
       where: { id: user.id },
@@ -391,11 +456,23 @@ export async function requestPasswordReset(email: string): Promise<AuthResult> {
         passwordResetExpires: resetExpires
       }
     });
-    
-    // TODO: Send email with reset link
-    // For now, just log it (in production, integrate with email service)
-    console.log(`Password reset link: ${process.env.APP_URL}/reset-password?token=${resetToken}`);
-    
+
+    // Generate reset link
+    const resetLink = `${APP_URL}/reset-password?token=${resetToken}`;
+
+    // Send email with reset link
+    const emailResult = await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: getPasswordResetEmailHtml(resetLink),
+      text: getPasswordResetEmailText(resetLink)
+    });
+
+    if (!emailResult.success) {
+      console.error('Failed to send password reset email:', emailResult.error);
+      // Still return success to avoid revealing email existence
+    }
+
     return {
       success: true,
       message: 'If an account exists with this email, a password reset link will be sent.'
