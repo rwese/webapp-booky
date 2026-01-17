@@ -378,7 +378,7 @@ export function BookDetailPage() {
           <Card className="p-4 mb-6">
             <h3 className="font-semibold mb-3">Manage Categories</h3>
             <CategorySelector
-              bookId={book.id}
+              _bookId={book.id}
               selectedCategories={book.categories || []}
               onCategoriesChange={handleCategoriesChange}
             />
