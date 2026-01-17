@@ -101,7 +101,6 @@ export function initErrorTracking(config: Partial<ErrorTrackingConfig>): void {
 
   // Only initialize if DSN is provided and we're in production
   if (!dsn || environment === 'development') {
-    console.log('[ErrorTracking] Disabled - no DSN configured or in development mode');
     isInitialized = false;
     return;
   }
@@ -136,7 +135,6 @@ export function initErrorTracking(config: Partial<ErrorTrackingConfig>): void {
   });
 
   isInitialized = true;
-  console.log('[ErrorTracking] Initialized with Sentry');
 }
 
 /**
@@ -183,11 +181,6 @@ export function reportError(
     extra,
   };
 
-  // Log to console in development
-  if (import.meta.env?.DEV) {
-    console.log('[ErrorTracking] Report:', data);
-  }
-
   const sentry = getSentry();
   if (hasSentry() && sentry) {
     sentry.captureException(error, {
@@ -220,7 +213,6 @@ export function reportMessage(
   }
 
   if (import.meta.env?.DEV) {
-    console.log(`[ErrorTracking] ${level}:`, message, extra);
   }
 }
 

@@ -239,7 +239,6 @@ class BookImportService {
       // 3. Store in IndexedDB or FileSystem API
       // 4. Return the local reference
       
-      console.log(`Processing cover image: ${filename} -> ${localPath}`);
       return localPath;
     } catch (error) {
       console.error('Error processing cover image:', error);

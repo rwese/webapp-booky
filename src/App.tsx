@@ -63,12 +63,6 @@ function App() {
 
   // Performance monitoring
   const metrics = usePerformanceMetrics();
-  
-  useEffect(() => {
-    if (metrics.fcp && metrics.lcp) {
-      console.log('Performance metrics:', metrics);
-    }
-  }, [metrics]);
 
   // Announce page changes for screen readers
   useEffect(() => {

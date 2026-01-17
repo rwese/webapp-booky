@@ -45,8 +45,6 @@ class SyncService {
         this.sync();
       }
     }, SYNC_INTERVAL);
-
-    console.log('Sync monitoring started');
   }
 
   // Stop automatic sync monitoring
@@ -54,7 +52,6 @@ class SyncService {
     if (this.syncIntervalId) {
       clearInterval(this.syncIntervalId);
       this.syncIntervalId = null;
-      console.log('Sync monitoring stopped');
     }
   }
 
@@ -83,8 +80,6 @@ class SyncService {
       data: data ?? {}
     });
 
-    console.log(`Queued ${type} operation for ${entity}:${entityId}`);
-    
     // Try to sync immediately if online
     if (this.isOnline) {
       this.sync();
@@ -94,7 +89,6 @@ class SyncService {
   // Process sync queue
   async sync() {
     if (!this.isOnline) {
-      console.log('Cannot sync - offline');
       return { success: false, reason: 'offline' };
     }
 
@@ -102,11 +96,8 @@ class SyncService {
       const pendingOperations = await syncOperations.getPendingOperations();
       
       if (pendingOperations.length === 0) {
-        console.log('No pending operations to sync');
         return { success: true, synced: 0 };
       }
-
-      console.log(`Syncing ${pendingOperations.length} operations...`);
 
       // Process operations in batches
       const batchSize = 10;
@@ -132,8 +123,6 @@ class SyncService {
 
       const successCount = successfulIds.length;
       const failCount = results.length - successCount;
-
-      console.log(`Sync complete: ${successCount} succeeded, ${failCount} failed`);
 
       return { 
         success: true, 
@@ -204,7 +193,6 @@ class SyncService {
       }
 
       const result = await response.json();
-      console.log('Full sync completed:', result);
       return { success: true, ...result };
 
     } catch (error) {

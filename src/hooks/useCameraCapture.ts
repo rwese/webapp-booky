@@ -108,8 +108,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
         audio: false
       };
 
-      console.debug('[useCameraCapture] Requesting camera with constraints:', constraints);
-      
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       
@@ -126,8 +124,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
         error: null
       }));
 
-      console.debug('[useCameraCapture] Camera started successfully');
-      
       return stream;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to access camera';
@@ -171,7 +167,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
       return null;
     }
 
-    console.debug('[useCameraCapture] Capturing photo...');
     setState(prev => ({ ...prev, isCapturing: true, error: null }));
 
     try {
@@ -202,7 +197,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
         canvas.toBlob(
           (result) => {
             if (result) {
-              console.debug(`[useCameraCapture] Photo captured: ${result.size} bytes, ${result.type}`);
               resolve(result);
             } else {
               console.warn('[useCameraCapture] Canvas toBlob returned null');
@@ -227,7 +221,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
   // Switch between front and back cameras
   const switchCamera = useCallback(async () => {
     const newFacingMode = state.facingMode === 'environment' ? 'user' : 'environment';
-    console.debug(`[useCameraCapture] Switching camera from ${state.facingMode} to ${newFacingMode}`);
     
     setState(prev => ({
       ...prev,
@@ -240,7 +233,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
 
   // Switch to specific device
   const switchToDevice = useCallback(async (deviceId: string) => {
-    console.debug(`[useCameraCapture] Switching to device: ${deviceId}`);
     
     setState(prev => ({
       ...prev,
@@ -267,7 +259,6 @@ export function useCameraCapture(config?: Partial<CameraCaptureConfig>) {
       videoElement.muted = true;
       
       videoElement.onloadedmetadata = () => {
-        console.debug('[useCameraCapture] Video metadata loaded');
         videoElement.play().catch(err => {
           console.warn('[useCameraCapture] Video play failed:', err);
         });

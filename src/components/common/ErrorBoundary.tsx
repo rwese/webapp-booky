@@ -65,11 +65,6 @@ export class ErrorBoundary extends Component<Props, State> {
       url: typeof window !== 'undefined' ? window.location.href : '',
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : ''
     };
-
-    // Log to console in development or when no error tracking is configured
-    if (import.meta.env.DEV || !import.meta.env.PROD) {
-      console.log('Error reported:', errorData);
-    }
   }
 
   private handleRetry = () => {

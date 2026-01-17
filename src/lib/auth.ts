@@ -146,21 +146,18 @@ export const authConfig: NextAuthOptions = {
      * Create user event - called when new user is created
      */
     async createUser({ user }) {
-      console.log('New user created:', user.email);
     },
 
     /**
      * Sign in event - called on successful sign in
      */
     async signIn({ user: _user, account, isNewUser: _isNewUser }) {
-      console.log(`User signed in via ${account?.provider}`);
     },
 
     /**
      * Sign out event - called on sign out
      */
     async signOut({ token: _token }) {
-      console.log('User signed out');
     }
   },
 

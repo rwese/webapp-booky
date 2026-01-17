@@ -56,7 +56,6 @@ export function useSync() {
   
   const syncData = useCallback(async () => {
     if (!isOnline) {
-      console.log('Cannot sync: device is offline');
       return { success: false, error: 'Device is offline' };
     }
     

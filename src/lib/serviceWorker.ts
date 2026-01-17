@@ -6,8 +6,6 @@ export function registerServiceWorker() {
       const swPath = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
       navigator.serviceWorker.register(swPath)
         .then(registration => {
-          console.log('ServiceWorker registered:', registration.scope);
-          
           // Handle updates
           registration.addEventListener('updatefound', () => {
             const installingWorker = registration.installing;
@@ -16,11 +14,9 @@ export function registerServiceWorker() {
                 if (installingWorker.state === 'installed') {
                   if (navigator.serviceWorker.controller) {
                     // New content available
-                    console.log('New content available, please refresh.');
                     window.dispatchEvent(new CustomEvent('sw:updateAvailable'));
                   } else {
                     // Content is cached
-                    console.log('Content is cached for offline use.');
                     window.dispatchEvent(new CustomEvent('sw:offlineReady'));
                   }
                 }
@@ -50,9 +46,6 @@ export function requestBackgroundSync(tag: string) {
     navigator.serviceWorker.ready.then(registration => {
       if ('sync' in registration) {
         return (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register(tag)
-          .then(() => {
-            console.log('Background sync registered for:', tag);
-          })
           .catch((error: Error) => {
             console.error('Background sync registration failed:', error);
           });

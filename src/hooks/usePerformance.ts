@@ -303,11 +303,9 @@ export function usePerformanceMetrics() {
             });
             lcpObserver.observe({ type: 'lcp', buffered: true });
           } catch (error) {
-            console.debug('LCP observation failed:', error);
             lcpObserver = null;
           }
         } else {
-          console.debug('LCP entry type not supported in this browser');
         }
 
         // Cumulative Layout Shift
