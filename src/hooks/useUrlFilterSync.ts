@@ -171,17 +171,11 @@ export function useUrlFilterSync(
   // Track if the update is from URL (to avoid infinite loops)
   const isUpdatingFromUrl = useRef(false);
 
-  // Track pending updates for debouncing
-  const pendingUpdate = useRef<{
-    filterConfig: FilterConfig;
-    sortConfig: SortConfig;
-  } | null>(null);
-
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Parse URL params on mount and when params change
   useEffect(() => {
-    const { filterConfig: urlFilterConfig, sortConfig: urlSortConfig, page } =
+    const { filterConfig: urlFilterConfig, sortConfig: urlSortConfig } =
       urlParamsToFilters(searchParams);
 
     // Only update if there are actual changes from URL
@@ -214,7 +208,7 @@ export function useUrlFilterSync(
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [searchParams, filterConfig, sortConfig, onFilterChange, onSortChange]);
 
   // Update URL when filter/sort config changes (not from URL)
   useEffect(() => {

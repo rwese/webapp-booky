@@ -42,7 +42,7 @@ export function LibraryPage() {
     if (urlSortConfig.field || urlSortConfig.direction) {
       setSortConfig({ ...sortConfig, ...urlSortConfig });
     }
-  }, []);
+  }, [searchParams, filterConfig, sortConfig, setFilterConfig, setSortConfig]);
 
   // URL filter sync
   const { clearFilters: clearFiltersAndUrl } = useUrlFilterSync(
