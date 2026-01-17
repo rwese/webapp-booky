@@ -5,11 +5,16 @@ import { ToastContainer } from './components/common/Toast';
 import { HomePage } from './pages/Home';
 import { LibraryPage } from './pages/Library';
 import { AddBookPage } from './pages/AddBook';
-import { AnalyticsPage } from './pages/Analytics';
-import { BookDetailPage } from './pages/BookDetail';
-import { EditBookPage } from './pages/EditBook';
 import type { ComponentType } from 'react';
-// Lazy load Settings page
+
+// Lazy load pages with heavy dependencies
+// AnalyticsPage uses recharts (~400kB) - load on demand
+const AnalyticsPage = lazy(() => import('./pages/Analytics').then(module => ({ default: module.AnalyticsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+// BookDetailPage uses heavy UI components
+const BookDetailPage = lazy(() => import('./pages/BookDetail').then(module => ({ default: module.BookDetailPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+// EditBookPage uses forms and image handling
+const EditBookPage = lazy(() => import('./pages/EditBook').then(module => ({ default: module.EditBookPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+// Settings page - already lazy loaded (keeps settings UI separate)
 const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';

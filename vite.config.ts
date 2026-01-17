@@ -152,11 +152,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          // Core React framework - rarely changes
           vendor: ['react', 'react-dom', 'react-router-dom'],
+          // Charting library - heavy, loaded on analytics page
           charts: ['recharts'],
+          // UI components - icons and class utilities
           ui: ['lucide-react', 'clsx', 'tailwind-merge'],
+          // Form handling - validation and forms
           forms: ['react-hook-form', 'zod', '@hookform/resolvers'],
-          db: ['dexie', 'dexie-react-hooks']
+          // Database - Dexie for IndexedDB
+          db: ['dexie', 'dexie-react-hooks'],
+          // Date utilities
+          date: ['date-fns']
         },
         chunkFileNames: 'js/[name]-[hash].js',
         entryFileNames: 'js/[name]-[hash].js',
@@ -189,7 +196,7 @@ export default defineConfig({
       }
     },
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 200
+    chunkSizeWarningLimit: 500
   },
   server: {
     port: 3000,
