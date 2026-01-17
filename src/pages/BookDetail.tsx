@@ -7,7 +7,6 @@ import {
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
-import { TagBadge } from '../components/forms/TagInput';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/barcodeUtils';
