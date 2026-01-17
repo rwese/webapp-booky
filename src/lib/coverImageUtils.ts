@@ -207,7 +207,7 @@ export function imageNeedsCropping(
 ): boolean {
   const currentAspectRatio = width / height;
   const aspectRatioDiff = Math.abs(currentAspectRatio - targetAspectRatio);
-  const aspectThreshold = 0.1; // Allow 10% deviation
+  const aspectThreshold = 0.05; // Allow 5% deviation (was 0.1)
   
   return (
     width > maxDimension || 
