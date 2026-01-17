@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Trash2, Book, Calendar, Building, 
-  Tag, Clock, ExternalLink, Share2, Heart, RefreshCw
+  Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder
 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
+import { CategorySelector, CategoryBadge } from '../components/forms/CategorySelector';
 import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
@@ -23,6 +24,7 @@ export function BookDetailPage() {
   const [book, setBook] = useState<BookType | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
+  const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [showReviewEditor, setShowReviewEditor] = useState(false);
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
@@ -181,6 +183,27 @@ export function BookDetailPage() {
     }
   }, [book, refreshMetadata, error, addToast]);
 
+  // Handle category changes
+  const handleCategoriesChange = useCallback(async (categories: string[]) => {
+    if (!book) return;
+    
+    try {
+      const updatedBook: BookType = {
+        ...book,
+        categories
+      };
+      
+      await bookOperations.update(book.id, updatedBook);
+      setBook(updatedBook);
+      setShowCategorySelector(false);
+      
+      addToast({ type: 'success', message: 'Categories updated!' });
+    } catch (error) {
+      console.error('Failed to update categories:', error);
+      addToast({ type: 'error', message: 'Failed to update categories' });
+    }
+  }, [book, addToast]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -323,6 +346,15 @@ export function BookDetailPage() {
                 <Tag size={16} />
                 Collections
               </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowCategorySelector(!showCategorySelector)}
+              >
+                <Folder size={16} />
+                Categories
+              </Button>
             </div>
           </div>
         </div>
@@ -341,6 +373,18 @@ export function BookDetailPage() {
           </Card>
         )}
 
+        {/* Categories Section */}
+        {showCategorySelector && (
+          <Card className="p-4 mb-6">
+            <h3 className="font-semibold mb-3">Manage Categories</h3>
+            <CategorySelector
+              bookId={book.id}
+              selectedCategories={book.categories || []}
+              onCategoriesChange={handleCategoriesChange}
+            />
+          </Card>
+        )}
+
         {/* Collections Section */}
         {bookCollections.length > 0 && (
           <div className="mb-6">
@@ -351,6 +395,21 @@ export function BookDetailPage() {
             <div className="flex flex-wrap gap-2">
               {bookCollections.map(collection => (
                 <CollectionBadge key={collection.id} collection={collection} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Categories Section */}
+        {(book.categories && book.categories.length > 0) && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Folder size={16} />
+              <h3 className="font-semibold text-gray-900 dark:text-white">Categories</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {book.categories.map(category => (
+                <CategoryBadge key={category} category={category} />
               ))}
             </div>
           </div>
