@@ -43,7 +43,6 @@ function createMockBook(overrides: Partial<Book> = {}): Book {
     languageCode: 'en',
     categories: ['Novel'],
     averageRating: 4.5,
-    ratingsCount: 100,
     seriesName: undefined,
     seriesVolume: undefined,
     edition: undefined,

@@ -86,8 +86,7 @@ describe('Book Type Validation', () => {
       pageCount: 300,
       categories: ['Fiction', 'Adventure'],
       subjects: ['Mystery'],
-      averageRating: 4.5,
-      ratingsCount: 100
+      averageRating: 4.5
     };
     
     expect(bookWithMetadata.description).toBe('A test book description');
@@ -144,7 +143,6 @@ describe('Refreshable Fields Logic', () => {
     'categories',
     'subjects',
     'averageRating',
-    'ratingsCount',
     'externalIds'
   ] as const;
 
@@ -161,9 +159,8 @@ describe('Refreshable Fields Logic', () => {
     expect(REFRESHABLE_FIELDS).toContain('categories');
     expect(REFRESHABLE_FIELDS).toContain('subjects');
     expect(REFRESHABLE_FIELDS).toContain('averageRating');
-    expect(REFRESHABLE_FIELDS).toContain('ratingsCount');
     expect(REFRESHABLE_FIELDS).toContain('externalIds');
-    expect(REFRESHABLE_FIELDS.length).toBe(12);
+    expect(REFRESHABLE_FIELDS.length).toBe(11);
   });
 
   it('should correctly extract only refreshable fields from a book object', () => {
@@ -197,7 +194,6 @@ describe('Refreshable Fields Logic', () => {
       categories: ['Local Cat'],
       subjects: ['Local Subj'],
       averageRating: 3.5,
-      ratingsCount: 50,
       // Non-refreshable fields
       readingStatus: 'read' as const,
       tags: ['tag1', 'tag2'],
@@ -331,8 +327,7 @@ describe('User Data Preservation Scenarios', () => {
       localOnly: true,
       externalIds: {},
       // User data - ratings are stored separately, not in book object
-      averageRating: 4.5, // This might come from API
-      ratingsCount: 100
+      averageRating: 4.5 // This might come from API
     };
 
     // User's personal rating (stored in separate ratings table)
@@ -350,8 +345,7 @@ describe('User Data Preservation Scenarios', () => {
       title: 'Rated Book',
       authors: ['Author'],
       externalIds: {},
-      averageRating: 4.7, // API might have different rating
-      ratingsCount: 150
+      averageRating: 4.7 // API might have different rating
     };
 
     // Simulate update - API rating updates, user rating preserved in separate store
@@ -362,7 +356,6 @@ describe('User Data Preservation Scenarios', () => {
 
     // API data updated
     expect(updatedBook.averageRating).toBe(4.7);
-    expect(updatedBook.ratingsCount).toBe(150);
     
     // User rating still exists in separate storage
     expect(userRating.stars).toBe(5);

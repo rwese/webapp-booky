@@ -47,11 +47,6 @@ const FIELD_CONFIGS: FieldConfig[] = [
     field: 'averageRating',
     format: (v: unknown) => (v ? `${v}/5` : 'No rating'),
   },
-  {
-    label: 'Ratings Count',
-    field: 'ratingsCount',
-    format: (v: unknown) => (v ? String(v) : '0'),
-  },
 ];
 
 export function MergeView({

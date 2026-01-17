@@ -38,7 +38,6 @@ export function BookForm({
     languageCode: initialData?.languageCode || '',
     categories: initialData?.categories || [],
     averageRating: initialData?.averageRating,
-    ratingsCount: initialData?.ratingsCount,
   });
   
   const [selectedTags, setSelectedTags] = useState<TagType[]>(initialTags);
@@ -76,7 +75,6 @@ export function BookForm({
       languageCode: formData.languageCode,
       categories: formData.categories,
       averageRating: formData.averageRating,
-      ratingsCount: formData.ratingsCount,
     };
 
     await onSubmit(book, selectedTags);
@@ -209,18 +207,6 @@ export function BookForm({
                 averageRating: e.target.value ? parseFloat(e.target.value) : undefined 
               })}
               placeholder="0-5"
-            />
-            
-            <Input
-              label="Ratings Count"
-              type="number"
-              value={formData.ratingsCount || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ 
-                ...formData, 
-                ratingsCount: e.target.value ? parseInt(e.target.value) : undefined 
-              })}
-              placeholder="Count"
-              min="0"
             />
           </div>
           

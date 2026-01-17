@@ -96,7 +96,6 @@ model Book {
   genre           String?
   language        String?
   averageRating   Float?
-  ratingsCount    Int?
   categories      String[]
   subjects        String[]
   tags            String[]

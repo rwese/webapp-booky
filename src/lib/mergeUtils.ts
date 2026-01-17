@@ -47,7 +47,6 @@ const MERGE_FIELDS: (keyof Book)[] = [
   'languageCode',
   'categories',
   'averageRating',
-  'ratingsCount',
   'seriesName',
   'seriesVolume',
   'edition',

@@ -82,8 +82,7 @@ describe('Metadata Refresh Integration Flow', () => {
         publishedYear: 2023,
         pageCount: 350,
         externalIds: { googleBooks: 'GB456', openLibrary: 'OL789' },
-        averageRating: 4.5,
-        ratingsCount: 100
+        averageRating: 4.5
       };
 
       // Simulate the complete flow

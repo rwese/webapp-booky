@@ -526,7 +526,7 @@ async function getPopularBooks(limit: number): Promise<BookRecommendation[]> {
   const books = await prisma.book.findMany({
     where: { localOnly: false },
     take: limit * 2,
-    orderBy: { ratingsCount: 'desc' },
+    orderBy: { averageRating: 'desc' },
   });
 
   return books.slice(0, limit).map(book => ({
@@ -535,7 +535,7 @@ async function getPopularBooks(limit: number): Promise<BookRecommendation[]> {
     authors: book.authors,
     coverUrl: book.coverUrl || undefined,
     reason: 'Popular among readers',
-    score: book.ratingsCount || 0,
+    score: book.averageRating || 0,
   }));
 }
 

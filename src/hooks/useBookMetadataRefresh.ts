@@ -27,7 +27,6 @@ const REFRESHABLE_FIELDS = [
   'categories',
   'subjects',
   'averageRating',
-  'ratingsCount',
   'externalIds'
 ] as const;
 

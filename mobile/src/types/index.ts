@@ -45,10 +45,9 @@ export interface Book {
   localOnly: boolean;
   genre?: string;
   language?: string;
-  readingStatus?: ReadingStatus;
-  averageRating?: number;
-  ratingsCount?: number;
-  categories?: string[];
+   readingStatus?: ReadingStatus;
+   averageRating?: number;
+   categories?: string[];
   subjects?: string[];
   tags?: string[];
   seriesName?: string;

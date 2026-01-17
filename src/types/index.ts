@@ -41,7 +41,6 @@ export interface Book {
   
   // ISBN Metadata - Ratings & Reviews
   averageRating?: number;
-  ratingsCount?: number;
   
   // ISBN Metadata - Content Categories  
   categories?: string[];
@@ -355,7 +354,6 @@ export interface GoogleBooksVolume {
     pageCount?: number;
     categories?: string[];
     averageRating?: number;
-    ratingsCount?: number;
     imageLinks?: {
       smallThumbnail: string;
       thumbnail: string;

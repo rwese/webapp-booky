@@ -302,7 +302,6 @@ interface Book {
   needsSync: boolean
   localOnly: boolean
   averageRating?: number
-  ratingsCount?: number
   categories?: string[]
   subjects?: string[]
   languageCode?: string

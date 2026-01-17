@@ -327,7 +327,6 @@ export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null
         publisher: volumeInfo.publisher,
         categories: volumeInfo.categories,
         averageRating: volumeInfo.averageRating,
-        ratingsCount: volumeInfo.ratingsCount,
         languageCode: volumeInfo.language,
         country: volumeInfo.country,
         previewLink: volumeInfo.previewLink,
