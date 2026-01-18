@@ -8,6 +8,30 @@ export type BookFormat =
   | 'pdf'
   | 'other';
 
+// Cover image size variants
+export type CoverSize = 'thumbnail' | 'small' | 'medium' | 'large' | 'xl';
+
+// Cover image candidate for multi-cover selection
+export interface CoverImageCandidate {
+  url: string;
+  source: 'openLibrary' | 'googleBooks' | 'upload';
+  size: CoverSize;
+  width?: number;
+  height?: number;
+  isPreferred?: boolean; // Mark as recommended (e.g., best for printing)
+}
+
+// Cover selection result
+export interface CoverSelectionResult {
+  selectedCoverUrl: string;
+  source: CoverImageCandidate['source'];
+  size: CoverSize;
+  metadata?: {
+    width?: number;
+    height?: number;
+  };
+}
+
 export interface Book {
   id: string;
   title: string;

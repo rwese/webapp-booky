@@ -1,4 +1,4 @@
-import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat } from '../types';
+import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat, CoverImageCandidate, CoverSize, CoverSelectionResult } from '../types';
 import { validateISBN } from './barcodeUtils';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
@@ -392,6 +392,131 @@ export async function searchBooks(query: string): Promise<Book[]> {
     // Return empty array if all searches fail
     return [];
   }
+}
+
+// Fetch multiple cover image candidates for a book
+export async function fetchCoverCandidates(
+  openLibraryCoverId?: string,
+  googleBooksImageLinks?: { thumbnail?: string; smallThumbnail?: string; large?: string }
+): Promise<CoverImageCandidate[]> {
+  const candidates: CoverImageCandidate[] = [];
+
+  // Open Library covers
+  if (openLibraryCoverId) {
+    // Open Library provides multiple size variants
+    const openLibrarySizes: { size: CoverSize; suffix: string; width: number; height: number }[] = [
+      { size: 'thumbnail', suffix: '-S', width: 90, height: 90 },
+      { size: 'small', suffix: '-M', width: 300, height: 450 },
+      { size: 'medium', suffix: '-L', width: 500, height: 750 },
+      { size: 'large', suffix: '-XXL', width: 1200, height: 1800 },
+      { size: 'xl', suffix: '-XXXL', width: 2400, height: 3600 },
+    ];
+
+    for (const { size, suffix, width, height } of openLibrarySizes) {
+      candidates.push({
+        url: `https://covers.openlibrary.org/b/id/${openLibraryCoverId}${suffix}.jpg`,
+        source: 'openLibrary',
+        size,
+        width,
+        height,
+        isPreferred: size === 'medium' // Medium is usually a good balance
+      });
+    }
+  }
+
+  // Google Books covers
+  if (googleBooksImageLinks) {
+    // Google Books provides smallThumbnail, thumbnail, and sometimes large
+    if (googleBooksImageLinks.smallThumbnail) {
+      candidates.push({
+        url: googleBooksImageLinks.smallThumbnail.replace('http:', 'https:'),
+        source: 'googleBooks',
+        size: 'thumbnail',
+        width: 80,
+        height: 128,
+        isPreferred: false
+      });
+    }
+
+    if (googleBooksImageLinks.thumbnail) {
+      candidates.push({
+        url: googleBooksImageLinks.thumbnail.replace('http:', 'https:'),
+        source: 'googleBooks',
+        size: 'small',
+        width: 128,
+        height: 195,
+        isPreferred: false
+      });
+    }
+
+    if (googleBooksImageLinks.large) {
+      candidates.push({
+        url: googleBooksImageLinks.large.replace('http:', 'https:'),
+        source: 'googleBooks',
+        size: 'medium',
+        width: 400,
+        height: 600,
+        isPreferred: true // Large is preferred from Google Books
+      });
+    }
+  }
+
+  return candidates;
+}
+
+// Combined function to get book data with multiple cover options
+export interface BookWithCoverCandidates {
+  book: Book | null;
+  coverCandidates: CoverImageCandidate[];
+}
+
+export async function searchISBNWithMultipleCovers(isbn: string): Promise<BookWithCoverCandidates> {
+  const [openLibraryResult, googleBooksResult] = await Promise.allSettled([
+    searchByISBN(isbn),
+    searchGoogleBooksByISBN(isbn)
+  ]);
+
+  // Determine which source has better data
+  let bestBook: Book | null = null;
+  let hasOpenLibraryCover = false;
+  let googleBooksImageLinks: { thumbnail?: string; smallThumbnail?: string; large?: string } | undefined;
+
+  if (openLibraryResult.status === 'fulfilled' && openLibraryResult.value) {
+    bestBook = openLibraryResult.value;
+    // Extract cover ID from Open Library URL if present
+    if (bestBook?.coverUrl) {
+      const coverIdMatch = bestBook.coverUrl.match(/covers\.openlibrary\.org\/b\/id\/(\d+)/);
+      if (coverIdMatch) {
+        hasOpenLibraryCover = true;
+      }
+    }
+  }
+
+  if (googleBooksResult.status === 'fulfilled' && googleBooksResult.value) {
+    if (!bestBook) {
+      bestBook = googleBooksResult.value;
+    }
+    // For Google Books, we need to construct image links from the book data
+    // The Google Books book object may have coverUrl set to thumbnail
+    if (googleBooksResult.value.coverUrl) {
+      googleBooksImageLinks = {
+        thumbnail: googleBooksResult.value.coverUrl,
+        // Try to get larger version by replacing size suffix
+        large: googleBooksResult.value.coverUrl?.replace('-S.jpg', '-L.jpg').replace('http:', 'https:')
+      };
+    }
+  }
+
+  // Fetch cover candidates
+  const coverCandidates = await fetchCoverCandidates(
+    hasOpenLibraryCover ? bestBook?.coverUrl?.match(/covers\.openlibrary\.org\/b\/id\/(\d+)/)?.[1] : undefined,
+    googleBooksImageLinks
+  );
+
+  return {
+    book: bestBook,
+    coverCandidates
+  };
 }
 
 // ISBN validation
