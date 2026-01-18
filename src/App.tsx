@@ -1,20 +1,18 @@
 import { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import type { ComponentType } from 'react';
 import { SidebarNavigation, FloatingActionButtons } from './components/common/Navigation';
 import { ToastContainer } from './components/common/Toast';
-import { HomePage } from './pages/Home';
-import { LibraryPage } from './pages/Library';
-import { AddBookPage } from './pages/AddBook';
-import type { ComponentType } from 'react';
+// Lazy load all pages for optimal code splitting and faster initial load
+// Core pages - lazy loaded to reduce initial bundle size
+const HomePage = lazy(() => import('./pages/Home').then(module => ({ default: module.HomePage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+const LibraryPage = lazy(() => import('./pages/Library').then(module => ({ default: module.LibraryPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+const AddBookPage = lazy(() => import('./pages/AddBook').then(module => ({ default: module.AddBookPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 
-// Lazy load pages with heavy dependencies
-// AnalyticsPage uses recharts (~400kB) - load on demand
+// Heavy pages - lazy loaded to defer ~400KB+ of charting/UI libraries
 const AnalyticsPage = lazy(() => import('./pages/Analytics').then(module => ({ default: module.AnalyticsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
-// BookDetailPage uses heavy UI components
 const BookDetailPage = lazy(() => import('./pages/BookDetail').then(module => ({ default: module.BookDetailPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
-// EditBookPage uses forms and image handling
 const EditBookPage = lazy(() => import('./pages/EditBook').then(module => ({ default: module.EditBookPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
-// Settings page - already lazy loaded (keeps settings UI separate)
 const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
