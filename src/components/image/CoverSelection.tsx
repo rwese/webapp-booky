@@ -58,6 +58,9 @@ export function CoverSelection({
     }
   };
 
+  // Find the preferred/primary candidate for "Continue with Best" button
+  const preferredCandidate = candidates.find(c => c.isPreferred) || candidates[0];
+
   return (
     <div className="space-y-4">
       {/* Preview Modal */}
@@ -215,6 +218,17 @@ export function CoverSelection({
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
+        {/* Continue with Best button - accepts the preferred/default cover */}
+        {preferredCandidate && (
+          <Button 
+            variant="primary" 
+            onClick={() => onSelect(preferredCandidate)}
+            disabled={selectedCoverUrl === preferredCandidate.url}
+          >
+            <Check size={16} className="mr-1" />
+            Continue with Best
+          </Button>
+        )}
       </div>
     </div>
   );

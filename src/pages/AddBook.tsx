@@ -40,6 +40,8 @@ export function AddBookPage() {
   const [showCoverSelection, setShowCoverSelection] = useState(false);
   const [coverCandidates, setCoverCandidates] = useState<CoverImageCandidate[]>([]);
   const [pendingCoverBook, setPendingCoverBook] = useState<BookType | null>(null);
+  // Track if we're in the barcode scan workflow for auto-creation
+  const [fromBarcodeScan, setFromBarcodeScan] = useState(false);
   
   const debouncedQuery = useDebounce(searchQuery, 500);
   
@@ -88,10 +90,11 @@ export function AddBookPage() {
               setExistingBook(existingBook);
               setPendingBook(result.book);
               setShowMergeView(true);
-            } else if (result.coverCandidates.length > 1) {
+             } else if (result.coverCandidates.length > 1) {
               setPendingCoverBook(result.book);
               setCoverCandidates(result.coverCandidates);
               setShowCoverSelection(true);
+              setFromBarcodeScan(true);
             } else {
               const bookWithCover = result.coverCandidates.length === 1 
                 ? { ...result.book, coverUrl: result.coverCandidates[0].url }
@@ -185,11 +188,24 @@ export function AddBookPage() {
         ...pendingCoverBook,
         coverUrl: candidate.url
       };
-      setSearchResults([bookWithSelectedCover]);
-      setShowCoverSelection(false);
-      setPendingCoverBook(null);
-      setCoverCandidates([]);
-      addToast({ type: 'success', message: 'Cover selected!' });
+      
+      if (fromBarcodeScan) {
+        // Auto-add book when coming from barcode scan
+        setShowCoverSelection(false);
+        setPendingCoverBook(null);
+        setCoverCandidates([]);
+        setFromBarcodeScan(false);
+        addToast({ type: 'success', message: 'Cover selected!' });
+        // Call handleAddBook directly to create the book
+        handleAddBook(bookWithSelectedCover);
+      } else {
+        // Show in search results for manual search workflow
+        setSearchResults([bookWithSelectedCover]);
+        setShowCoverSelection(false);
+        setPendingCoverBook(null);
+        setCoverCandidates([]);
+        addToast({ type: 'success', message: 'Cover selected!' });
+      }
     }
   };
   
@@ -205,6 +221,7 @@ export function AddBookPage() {
       setShowCoverSelection(false);
       setPendingCoverBook(null);
       setCoverCandidates([]);
+      setFromBarcodeScan(false);
       addToast({ type: 'info', message: 'You can upload a custom cover in manual entry mode.' });
       setManualEntry(true);
     }
@@ -215,6 +232,7 @@ export function AddBookPage() {
     setShowCoverSelection(false);
     setPendingCoverBook(null);
     setCoverCandidates([]);
+    setFromBarcodeScan(false);
   };
   
   // Add book to collection
