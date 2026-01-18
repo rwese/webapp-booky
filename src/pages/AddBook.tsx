@@ -54,24 +54,65 @@ export function AddBookPage() {
   
   // Listen for barcode scanned events from the scanner
   useEffect(() => {
-    const handleBarcodeScanned = (event: CustomEvent) => {
+    let isScanning = false;
+    
+    const handleBarcodeScanned = async (event: CustomEvent) => {
       const { text, format: _format } = event.detail;
-      // Auto-fill ISBN input and switch to ISBN search mode
-      setIsbnInput(text);
-      setSearchType('isbn');
-      setManualEntry(false);
       
-      addToast({
-        type: 'success',
-        message: `Scanned: ${text}`,
-        duration: 2000
-      });
+      // Prevent duplicate scans
+      if (isScanning) return;
+      isScanning = true;
+      
+      try {
+        // Auto-fill ISBN input and switch to ISBN search mode
+        setIsbnInput(text);
+        setSearchType('isbn');
+        setManualEntry(false);
+        
+        addToast({
+          type: 'success',
+          message: `Scanned: ${text}`,
+          duration: 2000
+        });
+        
+        // Small delay to ensure state is updated, then trigger lookup
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const cleanIsbn = text.replace(/[-\s]/g, '');
+        if (cleanIsbn && isValidISBN(cleanIsbn)) {
+          // Call handleIsbnLookup - it's stable within this effect's scope
+          const result = await searchISBNWithMultipleCovers(cleanIsbn);
+          
+          if (result.book) {
+            const existingBook = await bookOperations.getByIsbn(cleanIsbn);
+            if (existingBook) {
+              setExistingBook(existingBook);
+              setPendingBook(result.book);
+              setShowMergeView(true);
+            } else if (result.coverCandidates.length > 1) {
+              setPendingCoverBook(result.book);
+              setCoverCandidates(result.coverCandidates);
+              setShowCoverSelection(true);
+            } else {
+              const bookWithCover = result.coverCandidates.length === 1 
+                ? { ...result.book, coverUrl: result.coverCandidates[0].url }
+                : result.book;
+              setSearchResults([bookWithCover]);
+            }
+          } else {
+            setNewBook((prev) => ({ ...prev, isbn13: cleanIsbn }));
+            setManualEntry(true);
+            addToast({ type: 'info', message: 'Book not found. Please enter details manually.' });
+          }
+        }
+      } finally {
+        isScanning = false;
+      }
     };
     
-    window.addEventListener('barcode:scanned', handleBarcodeScanned as EventListener);
+    window.addEventListener('barcode:scanned', handleBarcodeScanned as unknown as EventListener);
     
     return () => {
-      window.removeEventListener('barcode:scanned', handleBarcodeScanned as EventListener);
+      window.removeEventListener('barcode:scanned', handleBarcodeScanned as unknown as EventListener);
     };
   }, [addToast]);
   
