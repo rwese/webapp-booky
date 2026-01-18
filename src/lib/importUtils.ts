@@ -109,7 +109,11 @@ export async function bookExistsByTitleAuthor(title: string, author: string): Pr
 
 // Create Rating entry from import data
 export function createRatingFromImport(bookId: string, importBook: ImportBookData): Omit<Rating, 'id'> | null {
-  if (!importBook.rating || importBook.rating < 1 || importBook.rating > 5) {
+  // Validate rating is defined and within valid range (0.5 to 5.0 in 0.5 increments)
+  if (importBook.rating === undefined || 
+      importBook.rating < 0.5 || 
+      importBook.rating > 5.0 ||
+      Math.round(importBook.rating * 2) / 2 !== importBook.rating) {
     return null;
   }
 
@@ -192,9 +196,14 @@ export function validateImportBook(importBook: ImportBookData): { valid: boolean
     }
   }
 
-  // Validate rating if provided
-  if (importBook.rating !== undefined && (importBook.rating < 1 || importBook.rating > 5)) {
-    errors.push('Rating must be between 1 and 5');
+  // Validate rating if provided (supports 0.5 to 5.0 in 0.5 increments)
+  if (importBook.rating !== undefined) {
+    const isValidRating = importBook.rating >= 0.5 && 
+                          importBook.rating <= 5.0 && 
+                          Math.round(importBook.rating * 2) / 2 === importBook.rating;
+    if (!isValidRating) {
+      errors.push('Rating must be between 0.5 and 5.0 in 0.5 increments');
+    }
   }
 
   // Validate reading status

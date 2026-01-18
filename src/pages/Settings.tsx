@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
 import { useToastStore } from '../store/useStore';
 import { db } from '../lib/db';
+import { syncManager } from '../lib/syncManager';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
@@ -16,6 +17,44 @@ export function SettingsPage() {
   const { addToast } = useToastStore();
   const isOnline = useOnlineStatus();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  
+  // Set up sync listener
+  useEffect(() => {
+    const unsubscribe = syncManager.addSyncListener((status: any) => {
+      setIsSyncing(status.isSyncing);
+      setPendingCount(status.pendingOperations || 0);
+    });
+    
+    // Initial status check
+    syncManager.getStatus().then((status: any) => {
+      setPendingCount(status.pendingOperations || 0);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  const handleSync = async () => {
+    if (!isOnline) {
+      addToast({ type: 'warning', message: 'You are offline. Connect to the internet to sync.' });
+      return;
+    }
+    
+    setIsSyncing(true);
+    try {
+      const result = await syncManager.sync();
+      if (result.success) {
+        addToast({ type: 'success', message: 'Sync completed successfully!' });
+      } else {
+        addToast({ type: 'error', message: result.error || 'Sync failed. Please try again.' });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Sync failed. Please try again.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
@@ -155,6 +194,28 @@ export function SettingsPage() {
           </h2>
           <Card className="p-4">
             <div className="space-y-4">
+              {/* Sync Section */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">Sync Data</p>
+                  <p className="text-sm text-gray-500">
+                    {pendingCount > 0 
+                      ? `${pendingCount} pending changes to sync`
+                      : 'Your data is synced with the cloud'}
+                  </p>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={handleSync}
+                  disabled={!isOnline || isSyncing}
+                >
+                  <RefreshCw size={16} className={clsx('mr-1', isSyncing && 'animate-spin')} />
+                  {isSyncing ? 'Syncing...' : 'Sync Now'}
+                </Button>
+              </div>
+              
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white">Import Books</p>
@@ -164,6 +225,7 @@ export function SettingsPage() {
                   <Upload size={16} />
                   Import
                 </Button>
+              </div>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="flex items-center justify-between">
