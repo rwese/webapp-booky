@@ -5,7 +5,16 @@
  * Extracts user info from OAuth session and injects into headers.
  */
 
-import type { Session } from 'next-auth';
+// Session type - defined locally to avoid next-auth dependency
+interface Session {
+  user: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+  accessToken?: string | null;
+}
 
 // Header names for user identity
 export const AUTH_HEADERS = {
@@ -233,3 +242,6 @@ export default {
   createAuthApiClient,
   AUTH_HEADERS,
 };
+
+// Export Session type
+export type { Session };

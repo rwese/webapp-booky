@@ -11,8 +11,19 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-// Mock next-auth module first
-const mockSession = {
+// Session type matching the one in authHeaders.ts
+interface MockSession {
+  user: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+  accessToken?: string | null;
+}
+
+// Mock session data
+const mockSession: MockSession = {
   user: {
     id: 'user-123',
     name: 'Test User',
@@ -20,28 +31,20 @@ const mockSession = {
     image: 'https://example.com/avatar.jpg',
   },
   accessToken: 'access-token-456',
-  expires: '2024-12-31T23:59:59.999Z',
 };
 
-const mockEmptySession = {
+const mockEmptySession: MockSession = {
   user: {
     id: '',
     name: null,
     email: null,
     image: null,
   },
-  expires: '2024-12-31T23:59:59.999Z',
+  accessToken: undefined,
 };
 
-vi.mock('next-auth', async () => {
-  const actual = await vi.importActual('next-auth') || {};
-  return {
-    ...actual,
-  };
-});
-
-// Import after mocking
-import type { Session } from 'next-auth';
+// Import after defining types
+import { type Session } from '../lib/authHeaders';
 import { 
   createAuthHeaders, 
   sanitizeHeaderValue, 

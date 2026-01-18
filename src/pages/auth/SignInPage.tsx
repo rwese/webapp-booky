@@ -1,14 +1,13 @@
 /**
  * Sign In Page
  * 
- * Authentication page with email/password and OAuth sign-in options.
+ * Authentication page with email/password sign-in.
  * Integrates with Booky backend for JWT authentication.
  */
 
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
-import { LoginButton } from '../../components/auth/LoginButton';
 import { Card } from '../../components/common/Button';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -110,42 +109,6 @@ export function SignInPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
         <Card className="py-8 px-4 shadow sm:px-10">
-          {/* OAuth Providers */}
-          <div className="space-y-4">
-            <LoginButton
-              provider="google"
-              className="w-full"
-              variant="outline"
-            />
-            
-            {import.meta.env.VITE_AUTH_ENABLE_GITHUB === 'true' && (
-              <LoginButton
-                provider="github"
-                className="w-full"
-                variant="outline"
-              />
-            )}
-            
-            {import.meta.env.VITE_AUTH_ENABLE_DISCORD === 'true' && (
-              <LoginButton
-                provider="discord"
-                className="w-full"
-                variant="outline"
-              />
-            )}
-          </div>
-
-          <div className="relative mt-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">
-                Or continue with email
-              </span>
-            </div>
-          </div>
-
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             {mode === 'register' && (
