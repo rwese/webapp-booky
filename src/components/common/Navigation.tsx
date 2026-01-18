@@ -28,17 +28,17 @@ export function FloatingActionButtons() {
       <button
         type="button"
         onClick={() => navigate('/add?mode=manual')}
-        className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors p-4 group"
+        className="fixed bottom-6 right-6 z-50 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-colors p-4 group focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         aria-label="Add new book"
       >
         <Plus size={24} />
       </button>
 
-      {/* Secondary FAB - Scan Barcode (appears on hover or can be separate) */}
+      {/* Secondary FAB - Scan Barcode */}
       <button
         type="button"
         onClick={() => openModal('barcodeScanner')}
-        className="fixed bottom-6 right-20 z-50 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors p-3"
+        className="fixed bottom-6 right-20 z-50 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors p-3 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
         aria-label="Scan barcode"
       >
         <Scan size={20} />
@@ -65,12 +65,24 @@ export function SidebarNavigation() {
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 
+  // Handle keyboard events for accessibility
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setSidebarOpen(false);
+    }
+  }, [setSidebarOpen]);
+
+  const handleOverlayClick = useCallback(() => {
+    setSidebarOpen(false);
+  }, [setSidebarOpen]);
+
   // If sidebar is closed, show just the menu button
   if (!sidebarOpen) {
     return (
       <button
+        type="button"
         onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-40 p-3 bg-white dark:bg-gray-800 shadow-md rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        className="fixed top-4 left-4 z-40 p-3 bg-white dark:bg-gray-800 shadow-md rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
         aria-label="Open sidebar"
       >
         <Menu size={24} className="text-gray-600 dark:text-gray-300" />
@@ -81,9 +93,11 @@ export function SidebarNavigation() {
   return (
     <>
       {/* Overlay - click to close sidebar */}
-      <div 
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={() => setSidebarOpen(false)}
+      <button
+        type="button"
+        className="fixed inset-0 bg-black/50 z-40 w-full h-full cursor-pointer"
+        onClick={handleOverlayClick}
+        aria-label="Close sidebar"
       />
       
       {/* Sidebar */}
@@ -102,8 +116,9 @@ export function SidebarNavigation() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setSidebarOpen(false)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
               aria-label="Close sidebar"
             >
               <X size={20} className="text-gray-500" />
@@ -147,7 +162,7 @@ export function SidebarNavigation() {
               navigate('/add?mode=manual');
               setSidebarOpen(false);
             }}
-            className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-3 rounded-lg hover:bg-primary-700 transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
             <Plus size={20} />
             Add New Book
