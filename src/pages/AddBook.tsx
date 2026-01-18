@@ -3,12 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Book, Plus, Camera, Loader2 } from 'lucide-react';
 import { Button, Input, Card } from '../components/common/Button';
 import { CoverUpload } from '../components/image/CoverUpload';
+import { CoverSelection } from '../components/image/CoverSelection';
 import { MergeView } from '../components/merge';
-import { searchBooks, searchByISBN, isValidISBN } from '../lib/api';
+import { searchBooks, searchByISBN, searchISBNWithMultipleCovers, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
 import { useDebounce } from '../hooks/usePerformance';
-import type { Book as BookType, BookFormat } from '../types';
+import type { Book as BookType, BookFormat, CoverImageCandidate } from '../types';
 import { clsx } from 'clsx';
 
 export function AddBookPage() {
@@ -34,6 +35,11 @@ export function AddBookPage() {
   const [existingBook, setExistingBook] = useState<BookType | null>(null);
   const [pendingBook, setPendingBook] = useState<BookType | null>(null);
   const [isMerging, setIsMerging] = useState(false);
+  
+  // Cover selection state
+  const [showCoverSelection, setShowCoverSelection] = useState(false);
+  const [coverCandidates, setCoverCandidates] = useState<CoverImageCandidate[]>([]);
+  const [pendingCoverBook, setPendingCoverBook] = useState<BookType | null>(null);
   
   const debouncedQuery = useDebounce(searchQuery, 500);
   
@@ -84,7 +90,7 @@ export function AddBookPage() {
     }
   };
   
-  // ISBN lookup
+  // ISBN lookup with multi-cover support
   const handleIsbnLookup = async () => {
     const cleanIsbn = isbnInput.replace(/[-\s]/g, '');
 
@@ -95,26 +101,28 @@ export function AddBookPage() {
 
     setLoading(true);
     try {
-      // Try Open Library first
-      let book = await searchByISBN(cleanIsbn);
-
-      // Fallback to Google Books
-      if (!book) {
-        const googleResults = await searchBooks(cleanIsbn);
-        book = googleResults.find((b) => b.isbn13 === cleanIsbn) || null;
-      }
-
-      if (book) {
+      // Search with multiple cover candidates
+      const result = await searchISBNWithMultipleCovers(cleanIsbn);
+      
+      if (result.book) {
         // Check if book already exists in collection
         const existingBook = await bookOperations.getByIsbn(cleanIsbn);
         if (existingBook) {
           // Trigger merge flow
           setExistingBook(existingBook);
-          setPendingBook(book);
+          setPendingBook(result.book);
           setShowMergeView(true);
+        } else if (result.coverCandidates.length > 1) {
+          // Multiple covers available, show selection UI
+          setPendingCoverBook(result.book);
+          setCoverCandidates(result.coverCandidates);
+          setShowCoverSelection(true);
         } else {
-          // Book doesn't exist, show in search results
-          setSearchResults([book]);
+          // Single cover or none, add to search results with best available cover
+          const bookWithCover = result.coverCandidates.length === 1 
+            ? { ...result.book, coverUrl: result.coverCandidates[0].url }
+            : result.book;
+          setSearchResults([bookWithCover]);
         }
       } else {
         // No book found, offer manual entry
@@ -127,6 +135,45 @@ export function AddBookPage() {
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Handle cover selection
+  const handleCoverSelect = (candidate: CoverImageCandidate) => {
+    if (pendingCoverBook) {
+      const bookWithSelectedCover = {
+        ...pendingCoverBook,
+        coverUrl: candidate.url
+      };
+      setSearchResults([bookWithSelectedCover]);
+      setShowCoverSelection(false);
+      setPendingCoverBook(null);
+      setCoverCandidates([]);
+      addToast({ type: 'success', message: 'Cover selected!' });
+    }
+  };
+  
+  // Handle custom cover upload
+  const handleCustomCoverUpload = () => {
+    // For custom upload, we'll use a placeholder and let user upload manually
+    if (pendingCoverBook) {
+      const bookWithoutCover = {
+        ...pendingCoverBook,
+        coverUrl: undefined
+      };
+      setSearchResults([bookWithoutCover]);
+      setShowCoverSelection(false);
+      setPendingCoverBook(null);
+      setCoverCandidates([]);
+      addToast({ type: 'info', message: 'You can upload a custom cover in manual entry mode.' });
+      setManualEntry(true);
+    }
+  };
+  
+  // Cancel cover selection
+  const handleCoverCancel = () => {
+    setShowCoverSelection(false);
+    setPendingCoverBook(null);
+    setCoverCandidates([]);
   };
   
   // Add book to collection
@@ -214,6 +261,33 @@ export function AddBookPage() {
         onMerge={handleMerge}
         onCancel={handleMergeCancel}
       />
+    );
+  }
+
+  // Show CoverSelection when active
+  if (showCoverSelection && pendingCoverBook) {
+    return (
+      <div className="min-h-screen pb-20 lg:pb-0">
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-6 lg:px-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Select Cover Image
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Choose the best cover for "{pendingCoverBook.title}"
+          </p>
+        </header>
+        <main className="max-w-4xl mx-auto px-4 lg:px-8 py-6">
+          <Card className="p-6">
+            <CoverSelection
+              candidates={coverCandidates}
+              onSelect={handleCoverSelect}
+              onCustomUpload={handleCustomCoverUpload}
+              onCancel={handleCoverCancel}
+              selectedCoverUrl={pendingCoverBook.coverUrl}
+            />
+          </Card>
+        </main>
+      </div>
     );
   }
 
