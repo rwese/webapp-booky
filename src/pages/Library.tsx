@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
-import { useFilteredBooks } from '../hooks/useBooks';
+import { useFilteredBooks, useRatings } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
 import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
 import { bookOperations } from '../lib/db';
 import { BookCover } from '../components/image';
 import { TagListing, type TagWithCount } from '../components/forms/TagListing';
-import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
+import { StarRating } from '../components/forms/StarRating';
+import type { Book as BookType, FilterConfig, SortConfig, BookFormat, Rating } from '../types';
 import { clsx } from 'clsx';
 import { useUrlFilterSync, urlParamsToFilters } from '../hooks/useUrlFilterSync';
 
@@ -85,6 +86,19 @@ export function LibraryPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Fetch ratings for paginated books
+  const bookIdsForRatings = useMemo(() => 
+    paginatedBooks?.map(book => book.id) || [], 
+    [paginatedBooks]
+  );
+  const ratings = useRatings(bookIdsForRatings);
+  
+  // Create a map of bookId -> rating for efficient lookup
+  const ratingMap = useMemo(() => {
+    if (!ratings) return new Map<string, number>();
+    return new Map(ratings.map(r => [r.bookId, r.stars]));
+  }, [ratings]);
 
   const handleDeleteBook = async (bookId: string) => {
     try {
@@ -258,6 +272,7 @@ export function LibraryPage() {
                 <BookCard
                   key={book.id}
                   book={book}
+                  rating={ratingMap.get(book.id)}
                   viewMode={viewMode}
                   onDelete={() => handleDeleteBook(book.id)}
                   onEdit={() => handleEditBook(book.id)}
@@ -355,13 +370,14 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
 
 interface BookCardProps {
   book: BookType;
+  rating?: number;
   viewMode: 'grid' | 'list';
   onDelete: () => void;
   onEdit: () => void;
   navigate: ReturnType<typeof useNavigate>;
 }
 
-function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps) {
+function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCardProps) {
   if (viewMode === 'list') {
     return (
       <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
@@ -404,8 +420,18 @@ function BookCard({ book, viewMode, onDelete, onEdit, navigate }: BookCardProps)
 
   return (
     <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
-      <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700">
+      <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative">
         <BookCover book={book} className="w-full h-full" />
+        {/* Rating overlay - only show if book has a rating */}
+        {rating !== undefined && rating > 0 && (
+          <div 
+            className="absolute bottom-2 right-2 bg-black/60 dark:bg-black/80 rounded-lg px-1.5 py-1"
+            role="img"
+            aria-label={`Rating: ${rating} out of 5 stars`}
+          >
+            <StarRating rating={rating} size="sm" interactive={false} />
+          </div>
+        )}
       </div>
       <div className="p-3">
         <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
