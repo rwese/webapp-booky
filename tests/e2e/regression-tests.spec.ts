@@ -120,7 +120,7 @@ test.describe('Book Collection App - Core Regression Tests', () => {
       
       // Should be on edit page
       await expect(page).toHaveURL(/.*edit\//);
-      await expect(page.getByRole('heading', { name: 'Edit Book' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Edit Book' }).first()).toBeVisible();
       
       // Form should have the book title pre-filled
       await expect(page.getByPlaceholder('Enter book title')).toHaveValue(/Edit Test Book/);
