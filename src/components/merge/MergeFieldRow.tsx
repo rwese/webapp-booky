@@ -1,9 +1,8 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { ArrowRight, Copy, X, Check } from 'lucide-react';
+import { ArrowRight, Copy, X } from 'lucide-react';
 import { Button } from '../common/Button';
-import type { Book } from '../../types';
 
 export type MergeAction = 'keep_existing' | 'copy_fetched' | 'apply_if_empty';
 

@@ -9,7 +9,7 @@ import { syncManager } from '../lib/syncManager';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
-import type { ThemeMode, BookFormat } from '../types';
+import type { ThemeMode, BookFormat, SyncStatus } from '../types';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
@@ -22,13 +22,13 @@ export function SettingsPage() {
   
   // Set up sync listener
   useEffect(() => {
-    const unsubscribe = syncManager.addSyncListener((status: any) => {
+    const unsubscribe = syncManager.addSyncListener((status: SyncStatus) => {
       setIsSyncing(status.isSyncing);
       setPendingCount(status.pendingOperations || 0);
     });
     
     // Initial status check
-    syncManager.getStatus().then((status: any) => {
+    syncManager.getStatus().then((status: SyncStatus) => {
       setPendingCount(status.pendingOperations || 0);
     });
     

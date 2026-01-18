@@ -9,7 +9,7 @@ import { bookOperations } from '../lib/db';
 import { BookCover } from '../components/image';
 import { TagListing, type TagWithCount } from '../components/forms/TagListing';
 import { StarRating } from '../components/forms/StarRating';
-import type { Book as BookType, FilterConfig, SortConfig, BookFormat, Rating } from '../types';
+import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
 import { useUrlFilterSync, urlParamsToFilters } from '../hooks/useUrlFilterSync';
 

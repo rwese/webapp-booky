@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Upload, X } from 'lucide-react';
-import { Button, Card } from '../common/Button';
+import { Button } from '../common/Button';
 import { CoverImageCandidate } from '../../types';
 import { clsx } from 'clsx';
 
@@ -42,13 +42,6 @@ export function CoverSelection({
 
   const closePreview = () => {
     setPreviewUrl(null);
-  };
-
-  // Group candidates by source for better organization
-  const candidatesBySource = {
-    openLibrary: candidates.filter(c => c.source === 'openLibrary'),
-    googleBooks: candidates.filter(c => c.source === 'googleBooks'),
-    upload: candidates.filter(c => c.source === 'upload')
   };
 
   const formatDimensions = (width?: number, height?: number) => {

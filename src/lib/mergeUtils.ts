@@ -189,7 +189,6 @@ export function mergeBooks(
     const hasFetched = !isEmpty(fetchedValue);
 
     let shouldUpdate = false;
-    let newValue: unknown;
 
     switch (strategy) {
       case 'keep-existing':
@@ -199,7 +198,6 @@ export function mergeBooks(
       case 'keep-fetched':
         // Always use fetched value if it exists
         if (hasFetched) {
-          newValue = fetchedValue;
           shouldUpdate = true;
         }
         break;
@@ -207,7 +205,6 @@ export function mergeBooks(
       case 'fill-empty':
         // Use fetched value only if existing is empty
         if (!hasExisting && hasFetched) {
-          newValue = fetchedValue;
           shouldUpdate = true;
         }
         break;
@@ -220,13 +217,11 @@ export function mergeBooks(
             return; // Keep existing
           case 'copy-fetched':
             if (hasFetched) {
-              newValue = fetchedValue;
               shouldUpdate = true;
             }
             break;
           case 'apply-if-empty':
             if (!hasExisting && hasFetched) {
-              newValue = fetchedValue;
               shouldUpdate = true;
             }
             break;

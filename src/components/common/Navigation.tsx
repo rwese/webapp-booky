@@ -65,13 +65,6 @@ export function SidebarNavigation() {
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 
-  // Handle keyboard events for accessibility
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setSidebarOpen(false);
-    }
-  }, [setSidebarOpen]);
-
   const handleOverlayClick = useCallback(() => {
     setSidebarOpen(false);
   }, [setSidebarOpen]);

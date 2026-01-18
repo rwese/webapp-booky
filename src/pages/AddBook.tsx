@@ -5,7 +5,7 @@ import { Button, Input, Card } from '../components/common/Button';
 import { CoverUpload } from '../components/image/CoverUpload';
 import { CoverSelection } from '../components/image/CoverSelection';
 import { MergeView } from '../components/merge';
-import { searchBooks, searchByISBN, searchISBNWithMultipleCovers, isValidISBN } from '../lib/api';
+import { searchBooks, searchISBNWithMultipleCovers, isValidISBN } from '../lib/api';
 import { bookOperations } from '../lib/db';
 import { useToastStore, useModalStore } from '../store/useStore';
 import { useDebounce } from '../hooks/usePerformance';
@@ -34,7 +34,7 @@ export function AddBookPage() {
   const [showMergeView, setShowMergeView] = useState(false);
   const [existingBook, setExistingBook] = useState<BookType | null>(null);
   const [pendingBook, setPendingBook] = useState<BookType | null>(null);
-  const [isMerging, setIsMerging] = useState(false);
+  const [_isMerging, setIsMerging] = useState(false);
   
   // Cover selection state
   const [showCoverSelection, setShowCoverSelection] = useState(false);
@@ -272,9 +272,9 @@ export function AddBookPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Select Cover Image
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Choose the best cover for "{pendingCoverBook.title}"
-          </p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Choose the best cover for &quot;{pendingCoverBook.title}&quot;
+            </p>
         </header>
         <main className="max-w-4xl mx-auto px-4 lg:px-8 py-6">
           <Card className="p-6">

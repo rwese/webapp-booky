@@ -1,4 +1,4 @@
-import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat, CoverImageCandidate, CoverSize, CoverSelectionResult } from '../types';
+import type { OpenLibraryBook, GoogleBooksVolume, Book, BookFormat, CoverImageCandidate, CoverSize } from '../types';
 import { validateISBN } from './barcodeUtils';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
