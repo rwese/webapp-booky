@@ -426,7 +426,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
         {/* Rating overlay - only show if book has a rating */}
         {rating !== undefined && rating > 0 && (
           <div 
-            className="absolute bottom-2 right-2 bg-black/60 dark:bg-black/80 rounded-lg px-1.5 py-1"
+            className="absolute bottom-2 left-2 bg-black/60 dark:bg-black/80 rounded-lg px-1.5 py-1"
             role="img"
             aria-label={`Rating: ${rating} out of 5 stars`}
           >
