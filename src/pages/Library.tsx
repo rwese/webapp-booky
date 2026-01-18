@@ -420,8 +420,9 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
 
   return (
     <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
-      <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative">
+      <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
         <BookCover book={book} className="w-full h-full" />
+        
         {/* Rating overlay - only show if book has a rating */}
         {rating !== undefined && rating > 0 && (
           <div 
@@ -432,6 +433,20 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
             <StarRating rating={rating} size="sm" interactive={false} />
           </div>
         )}
+        
+        {/* Edit button - icon-only, positioned in top-right corner */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Edit book"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Edit size={16} />
+        </Button>
       </div>
       <div className="p-3">
         <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
@@ -440,18 +455,6 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
         <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
           {book.authors.join(', ')}
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 w-full"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Edit size={14} />
-          Edit
-        </Button>
       </div>
     </Card>
   );
