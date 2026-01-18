@@ -10,6 +10,7 @@ import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { CategorySelector, CategoryBadge } from '../components/forms/CategorySelector';
 import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
+import { useRating } from '../hooks/useBooks';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
@@ -32,6 +33,19 @@ export function BookDetailPage() {
 
   // Metadata refresh hook
   const { isRefreshing, error, refreshMetadata } = useBookMetadataRefresh();
+
+  // Load rating for this book
+  const existingRating = useRating(id || '');
+  
+  // Initialize rating from loaded rating or default to 0
+  useEffect(() => {
+    if (existingRating) {
+      setCurrentRating(existingRating.stars);
+      if (existingRating.review) {
+        setCurrentReview(existingRating.review);
+      }
+    }
+  }, [existingRating]);
 
   // Load book collections helper
   const loadBookCollections = useCallback(async (bookId: string): Promise<Collection[]> => {
