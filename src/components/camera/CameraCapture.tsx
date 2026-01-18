@@ -10,6 +10,7 @@ import { Camera, RotateCcw, Check, X, Camera as CameraIcon, RefreshCw } from 'lu
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useCameraCapture, CameraCaptureConfig } from '../../hooks/useCameraCapture';
+import { BOOK_COVER_ASPECT_RATIO } from '../../lib/coverImageUtils';
 
 export interface CameraCaptureProps {
   onCapture: (blob: Blob, fileName: string) => void;
@@ -24,7 +25,7 @@ export function CameraCapture({
   onCancel,
   config,
   className,
-  aspectRatio = 6 / 9
+  aspectRatio = BOOK_COVER_ASPECT_RATIO
 }: CameraCaptureProps) {
   const {
     state,

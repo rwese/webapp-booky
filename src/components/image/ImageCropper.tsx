@@ -17,12 +17,16 @@ interface ImageCropperProps {
 
 export type { ImageCropperProps };
 
+// Constants for consistent aspect ratio across the application
+const BOOK_COVER_ASPECT_RATIO = 6 / 9;
+const BOOK_COVER_ASPECT_LABEL = '6:9';
+
 export function ImageCropper({
   image,
   onCropComplete,
   onCancel,
-  aspectRatio = 6 / 9,
-  aspectLabel = '6:9',
+  aspectRatio = BOOK_COVER_ASPECT_RATIO,
+  aspectLabel = BOOK_COVER_ASPECT_LABEL,
   maxZoom = 3,
   minZoom = 1
 }: ImageCropperProps) {

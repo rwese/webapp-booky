@@ -3,6 +3,9 @@
  * Handles cover image filename generation and storage format
  */
 
+// Standard book cover aspect ratio (6:9 = 2:3)
+export const BOOK_COVER_ASPECT_RATIO = 6 / 9;
+
 // Generate a book slug from title
 export function generateBookSlug(title: string): string {
   return title
@@ -200,18 +203,18 @@ export function getImageDimensions(file: File | Blob): Promise<{ width: number; 
 
 // Check if an image needs cropping (too large or wrong aspect ratio)
 export function imageNeedsCropping(
-  width: number, 
+  width: number,
   height: number,
-  targetAspectRatio: number = 6 / 9,
+  targetAspectRatio: number = BOOK_COVER_ASPECT_RATIO,
   maxDimension: number = 2000
 ): boolean {
   const currentAspectRatio = width / height;
   const aspectRatioDiff = Math.abs(currentAspectRatio - targetAspectRatio);
   const aspectThreshold = 0.05; // Allow 5% deviation (was 0.1)
-  
+
   return (
-    width > maxDimension || 
-    height > maxDimension || 
+    width > maxDimension ||
+    height > maxDimension ||
     aspectRatioDiff > aspectThreshold
   );
 }

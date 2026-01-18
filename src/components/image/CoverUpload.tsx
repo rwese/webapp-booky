@@ -1,20 +1,21 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ImageCropper } from './ImageCropper';
 import { CameraCapture } from '../camera/CameraCapture';
-import { 
-  Upload, 
-  X, 
-  Crop as CropIcon, 
-  RefreshCw, 
+import {
+  Upload,
+  X,
+  Crop as CropIcon,
+  RefreshCw,
   Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { 
-  isValidCoverImage, 
-  getImageDimensions, 
+import {
+  isValidCoverImage,
+  getImageDimensions,
   imageNeedsCropping,
-  processCroppedImage 
+  processCroppedImage,
+  BOOK_COVER_ASPECT_RATIO
 } from '../../lib/coverImageUtils';
 
 interface CoverUploadProps {
@@ -61,9 +62,9 @@ export function CoverUpload({
       // Check if image needs cropping
       const dimensions = await getImageDimensions(file);
       const needsCropping = imageNeedsCropping(
-        dimensions.width, 
-        dimensions.height, 
-        6 / 9, 
+        dimensions.width,
+        dimensions.height,
+        BOOK_COVER_ASPECT_RATIO,
         2000
       );
 
@@ -213,7 +214,7 @@ export function CoverUpload({
               image={previewUrl || selectedFile!}
               onCropComplete={handleCropComplete}
               onCancel={handleCropCancel}
-              aspectRatio={6 / 9}
+              aspectRatio={BOOK_COVER_ASPECT_RATIO}
               aspectLabel="6:9"
             />
           )}
