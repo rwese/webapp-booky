@@ -117,12 +117,27 @@ export function createRatingFromImport(bookId: string, importBook: ImportBookDat
     return null;
   }
 
-  return {
+  const rating: Omit<Rating, 'id'> = {
     bookId,
     stars: importBook.rating,
     updatedAt: new Date(),
-    containsSpoilers: false
+    containsSpoilers: importBook.containsSpoilers ?? false
   };
+
+  // Add review data if available
+  if (importBook.review) {
+    rating.review = importBook.review;
+  }
+
+  // Add review creation date if available
+  if (importBook.reviewCreatedAt) {
+    const reviewDate = new Date(importBook.reviewCreatedAt);
+    if (!isNaN(reviewDate.getTime())) {
+      rating.reviewCreatedAt = reviewDate;
+    }
+  }
+
+  return rating;
 }
 
 // Create ReadingLog entry from import data

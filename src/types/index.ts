@@ -671,6 +671,9 @@ export interface ImportBookData {
   genre?: string;
   language?: string;
   rating?: number;
+  review?: string; // Book review text
+  reviewCreatedAt?: string; // When the review was written
+  containsSpoilers?: boolean; // Whether review contains spoilers
   readingStatus: 'Want to Read' | 'Read' | 'Currently Reading';
   tags: string[];
   coverKey?: string;
