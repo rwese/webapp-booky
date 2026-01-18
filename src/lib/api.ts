@@ -156,10 +156,12 @@ async function fetchWithRetry<T>(
 }
 
 // Search by ISBN on Open Library
-export async function searchByISBN(isbn: string): Promise<Book | null> {
+export async function searchByISBN(isbn: string, preferGerman: boolean = true): Promise<Book | null> {
   const fetchFn = async (): Promise<FetchResult<Book>> => {
+    // Add lang parameter to get German metadata when preferred
+    const langParam = preferGerman ? '?lang=de' : '';
     const response = await fetch(
-      `${OPEN_LIBRARY_API}/isbn/${isbn}.json`
+      `${OPEN_LIBRARY_API}/isbn/${isbn}.json${langParam}`
     );
     
     if (!response.ok) {
@@ -207,6 +209,8 @@ export async function searchByISBN(isbn: string): Promise<Book | null> {
         publisher: data.publishers?.[0]?.name,
         subjects: workData?.subjects || [],
         description: workData?.description?.value || workData?.description,
+        // Open Library language - typically returned as ISO 639-1 code (e.g., 'de', 'en')
+        languageCode: data.languages?.[0]?.key?.replace('/', '') || 'und',
         externalIds: {
           openLibrary: data.key,
           oclcNumber: data.oclc_numbers?.[0],
@@ -464,28 +468,79 @@ export async function fetchCoverCandidates(
   return candidates;
 }
 
+// Helper to check if a book has German language metadata
+function isGermanBook(book: Book | null): boolean {
+  if (!book) return false;
+  const lang = book.languageCode?.toLowerCase();
+  return lang === 'de' || lang === 'ger' || lang === 'german';
+}
+
+// Helper to merge two book records, preferring German metadata and more complete data
+function mergeBooks(primary: Book | null, secondary: Book | null): Book | null {
+  if (!primary) return secondary;
+  if (!secondary) return primary;
+
+  // Prefer German metadata when available
+  const primaryIsGerman = isGermanBook(primary);
+  const secondaryIsGerman = isGermanBook(secondary);
+
+  // If one is German and the other isn't, prefer German
+  if (primaryIsGerman && !secondaryIsGerman) {
+    return primary;
+  }
+  if (secondaryIsGerman && !primaryIsGerman) {
+    return secondary;
+  }
+
+  // Both same language preference - merge fields, preferring non-empty values
+  return {
+    ...primary,
+    // Prefer secondary's title/subtitle if primary is missing them
+    title: primary.title || secondary.title,
+    subtitle: primary.subtitle || secondary.subtitle,
+    authors: primary.authors.length > 0 ? primary.authors : secondary.authors,
+    // Prefer secondary's description if primary is missing
+    description: primary.description || secondary.description,
+    publisher: primary.publisher || secondary.publisher,
+    publishedYear: primary.publishedYear || secondary.publishedYear,
+    publishedDate: primary.publishedDate || secondary.publishedDate,
+    pageCount: primary.pageCount || secondary.pageCount,
+    subjects: primary.subjects?.length ? primary.subjects : secondary.subjects,
+    categories: primary.categories?.length ? primary.categories : secondary.categories,
+    // Keep the German language code if either has it
+    languageCode: primaryIsGerman || secondaryIsGerman ? (primary.languageCode || secondary.languageCode) : primary.languageCode,
+    // Prefer cover from Open Library if available, otherwise use what we have
+    coverUrl: primary.coverUrl || secondary.coverUrl,
+    // Merge external IDs
+    externalIds: {
+      ...primary.externalIds,
+      ...secondary.externalIds
+    }
+  };
+}
+
 // Combined function to get book data with multiple cover options
 export interface BookWithCoverCandidates {
   book: Book | null;
   coverCandidates: CoverImageCandidate[];
 }
 
-export async function searchISBNWithMultipleCovers(isbn: string): Promise<BookWithCoverCandidates> {
+export async function searchISBNWithMultipleCovers(isbn: string, preferGerman: boolean = true): Promise<BookWithCoverCandidates> {
   const [openLibraryResult, googleBooksResult] = await Promise.allSettled([
-    searchByISBN(isbn),
+    searchByISBN(isbn, preferGerman),
     searchGoogleBooksByISBN(isbn)
   ]);
 
-  // Determine which source has better data
-  let bestBook: Book | null = null;
+  let openLibraryBook: Book | null = null;
+  let googleBooksBook: Book | null = null;
   let hasOpenLibraryCover = false;
   let googleBooksImageLinks: { thumbnail?: string; smallThumbnail?: string; large?: string } | undefined;
 
   if (openLibraryResult.status === 'fulfilled' && openLibraryResult.value) {
-    bestBook = openLibraryResult.value;
+    openLibraryBook = openLibraryResult.value;
     // Extract cover ID from Open Library URL if present
-    if (bestBook?.coverUrl) {
-      const coverIdMatch = bestBook.coverUrl.match(/covers\.openlibrary\.org\/b\/id\/(\d+)/);
+    if (openLibraryBook?.coverUrl) {
+      const coverIdMatch = openLibraryBook.coverUrl.match(/covers\.openlibrary\.org\/b\/id\/(\d+)/);
       if (coverIdMatch) {
         hasOpenLibraryCover = true;
       }
@@ -493,19 +548,20 @@ export async function searchISBNWithMultipleCovers(isbn: string): Promise<BookWi
   }
 
   if (googleBooksResult.status === 'fulfilled' && googleBooksResult.value) {
-    if (!bestBook) {
-      bestBook = googleBooksResult.value;
-    }
+    googleBooksBook = googleBooksResult.value;
     // For Google Books, we need to construct image links from the book data
     // The Google Books book object may have coverUrl set to thumbnail
-    if (googleBooksResult.value.coverUrl) {
+    if (googleBooksBook.coverUrl) {
       googleBooksImageLinks = {
-        thumbnail: googleBooksResult.value.coverUrl,
+        thumbnail: googleBooksBook.coverUrl,
         // Try to get larger version by replacing size suffix
-        large: googleBooksResult.value.coverUrl?.replace('-S.jpg', '-L.jpg').replace('http:', 'https:')
+        large: googleBooksBook.coverUrl?.replace('-S.jpg', '-L.jpg').replace('http:', 'https:')
       };
     }
   }
+
+  // Merge books with German priority
+  const bestBook = mergeBooks(openLibraryBook, googleBooksBook);
 
   // Fetch cover candidates
   const coverCandidates = await fetchCoverCandidates(
