@@ -190,16 +190,12 @@ class BookImportService {
 
       // Create rating if available
       if (transformed.rating) {
-        console.log(`[IMPORT DEBUG] Upserting rating for book: ${book.title}, stars: ${transformed.rating.stars}`);
         const rating: Rating = {
           ...transformed.rating,
           id: crypto.randomUUID(),
           bookId: newBookId
         };
         await ratingOperations.upsert(rating);
-        console.log(`[IMPORT DEBUG] Successfully upserted rating for book: ${book.title}`);
-      } else {
-        console.log(`[IMPORT DEBUG] No rating to upsert for book: ${book.title}`);
       }
 
       // Create reading log
@@ -547,10 +543,7 @@ class BookImportService {
           id: crypto.randomUUID(),
           bookId: newBookId
         };
-        console.log(`[IMPORT DEBUG] Upserting rating for book: ${book.title}, stars: ${rating.stars}`);
         await ratingOperations.upsert(rating);
-      } else {
-        console.log(`[IMPORT DEBUG] No rating to upsert for book: ${book.title}`);
       }
 
       const readingLog: ReadingLog = {
