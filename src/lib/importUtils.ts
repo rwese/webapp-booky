@@ -14,7 +14,7 @@ const RATING_MAX = 5.0;
 const RATING_TOLERANCE = 0.001; // Tolerance for floating point comparison
 
 // Alternative field names for rating in import data
-const RATING_FIELD_NAMES = ['rating', 'myRating', 'userRating', 'starRating', 'userRating', 'myRating', 'score'];
+const RATING_FIELD_NAMES = ['rating', 'myRating', 'userRating', 'starRating', 'score'];
 
 // Helper function to check if a number is a valid 0.5 increment
 function isValidRatingIncrement(value: number): boolean {
