@@ -252,14 +252,14 @@ export function ImageCropper({
   const currentAspectRatio = aspectMode === 'fixed' ? aspectRatio : undefined;
 
   return (
-    <div 
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden"
+    <div
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden max-h-[90vh] sm:max-h-none"
       role="dialog"
       aria-label="Image cropper"
       aria-modal="true"
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
           Crop Cover Image
         </h2>
@@ -274,10 +274,9 @@ export function ImageCropper({
       </div>
 
       {/* Cropper Container */}
-      <div 
+      <div
         ref={containerRef}
-        className="relative bg-gray-900"
-        style={{ height: '400px' }}
+        className="relative bg-gray-900 sm:h-[400px] h-[300px]"
         role="application"
         aria-label="Image cropping area"
       >
@@ -300,7 +299,7 @@ export function ImageCropper({
       </div>
 
       {/* Controls */}
-      <div className="p-4 space-y-4">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 flex-shrink-0">
         {/* Zoom Controls */}
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -370,21 +369,21 @@ export function ImageCropper({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-2 sm:gap-3 pt-2">
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
             disabled={isProcessing}
             aria-label="Reset crop settings"
           >
-            <RotateCcw size={18} />
-            Reset
+            <RotateCcw size={16} className="sm:size-[18]" />
+            <span className="hidden sm:inline">Reset</span>
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
             disabled={isProcessing}
           >
             Cancel
@@ -392,7 +391,7 @@ export function ImageCropper({
           <button
             type="button"
             onClick={handleApply}
-            className="flex items-center gap-2 flex-1 px-4 py-2.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 sm:gap-2 flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 text-sm"
             disabled={isProcessing}
           >
             {isProcessing ? (
