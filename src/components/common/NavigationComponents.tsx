@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart2, Settings } from 'lucide-react';
+import { BarChart2, Settings, Home, Library } from 'lucide-react';
 import { clsx } from 'clsx';
 
 // Sync status indicator component
@@ -60,6 +60,8 @@ interface MobileMenuOverlayProps {
 
 export function MobileMenuOverlay({ onClose, currentPath }: MobileMenuOverlayProps) {
   const menuItems = [
+    { icon: <Home size={20} />, label: 'Home', path: '/' },
+    { icon: <Library size={20} />, label: 'Library', path: '/library' },
     { icon: <BarChart2 size={20} />, label: 'Analytics', path: '/analytics' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];

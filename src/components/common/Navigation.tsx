@@ -8,7 +8,8 @@ import {
   Menu,
   X,
   Plus,
-  Book
+  Book,
+  BarChart2
 } from 'lucide-react';
 import { useUIStore, useModalStore } from '../../store/useStore';
 import { useOnlineStatus, useSyncStatus } from '../../hooks/useOffline';
@@ -62,6 +63,7 @@ export function SidebarNavigation() {
   const navItems = [
     { icon: <Home size={20} />, label: 'Home', path: '/' },
     { icon: <Library size={20} />, label: 'Library', path: '/library' },
+    { icon: <BarChart2 size={20} />, label: 'Analytics', path: '/analytics' },
     { icon: <Settings size={20} />, label: 'Settings', path: '/settings' },
   ];
 
