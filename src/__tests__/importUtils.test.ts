@@ -215,11 +215,13 @@ describe('createRatingFromImport', () => {
       expect(rating).toBeNull();
     });
 
-    it('should return null when rating is 6', () => {
+    it('should return null when rating is 6 (1-10 scale converted to 3)', () => {
       const book = createImportBook({ rating: 6 });
       const rating = createRatingFromImport('book-22', book);
-      
-      expect(rating).toBeNull();
+
+      // Rating 6 on 1-10 scale should be normalized to 3
+      expect(rating).not.toBeNull();
+      expect(rating?.stars).toBe(3);
     });
   });
 });
@@ -269,28 +271,30 @@ describe('validateImportBook', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('should fail validation for rating 0', () => {
+    it('should pass validation for rating 0 (unrated)', () => {
       const book = createImportBook({ rating: 0 });
       const result = validateImportBook(book);
-      
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Rating must be between 0.5 and 5.0 in 0.5 increments');
+
+      // Rating 0 represents unrated and should be valid
+      expect(result.valid).toBe(true);
     });
 
-    it('should fail validation for rating greater than 5', () => {
+    it('should fail validation for rating greater than 5 (e.g., 5.5 which normalizes to 2.75)', () => {
       const book = createImportBook({ rating: 5.5 });
       const result = validateImportBook(book);
-      
+
+      // 5.5 on 1-10 scale normalizes to 2.75, which is not a valid 0.5 increment
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Rating must be between 0.5 and 5.0 in 0.5 increments');
+      expect(result.errors).toContain('Rating must be between 0.5 and 5.0 in 0.5 increments (or 1-10 scale which will be normalized)');
     });
 
     it('should fail validation for rating with invalid precision (3.2)', () => {
       const book = createImportBook({ rating: 3.2 });
       const result = validateImportBook(book);
-      
+
+      // 3.2 is not a valid 0.5 increment
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Rating must be between 0.5 and 5.0 in 0.5 increments');
+      expect(result.errors).toContain('Rating must be between 0.5 and 5.0 in 0.5 increments (or 1-10 scale which will be normalized)');
     });
 
     it('should pass validation when rating is undefined', () => {

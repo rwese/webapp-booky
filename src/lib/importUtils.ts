@@ -1,12 +1,55 @@
-import type { 
-  Book, 
-  Rating, 
+import type {
+  Book,
+  Rating,
   ReadingLog,
   ReadingStatus,
   ImportBookData,
   Tag
 } from '../types';
 import { bookOperations, tagOperations } from './db';
+
+// Rating import constants
+const RATING_MIN = 0.5;
+const RATING_MAX = 5.0;
+const RATING_TOLERANCE = 0.001; // Tolerance for floating point comparison
+
+// Alternative field names for rating in import data
+const RATING_FIELD_NAMES = ['rating', 'myRating', 'userRating', 'starRating', 'userRating', 'myRating', 'score'];
+
+// Helper function to check if a number is a valid 0.5 increment
+function isValidRatingIncrement(value: number): boolean {
+  // Use tolerance-based comparison for floating point precision
+  const multiplied = value * 2;
+  const rounded = Math.round(multiplied);
+  return Math.abs(multiplied - rounded) < RATING_TOLERANCE;
+}
+
+// Helper function to get rating from import data (supports multiple field names)
+function getRatingFromImport(importBook: ImportBookData): number | undefined {
+  // First try the standard rating field
+  if (importBook.rating !== undefined) {
+    return importBook.rating;
+  }
+
+  // Try alternative field names
+  for (const fieldName of RATING_FIELD_NAMES) {
+    const value = (importBook as unknown as Record<string, unknown>)[fieldName];
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+// Helper function to normalize rating scale (convert 1-10 to 0-5)
+function normalizeRatingScale(rating: number): number {
+  // If rating is between 1-10, convert to 0-5 scale
+  if (rating > RATING_MAX && rating <= 10) {
+    return rating / 2;
+  }
+  return rating;
+}
 
 // Author extraction utilities
 export function extractAuthorName(authorInput: string): string {
@@ -54,20 +97,20 @@ export function getReadingStatusFromImport(importStatus: string): ReadingStatus 
 // ISBN source mapping
 export function mapIsbnSource(isbnSource?: string): { openLibrary?: string; googleBooks?: string } {
   if (!isbnSource) return {};
-  
+
   if (isbnSource.toLowerCase().includes('open library')) {
     return { openLibrary: 'imported' };
   } else if (isbnSource.toLowerCase().includes('google')) {
     return { googleBooks: 'imported' };
   }
-  
+
   return {};
 }
 
 // Transform import book data to our Book model
 export function transformBookData(importBook: ImportBookData): Partial<Book> {
   const authors = [normalizeAuthorForImport(extractAuthorName(importBook.author))];
-  
+
   return {
     title: importBook.title.trim(),
     authors,
@@ -101,7 +144,7 @@ export async function bookExistsByIsbn(isbn?: string): Promise<boolean> {
 // Check if book already exists by title and author
 export async function bookExistsByTitleAuthor(title: string, author: string): Promise<boolean> {
   const books = await bookOperations.getAll();
-  return books.some(book => 
+  return books.some(book =>
     book.title.toLowerCase() === title.toLowerCase() &&
     book.authors.some(a => a.toLowerCase() === author.toLowerCase())
   );
@@ -109,17 +152,33 @@ export async function bookExistsByTitleAuthor(title: string, author: string): Pr
 
 // Create Rating entry from import data
 export function createRatingFromImport(bookId: string, importBook: ImportBookData): Omit<Rating, 'id'> | null {
-  // Validate rating is defined and within valid range (0.5 to 5.0 in 0.5 increments)
-  if (importBook.rating === undefined || 
-      importBook.rating < 0.5 || 
-      importBook.rating > 5.0 ||
-      Math.round(importBook.rating * 2) / 2 !== importBook.rating) {
+  // Get rating from import data (supports multiple field names)
+  const ratingValue = getRatingFromImport(importBook);
+
+  // Handle unrated books (rating = 0 or undefined)
+  // Return null to indicate no rating, but this is valid and shouldn't cause an error
+  if (ratingValue === undefined || ratingValue === null || ratingValue === 0) {
+    return null;
+  }
+
+  // Normalize rating scale (convert 1-10 to 0-5 if needed)
+  const normalizedRating = normalizeRatingScale(ratingValue);
+
+  // Validate rating is within valid range (0.5 to 5.0 in 0.5 increments)
+  // Use tolerance-based comparison for floating point precision
+  if (normalizedRating < RATING_MIN ||
+      normalizedRating > RATING_MAX ||
+      !isValidRatingIncrement(normalizedRating)) {
+    console.warn(
+      `Rating ${ratingValue} (normalized: ${normalizedRating.toFixed(2)}) ` +
+      `is invalid. Must be between ${RATING_MIN} and ${RATING_MAX} in 0.5 increments.`
+    );
     return null;
   }
 
   const rating: Omit<Rating, 'id'> = {
     bookId,
-    stars: importBook.rating,
+    stars: normalizedRating,
     updatedAt: new Date(),
     containsSpoilers: importBook.containsSpoilers ?? false
   };
@@ -144,7 +203,7 @@ export function createRatingFromImport(bookId: string, importBook: ImportBookDat
 export function createReadingLogFromImport(bookId: string, importBook: ImportBookData): Omit<ReadingLog, 'id'> {
   const status = getReadingStatusFromImport(importBook.readingStatus);
   const now = new Date();
-  
+
   const readingLog: Omit<ReadingLog, 'id'> = {
     bookId,
     status,
@@ -170,7 +229,7 @@ export async function processTagsForImport(bookId: string, tagNames: string[]): 
     if (!normalizedName) continue;
 
     // Check if tag exists
-    let existingTag = await tagOperations.getAll().then(tags => 
+    let existingTag = await tagOperations.getAll().then(tags =>
       tags.find(t => t.name.toLowerCase() === normalizedName.toLowerCase())
     );
 
@@ -211,13 +270,16 @@ export function validateImportBook(importBook: ImportBookData): { valid: boolean
     }
   }
 
-  // Validate rating if provided (supports 0.5 to 5.0 in 0.5 increments)
-  if (importBook.rating !== undefined) {
-    const isValidRating = importBook.rating >= 0.5 && 
-                          importBook.rating <= 5.0 && 
-                          Math.round(importBook.rating * 2) / 2 === importBook.rating;
+  // Validate rating if provided (supports 0.5 to 5.0 in 0.5 increments, or 1-10 which will be normalized)
+  const ratingValue = getRatingFromImport(importBook);
+  if (ratingValue !== undefined && ratingValue !== null && ratingValue !== 0) {
+    const normalizedRating = normalizeRatingScale(ratingValue);
+    // Check if rating is valid after normalization
+    const isValidRating = normalizedRating >= RATING_MIN &&
+                          normalizedRating <= RATING_MAX &&
+                          isValidRatingIncrement(normalizedRating);
     if (!isValidRating) {
-      errors.push('Rating must be between 0.5 and 5.0 in 0.5 increments');
+      errors.push('Rating must be between 0.5 and 5.0 in 0.5 increments (or 1-10 scale which will be normalized)');
     }
   }
 
