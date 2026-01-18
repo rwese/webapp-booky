@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
 import { useFilteredBooks, useRatings } from '../hooks/useBooks';
 import { useLibraryStore, useToastStore } from '../store/useStore';
 import { useDebounce, useIsTouchDevice } from '../hooks/usePerformance';
-import { bookOperations } from '../lib/db';
+import { bookOperations, tagOperations } from '../lib/db';
 import { BookCover } from '../components/image';
-import { TagListing, type TagWithCount } from '../components/forms/TagListing';
+import { type TagWithCount } from '../components/forms/TagListing';
 import { StarRating } from '../components/forms/StarRating';
 import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
 import { useUrlFilterSync, urlParamsToFilters } from '../hooks/useUrlFilterSync';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function LibraryPage() {
   const { viewMode, setViewMode, sortConfig, setSortConfig, filterConfig, setFilterConfig } = useLibraryStore();
@@ -19,9 +20,7 @@ export function LibraryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [localSearch, setLocalSearch] = useState('');
-  const [tagSearch, setTagSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [showTagsSection, setShowTagsSection] = useState(true);
   const debouncedSearch = useDebounce(localSearch, 300);
   const isTouchDevice = useIsTouchDevice();
 
@@ -113,29 +112,6 @@ export function LibraryPage() {
     navigate(`/edit/${bookId}`);
   };
 
-  const handleTagClick = (tag: TagWithCount) => {
-    // Toggle tag filter: if already filtered by this tag, clear it
-    if (filterConfig.tags?.includes(tag.id)) {
-      setFilterConfig({
-        ...filterConfig,
-        tags: filterConfig.tags.filter(id => id !== tag.id)
-      });
-    } else {
-      setFilterConfig({
-        ...filterConfig,
-        tags: [...(filterConfig.tags || []), tag.id]
-      });
-    }
-    setShowFilters(true);
-  };
-
-  const handleClearTagFilter = () => {
-    setFilterConfig({
-      ...filterConfig,
-      tags: undefined
-    });
-  };
-
   // Get search query for display (from URL or local state)
   const searchQuery = filterConfig.search || localSearch;
 
@@ -211,6 +187,26 @@ export function LibraryPage() {
               onFilterChange={setFilterConfig}
               onSortChange={setSortConfig}
               onClearFilters={clearFiltersAndUrl}
+              activeTags={filterConfig.tags}
+              onTagToggle={(tagId) => {
+                if (filterConfig.tags?.includes(tagId)) {
+                  setFilterConfig({
+                    ...filterConfig,
+                    tags: filterConfig.tags.filter(id => id !== tagId)
+                  });
+                } else {
+                  setFilterConfig({
+                    ...filterConfig,
+                    tags: [...(filterConfig.tags || []), tagId]
+                  });
+                }
+              }}
+              onClearTags={() => {
+                setFilterConfig({
+                  ...filterConfig,
+                  tags: undefined
+                });
+              }}
             />
           )}
         </div>
@@ -218,49 +214,6 @@ export function LibraryPage() {
 
       {/* Book Grid/List */}
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
-          {/* Tags Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                type="button"
-                onClick={() => setShowTagsSection(!showTagsSection)}
-                className="flex items-center gap-2 text-left hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-              >
-                {showTagsSection ? (
-                  <ChevronUp size={20} className="text-gray-500" />
-                ) : (
-                  <ChevronDown size={20} className="text-gray-500" />
-                )}
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <TagIcon size={20} />
-                  Tags
-                </h2>
-              </button>
-              {filterConfig.tags && filterConfig.tags.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={handleClearTagFilter}>
-                  <X size={14} />
-                  Clear filter
-                </Button>
-              )}
-            </div>
-            {showTagsSection && (
-              <>
-                <TagListing
-                  showCounts={true}
-                  showSearch={true}
-                  searchQuery={tagSearch}
-                  onSearchChange={setTagSearch}
-                  onTagClick={handleTagClick}
-                />
-                {filterConfig.tags && filterConfig.tags.length > 0 && (
-                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    Filtering by {filterConfig.tags.length} tag{filterConfig.tags.length > 1 ? 's' : ''}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
         {paginatedBooks && paginatedBooks.length > 0 ? (
           <>
             <div className={clsx(
@@ -304,10 +257,50 @@ interface FiltersPanelProps {
   onFilterChange: (config: FilterConfig) => void;
   onSortChange: (config: SortConfig) => void;
   onClearFilters: () => void;
+  activeTags?: string[];
+  onTagToggle?: (tagId: string) => void;
+  onClearTags?: () => void;
 }
 
-function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, onClearFilters }: FiltersPanelProps) {
+function FiltersPanel({ 
+  filterConfig, 
+  sortConfig, 
+  onFilterChange, 
+  onSortChange, 
+  onClearFilters,
+  activeTags = [],
+  onTagToggle,
+  onClearTags
+}: FiltersPanelProps) {
   const formats = ['physical', 'kindle', 'kobo', 'audible', 'audiobook', 'pdf', 'other'];
+  const [tagSearch, setTagSearch] = useState('');
+  const debouncedTagSearch = useDebounce(tagSearch, 200);
+  
+  // Fetch tags with counts
+  const tagsWithCounts = useLiveQuery(
+    () => tagOperations.getAllWithCount(),
+    []
+  );
+
+  // Get top 12 most common tags by default
+  const commonTags = useMemo(() => {
+    if (!tagsWithCounts) return [];
+    return tagsWithCounts.slice(0, 12);
+  }, [tagsWithCounts]);
+
+  // Filter tags based on search query
+  const filteredTags = useMemo(() => {
+    if (!tagsWithCounts) return [];
+    if (!debouncedTagSearch.trim()) return commonTags;
+    
+    const query = debouncedTagSearch.toLowerCase();
+    return tagsWithCounts.filter(tag => 
+      tag.name.toLowerCase().includes(query)
+    ).slice(0, 20); // Limit search results
+  }, [tagsWithCounts, debouncedTagSearch, commonTags]);
+
+  // Check if any tags are active
+  const hasActiveTags = activeTags.length > 0;
 
   return (
     <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -340,6 +333,68 @@ function FiltersPanel({ filterConfig, sortConfig, onFilterChange, onSortChange, 
             ))}
           </div>
         </div>
+
+        {/* Tag Filter */}
+        {onTagToggle && (
+          <div className="space-y-2 min-w-[200px]">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</span>
+              {hasActiveTags && onClearTags && (
+                <button
+                  type="button"
+                  onClick={onClearTags}
+                  className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            
+            {/* Tag Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input
+                type="text"
+                placeholder="Search tags..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                className="input pl-8 py-1.5 text-sm w-full"
+              />
+            </div>
+            
+            {/* Tag List */}
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+              {filteredTags.map((tag: TagWithCount) => {
+                const isSelected = activeTags.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => onTagToggle(tag.id)}
+                    className={clsx(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    )}
+                    title={`${tag.name} (${tag.bookCount} books)`}
+                  >
+                    <TagIcon size={10} />
+                    <span className="truncate max-w-[80px]">{tag.name}</span>
+                    <span className="text-xs opacity-70">({tag.bookCount})</span>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Active tags indicator */}
+            {hasActiveTags && (
+              <p className="text-xs text-gray-500">
+                {activeTags.length} tag{activeTags.length > 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Sort */}
         <div className="space-y-2">
