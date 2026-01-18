@@ -28,6 +28,7 @@ function isValidRatingIncrement(value: number): boolean {
 function getRatingFromImport(importBook: ImportBookData): number | undefined {
   // First try the standard rating field
   if (importBook.rating !== undefined) {
+    console.log(`[IMPORT DEBUG] Found rating field: ${importBook.rating} for book: ${importBook.title}`);
     return importBook.rating;
   }
 
@@ -35,10 +36,12 @@ function getRatingFromImport(importBook: ImportBookData): number | undefined {
   for (const fieldName of RATING_FIELD_NAMES) {
     const value = (importBook as unknown as Record<string, unknown>)[fieldName];
     if (typeof value === 'number' && !isNaN(value)) {
+      console.log(`[IMPORT DEBUG] Found rating in alternative field '${fieldName}': ${value} for book: ${importBook.title}`);
       return value;
     }
   }
 
+  console.log(`[IMPORT DEBUG] No rating field found in book: ${importBook.title}`);
   return undefined;
 }
 
@@ -155,9 +158,12 @@ export function createRatingFromImport(bookId: string, importBook: ImportBookDat
   // Get rating from import data (supports multiple field names)
   const ratingValue = getRatingFromImport(importBook);
 
+  console.log(`[IMPORT DEBUG] createRatingFromImport for "${importBook.title}": ratingValue=${ratingValue}`);
+
   // Handle unrated books (rating = 0 or undefined)
   // Return null to indicate no rating, but this is valid and shouldn't cause an error
   if (ratingValue === undefined || ratingValue === null || ratingValue === 0) {
+    console.log(`[IMPORT DEBUG] No valid rating for "${importBook.title}", returning null`);
     return null;
   }
 
@@ -176,6 +182,7 @@ export function createRatingFromImport(bookId: string, importBook: ImportBookDat
     return null;
   }
 
+  console.log(`[IMPORT DEBUG] Successfully created rating for "${importBook.title}": ${normalizedRating} stars`);
   const rating: Omit<Rating, 'id'> = {
     bookId,
     stars: normalizedRating,
