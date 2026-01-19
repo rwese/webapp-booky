@@ -77,12 +77,10 @@ jobs:
           EOF
 
       - name: Start PostgreSQL
-        uses: postgres/setup-postgresql@v1
-        with:
-          postgresql-version: '15'
-          postgresql-db: booky_test
-          postgresql-user: postgres
-          postgresql-password: postgres
+        run: |
+          docker run -d --name postgres-test -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=booky_test -p 5432:5432 postgres:15
+          sleep 10
+          docker ps
 
       - name: Run unit tests
         working-directory: ${{ env.BACKEND_DIR }}
