@@ -96,7 +96,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/backend
           tags: |
             type=raw,value=latest
-            type=sha,prefix=
+            type=sha,prefix=sha-
             type=ref,event=branch
             type=ref,event=tag
             type=raw,value={{version}}
@@ -151,7 +151,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/frontend
           tags: |
             type=raw,value=latest
-            type=sha,prefix=
+            type=sha,prefix=sha-
             type=ref,event=branch
             type=ref,event=tag
             type=raw,value={{version}}
