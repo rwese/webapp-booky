@@ -77,10 +77,28 @@ The backend provides authentication, cloud sync, and persistent storage.
 
 **Note**: For GitHub-based deployment, the backend is optional. The app works fully offline with IndexedDB.
 
+## Auto-Updates with Watchtower
+
+Configure Watchtower for automatic container updates:
+
+```bash
+# Deploy Watchtower alongside production compose
+docker-compose -f docker-compose.watchtower.yml up -d
+
+# Trigger manual update
+./scripts/update-nas.sh --apply
+
+# Check status
+./scripts/update-nas.sh --status
+```
+
+**See [WATCHTOWER.md](WATCHTOWER.md) for complete documentation.**
+
 ## Current Status
 
 **Frontend**: ✅ Running on Python HTTP server (127.0.0.1:20180)
 **Backend**: ✅ Running on Docker (127.0.0.1:3001)
+**Watchtower**: ✅ Auto-update monitor deployed (if configured)
 
 ## Backend (Docker)
 

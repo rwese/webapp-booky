@@ -1,0 +1,57 @@
+# Watchtower Docker Compose Configuration
+# Deploy this alongside docker-compose.production.yml to enable auto-updates
+#
+# Usage:
+#   docker-compose -f docker-compose.watchtower.yml up -d
+#
+# For auto-updates, deploy watchtower in the same network as your app
+
+services:
+  # Watchtower - Container auto-update monitor
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: booky-watchtower
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Optional: Watchtower config file
+      # - ./watchtower.toml:/etc/watchtower.toml:ro
+    environment:
+      # Watchtower polling interval (5 minutes)
+      - WATCHTOWER_POLL_INTERVAL=300
+      # Cleanup old images after update
+      - WATCHTOWER_CLEANUP=true
+      # Remove unused images when space is low
+      - WATCHTOWER_PRUNE=true
+      # HTTP API mode for manual triggers
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      # HTTP API token for security (change this!)
+      - WATCHTOWER_HTTP_API_TOKEN=watchtower-api-token-change-me
+      # API listen address
+      - WATCHTOWER_HTTP_API_LISTEN=:8080
+      # Include rolling updates (one service at a time)
+      - WATCHTOWER_ROLLING_RESTART=true
+      # Health check interval
+      - WATCHTOWER_HEALTHCHECK_INTERVAL=600
+      # Log level (info, debug, trace)
+      - WATCHTOWER_LOG_LEVEL=info
+    labels:
+      # Label to identify webapp-booky containers
+      - "com.centurylinklabs.watchtower.enable=true"
+    restart: unless-stopped
+    networks:
+      - booky-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/v1/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# External network from production compose
+# Note: Run in the same directory as docker-compose.production.yml
+# or use 'docker-compose -f docker-compose.watchtower.yml -f docker-compose.production.yml up -d'
+
+networks:
+  booky-network:
+    external: true
