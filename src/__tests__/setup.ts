@@ -20,6 +20,7 @@ if (typeof crypto === 'undefined') {
       return array;
     },
     // Add other required Crypto properties
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     subtle: {} as any,
   } as Crypto;
 }
