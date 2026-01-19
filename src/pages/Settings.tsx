@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud, Target, Flame } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
@@ -12,6 +12,9 @@ import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
 import type { ThemeMode, BookFormat, SyncStatus, Collection } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useReadingGoals, useGoalForm } from '../hooks/useReadingGoals';
+import { useReadingStreak } from '../hooks/useReadingStreak';
+import { getYear } from 'date-fns';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
@@ -557,6 +560,17 @@ export function SettingsPage() {
           </Card>
         </section>
         
+        {/* Reading Goals */}
+        <section aria-labelledby="goals-heading">
+          <h2 id="goals-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Target size={20} />
+            Reading Goals
+          </h2>
+          <Card className="p-4">
+            <ReadingGoalsSection />
+          </Card>
+        </section>
+        
         {/* App Info */}
         <section aria-labelledby="about-heading">
           <h2 id="about-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -618,6 +632,151 @@ function ToggleSetting({ label, description, checked, onChange }: ToggleSettingP
           )}
         />
       </button>
+    </div>
+  );
+}
+
+// Reading Goals Section Component
+function ReadingGoalsSection() {
+  const { addToast } = useToastStore();
+  const streak = useReadingStreak();
+  const { 
+    yearlyBooksGoal, 
+    yearlyPagesGoal,
+    getGoalProgress 
+  } = useReadingGoals();
+  
+  const {
+    goalType,
+    setGoalType,
+    period,
+    setPeriod,
+    targetValue,
+    setTargetValue,
+    isSubmitting,
+    handleSubmit
+  } = useGoalForm();
+  
+  const booksProgress = getGoalProgress(yearlyBooksGoal);
+  const pagesProgress = getGoalProgress(yearlyPagesGoal);
+  const currentYear = getYear(new Date());
+  
+  const handleCreateGoal = async (e: React.FormEvent) => {
+    await handleSubmit(e);
+    addToast({ type: 'success', message: 'Reading goal created!' });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Streak Display */}
+      <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+        <div className="flex items-center gap-3">
+          <Flame size={24} className="text-orange-500" />
+          <div>
+            <p className="font-medium text-gray-900 dark:text-white">{streak.currentStreak} day streak</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Longest: {streak.longestStreak} days
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-gray-500">Total reading days</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{streak.totalReadingDays}</p>
+        </div>
+      </div>
+      
+      {/* Current Year Goals */}
+      <div className="space-y-4">
+        <h3 className="font-medium text-gray-900 dark:text-white">{currentYear} Goals</h3>
+        
+        {/* Books Goal */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Books read</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {booksProgress.current} / {booksProgress.target}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-primary-600 h-2 rounded-full transition-all"
+              style={{ width: `${Math.min(100, booksProgress.percentage)}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            {booksProgress.remaining > 0 
+              ? `${booksProgress.remaining} books remaining`
+              : 'Goal reached!'}
+          </p>
+        </div>
+        
+        {/* Pages Goal */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Pages read</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {pagesProgress.current.toLocaleString()} / {pagesProgress.target.toLocaleString()}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-green-600 h-2 rounded-full transition-all"
+              style={{ width: `${Math.min(100, pagesProgress.percentage)}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            {pagesProgress.remaining > 0 
+              ? `${pagesProgress.remaining.toLocaleString()} pages remaining`
+              : 'Goal reached!'}
+          </p>
+        </div>
+      </div>
+      
+      {/* Add New Goal */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <h4 className="font-medium text-gray-900 dark:text-white mb-3">Set a New Goal</h4>
+        <form onSubmit={handleCreateGoal} className="space-y-3">
+          <div className="flex gap-3">
+            <select
+              value={goalType}
+              onChange={(e) => setGoalType(e.target.value as 'books' | 'pages')}
+              className="input py-2 flex-1"
+            >
+              <option value="books">Books</option>
+              <option value="pages">Pages</option>
+            </select>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as 'yearly' | 'monthly')}
+              className="input py-2 flex-1"
+            >
+              <option value="yearly">Yearly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="target-value" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Target
+            </label>
+            <input
+              id="target-value"
+              type="number"
+              min={1}
+              value={targetValue}
+              onChange={(e) => setTargetValue(parseInt(e.target.value) || 1)}
+              className="input"
+              placeholder={goalType === 'books' ? '12' : '3000'}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full"
+          >
+            {isSubmitting ? 'Saving...' : 'Set Goal'}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

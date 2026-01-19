@@ -9,7 +9,8 @@ import type {
   ReadingLog,
   UserSettings,
   SyncOperation,
-  ReadingStatus
+  ReadingStatus,
+  ReadingGoal
 } from '../types';
 
 // Cover image storage type
@@ -33,6 +34,7 @@ class BookCollectionDB extends Dexie {
   settings!: Table<UserSettings>;
   readingLogs!: Table<ReadingLog>;
   coverImages!: Table<CoverImageRecord>;
+  readingGoals!: Table<ReadingGoal>;
 
   constructor() {
     super('BookCollectionDB');
@@ -48,7 +50,8 @@ class BookCollectionDB extends Dexie {
       syncQueue: 'id, entity, entityId, timestamp, synced, [priority+timestamp]',
       settings: 'id',
       readingLogs: 'id, bookId, status, createdAt',
-      coverImages: 'id, createdAt'
+      coverImages: 'id, createdAt',
+      readingGoals: 'id, [type+year], [type+year+month], isActive'
     });
   }
 }

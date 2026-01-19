@@ -691,6 +691,37 @@ export interface ReadingLog {
   updatedAt: Date;
 }
 
+// Reading Goal Types
+export type GoalType = 'books' | 'pages';
+export type GoalPeriod = 'yearly' | 'monthly';
+
+export interface ReadingGoal {
+  id: string;
+  type: GoalType;
+  period: GoalPeriod;
+  targetValue: number; // Number of books or pages
+  currentValue: number;
+  year: number;
+  month?: number; // For monthly goals
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Reading Streak Types
+export interface ReadingStreak {
+  currentStreak: number; // Days
+  longestStreak: number; // Days
+  lastReadingDate: Date | null;
+  totalReadingDays: number;
+}
+
+export interface DayReadingStatus {
+  date: string; // YYYY-MM-DD
+  hasRead: boolean;
+  bookCount: number;
+}
+
 // Import Data Types (from booknotes-export)
 export interface ImportBookData {
   id: string;
