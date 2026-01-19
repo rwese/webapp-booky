@@ -100,7 +100,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=raw,value={{version}}
-            type=raw,value={{major}}.{{minor}}
+            type=raw,value={{major}}.{{minor}},enable=false
 
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
@@ -155,7 +155,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=raw,value={{version}}
-            type=raw,value={{major}}.{{minor}}
+            type=raw,value={{major}}.{{minor}},enable=false
 
       - name: Build frontend Dockerfile
         run: |
