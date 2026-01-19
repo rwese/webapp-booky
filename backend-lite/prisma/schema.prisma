@@ -1,0 +1,195 @@
+// Lightweight SQLite Prisma Schema for Booky
+// Simplified version without social features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_PATH")
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // Hashed password
+  image     String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  settings      UserSettings?
+  books         Book[]
+  ratings       Rating[]
+  tags          Tag[]
+  collections   Collection[]
+  readingLogs   ReadingLog[]
+
+  @@index([email])
+}
+
+// User preferences and settings
+model UserSettings {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme          String   @default("system") // 'light' | 'dark' | 'system'
+  defaultFormat  String   @default("physical")
+  ratingDisplay  String   @default("stars")
+  dateFormat     String   @default("MM/dd/yyyy")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Main book entity
+model Book {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  subtitle       String?
+  authors        String   // JSON array stored as string
+  isbn13         String?
+  coverUrl       String?
+  localCoverPath String?
+  description    String?
+  publisher      String?
+  publishedYear  Int?
+  publishedDate  String?
+  pageCount      Int?
+  format         String   @default("physical")
+  addedAt        DateTime @default(now())
+  externalIds    String?  // JSON object stored as string
+  lastSyncedAt   DateTime?
+  needsSync      Boolean  @default(false)
+  localOnly      Boolean  @default(false)
+
+  // Metadata fields
+  genre          String?
+  language       String?
+  averageRating  Float?
+  categories     String?  // JSON array stored as string
+  subjects       String?  // JSON array stored as string
+  seriesName     String?
+  seriesVolume   Int?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  ratings        Rating[]
+  bookTags       BookTag[]
+  collectionBooks CollectionBook[]
+  readingLogs    ReadingLog[]
+
+  @@index([userId])
+  @@index([isbn13])
+  @@index([format])
+  @@index([addedAt])
+}
+
+// Book ratings and reviews
+model Rating {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId          String
+  book            Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  stars           Float    // 0.5 to 5.0, increments of 0.5
+  review          String?
+  reviewCreatedAt DateTime?
+  containsSpoilers Boolean @default(false)
+  updatedAt       DateTime @updatedAt
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([stars])
+}
+
+// Tag definitions
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#3B82F6")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookTags  BookTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// Many-to-many relationship between books and tags
+model BookTag {
+  id      String @id @default(cuid())
+  bookId  String
+  book    Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, tagId])
+  @@index([bookId])
+  @@index([tagId])
+}
+
+// Collection definitions
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  coverImage  String?
+  isSmart     Boolean  @default(false)
+  smartRules  String?  // JSON array stored as string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  books       CollectionBook[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([isSmart])
+}
+
+// Many-to-many relationship between collections and books
+model CollectionBook {
+  id           String     @id @default(cuid())
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  bookId       String
+  book         Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  order        Int        @default(0)
+  addedAt      DateTime   @default(now())
+
+  @@unique([collectionId, bookId])
+  @@index([collectionId])
+  @@index([bookId])
+}
+
+// Reading status logs
+model ReadingLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId     String
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  status     String   // 'want_to_read' | 'currently_reading' | 'read' | 'dnf'
+  startedAt  DateTime?
+  finishedAt DateTime?
+  dnfReason  String?  // Reason for "Did Not Finish"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@index([status])
+}
