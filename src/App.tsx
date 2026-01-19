@@ -14,6 +14,7 @@ const AnalyticsPage = lazy(() => import('./pages/Analytics').then(module => ({ d
 const BookDetailPage = lazy(() => import('./pages/BookDetail').then(module => ({ default: module.BookDetailPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 const EditBookPage = lazy(() => import('./pages/EditBook').then(module => ({ default: module.EditBookPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 const SettingsPage = lazy(() => import('./pages/Settings').then(module => ({ default: module.SettingsPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
+const SignInPage = lazy(() => import('./pages/auth/SignInPage').then(module => ({ default: module.SignInPage as ComponentType<unknown> })) as Promise<{ default: ComponentType<unknown> }>);
 import { BarcodeScannerModal } from './components/scanner/BarcodeScannerModal';
 import { useTheme } from './store/useStore';
 import { useConnectivityHandler, useSyncStatus, useBackgroundSync, useOnlineStatus } from './hooks/useOffline';
@@ -101,6 +102,7 @@ function App() {
               <Route path="/book/:id" element={<BookDetailPage />} />
               <Route path="/edit/:id" element={<EditBookPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/auth/signin" element={<SignInPage />} />
             </Routes>
           </Suspense>
         </div>

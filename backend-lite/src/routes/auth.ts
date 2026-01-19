@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { createUser, authenticateUser, generateToken, getUserById, sanitizeUser, logoutUser, refreshAccessToken } from '../lib/auth.js';
+import { createUser, authenticateUser, generateToken, generateRefreshToken, getUserById, sanitizeUser, logoutUser, refreshAccessToken, verifyRefreshToken } from '../lib/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -33,11 +33,13 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const user = await createUser(data.email, data.password, data.name);
     const { token, expiresIn } = generateToken({ userId: user.id, email: user.email });
+    const { token: refreshToken, expiresIn: refreshExpiresIn } = generateRefreshToken({ userId: user.id, email: user.email });
 
     res.status(201).json({
       success: true,
       user: sanitizeUser(user),
       accessToken: token,
+      refreshToken: refreshToken,
       expiresIn,
     });
   } catch (error) {
@@ -61,11 +63,13 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const { token, expiresIn } = generateToken({ userId: user.id, email: user.email });
+    const { token: refreshToken, expiresIn: refreshExpiresIn } = generateRefreshToken({ userId: user.id, email: user.email });
 
     res.json({
       success: true,
       user: sanitizeUser(user),
       accessToken: token,
+      refreshToken: refreshToken,
       expiresIn,
     });
   } catch (error) {
@@ -86,16 +90,24 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Refresh token is required' });
     }
     
-    const result = await refreshAccessToken(refreshToken);
+    const decoded = verifyRefreshToken(refreshToken);
     
-    if (!result.success) {
-      return res.status(401).json({ success: false, error: result.error });
+    if (!decoded) {
+      return res.status(401).json({ success: false, error: 'Invalid refresh token' });
     }
+    
+    const user = await getUserById(decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'User not found' });
+    }
+    
+    const { token, expiresIn } = generateToken({ userId: user.id, email: user.email });
     
     res.json({
       success: true,
-      accessToken: result.token,
-      expiresIn: result.expiresIn,
+      accessToken: token,
+      expiresIn,
     });
   } catch (error) {
     console.error('Token refresh error:', error);

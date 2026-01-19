@@ -5,6 +5,7 @@ import App from './App';
 import './styles/index.css';
 import { registerServiceWorker } from './lib/serviceWorker';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { AuthProvider } from './contexts/AuthContext';
 
 // Lazy load pages for better performance (imported dynamically in App.tsx)
 
@@ -18,9 +19,11 @@ if ('serviceWorker' in navigator) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
