@@ -35,7 +35,6 @@ export function LoanModal({ bookId, bookTitle, onClose, onSuccess }: LoanModalPr
   const [newBorrowerEmail, setNewBorrowerEmail] = useState('');
   const [newBorrowerPhone, setNewBorrowerPhone] = useState('');
   const [isCreatingBorrower, setIsCreatingBorrower] = useState(false);
-  const [newBorrowerId, setNewBorrowerId] = useState<string | null>(null);
 
   // Filter borrowers based on search
   const filteredBorrowers = borrowers.filter(borrower =>
@@ -55,8 +54,6 @@ export function LoanModal({ bookId, bookTitle, onClose, onSuccess }: LoanModalPr
         email: newBorrowerEmail.trim() || undefined,
         phone: newBorrowerPhone.trim() || undefined,
       });
-      
-      setNewBorrowerId(id);
       
       // Auto-select the new borrower
       setSelectedBorrower({

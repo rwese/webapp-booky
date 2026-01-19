@@ -7,8 +7,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, useCallback, useMemo } from 'react';
 import { db } from '../lib/db';
-import type { LendingRecord, LendingStatus, Borrower } from '../types';
-import { format, addDays, isAfter, isBefore, parseISO } from 'date-fns';
+import { isAfter, parseISO } from 'date-fns';
 
 // Hook for lending status of a specific book
 export function useBookLending(bookId: string) {

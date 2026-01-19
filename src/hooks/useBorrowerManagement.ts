@@ -5,7 +5,7 @@
  */
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { db } from '../lib/db';
 import type { Borrower } from '../types';
 
