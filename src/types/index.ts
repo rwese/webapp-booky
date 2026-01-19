@@ -210,6 +210,9 @@ export interface SyncOperation {
   timestamp: Date;
   synced: boolean;
   conflictResolution?: 'local' | 'server' | 'merge';
+  retryCount?: number;
+  lastError?: string;
+  priority?: number; // Higher priority operations sync first
 }
 
 // Offline-specific Types

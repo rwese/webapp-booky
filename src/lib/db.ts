@@ -45,7 +45,7 @@ class BookCollectionDB extends Dexie {
       bookTags: '[bookId+tagId], bookId, tagId',
       collections: 'id, name, isSmart, createdAt, updatedAt',
       collectionBooks: '[collectionId+bookId], collectionId, bookId, order',
-      syncQueue: 'id, entity, entityId, timestamp, synced',
+      syncQueue: 'id, entity, entityId, timestamp, synced, [priority+timestamp]',
       settings: 'id',
       readingLogs: 'id, bookId, status, createdAt',
       coverImages: 'id, createdAt'
@@ -377,7 +377,8 @@ export const syncOperations = {
       ...operation,
       id: crypto.randomUUID(),
       timestamp: new Date(),
-      synced: false
+      synced: false,
+      retryCount: 0
     });
   },
   
@@ -385,15 +386,96 @@ export const syncOperations = {
     return await db.syncQueue
       .where('synced')
       .equals(0)
+      .sortBy('timestamp');
+  },
+  
+  async getPendingOperationsByPriority() {
+    const pending = await db.syncQueue
+      .where('synced')
+      .equals(0)
       .toArray();
+    
+    // Sort by priority (higher first) then by timestamp (older first)
+    return pending.sort((a, b) => {
+      const priorityA = a.priority ?? 0;
+      const priorityB = b.priority ?? 0;
+      if (priorityB !== priorityA) {
+        return priorityB - priorityA;
+      }
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
   },
   
   async markAsSynced(id: string) {
     return await db.syncQueue.update(id, { synced: true });
   },
   
+  async markAsFailed(id: string, error: string) {
+    const operation = await db.syncQueue.get(id);
+    if (operation) {
+      const newRetryCount = (operation.retryCount ?? 0) + 1;
+      // Only retry if under max retry count
+      if (newRetryCount <= 3) {
+        return await db.syncQueue.update(id, { 
+          retryCount: newRetryCount,
+          lastError: error,
+          synced: false // Keep unsynced for retry
+        });
+      } else {
+        // Mark as failed after max retries
+        return await db.syncQueue.update(id, { 
+          retryCount: newRetryCount,
+          lastError: error
+        });
+      }
+    }
+  },
+  
+  async incrementRetry(id: string) {
+    const operation = await db.syncQueue.get(id);
+    if (operation) {
+      const newRetryCount = (operation.retryCount ?? 0) + 1;
+      return await db.syncQueue.update(id, { retryCount: newRetryCount });
+    }
+  },
+  
   async clearSyncedOperations() {
     return await db.syncQueue.where('synced').equals(1).delete();
+  },
+  
+  async clearFailedOperations() {
+    // Clear operations that have exceeded retry limit
+    const failed = await db.syncQueue
+      .filter(op => (op.retryCount ?? 0) > 3)
+      .toArray();
+    
+    if (failed.length > 0) {
+      const ids = failed.map(op => op.id);
+      return await db.syncQueue.bulkDelete(ids);
+    }
+    return 0;
+  },
+  
+  async getFailedOperations() {
+    return await db.syncQueue
+      .filter(op => (op.retryCount ?? 0) > 3)
+      .toArray();
+  },
+  
+  async getPendingCount() {
+    return await db.syncQueue
+      .where('synced')
+      .equals(0)
+      .count();
+  },
+  
+  async retryOperation(id: string) {
+    // Reset retry count and mark for sync
+    return await db.syncQueue.update(id, { 
+      retryCount: 0,
+      lastError: undefined,
+      synced: false 
+    });
   }
 };
 

@@ -118,15 +118,51 @@ export default defineConfig({
             options: {
               cacheName: 'covers-cache',
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days for offline access
               },
               cacheableResponse: {
                 statuses: [0, 200]
               }
             }
+          },
+          // Enhanced Google Books cover caching
+          {
+            urlPattern: /^https:\/\/books\.google\.com\/books\/.*\/images\/.*$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-books-covers-cache',
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Add cache for API responses (longer term)
+          {
+            urlPattern: /^https:\/\/openlibrary\.org\/api\/.*$/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'openlibrary-api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              networkTimeoutSeconds: 15
+            }
           }
         ]
+      },
+      // Precaching for critical assets
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB for larger assets
       },
       devOptions: {
         enabled: true,

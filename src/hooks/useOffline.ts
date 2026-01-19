@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; 
 import { 
-  syncOperations
+  syncOperations,
+  coverImageOperations,
+  db
 } from '../lib/db';
 import { useToastStore } from '../store/useStore';
 import type { 
@@ -9,7 +11,9 @@ import type {
   SyncStatus, 
   ConflictData,
   ConflictResolution,
-  StorageUsage
+  StorageUsage,
+  SyncOperation,
+  SyncOperationData
 } from '../types';
 
 // Hook for managing online/offline status with enhanced monitoring
@@ -277,20 +281,42 @@ export function useStorageUsage(): StorageUsage {
 export function useBackgroundSync() {
   const isOnline = useOnlineStatus();
   const syncStatus = useSyncStatus();
+  const [lastSyncResult, setLastSyncResult] = useState<{
+    success: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
+
   const syncInBackground = useCallback(async () => {
     if (!isOnline || syncStatus.isSyncing) return;
 
     window.dispatchEvent(new CustomEvent('sync:start'));
 
     try {
-      const pendingOps = await syncOperations.getPendingOperations();
+      // Get operations sorted by priority
+      const pendingOps = await syncOperations.getPendingOperationsByPriority();
       
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
       for (const operation of pendingOps) {
-        // Simulate sync operation (would be actual API calls)
-        await new Promise(resolve => setTimeout(resolve, 100));
-        await syncOperations.markAsSynced(operation.id);
+        try {
+          // Simulate sync operation (would be actual API calls)
+          // In a real implementation, this would call the backend API
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          await syncOperations.markAsSynced(operation.id);
+          success++;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          await syncOperations.markAsFailed(operation.id, errorMessage);
+          errors.push(`${operation.entity} ${operation.type}: ${errorMessage}`);
+          failed++;
+        }
       }
 
+      setLastSyncResult({ success, failed, errors });
       window.dispatchEvent(new CustomEvent('sync:end'));
     } catch (error) {
       window.dispatchEvent(new CustomEvent('sync:error', { 
@@ -299,28 +325,181 @@ export function useBackgroundSync() {
     }
   }, [isOnline, syncStatus.isSyncing]);
 
-  return { syncInBackground };
+  const retryFailedOperations = useCallback(async () => {
+    const failedOps = await syncOperations.getFailedOperations();
+    for (const op of failedOps) {
+      await syncOperations.retryOperation(op.id);
+    }
+    // Trigger sync after retrying
+    syncInBackground();
+  }, [syncInBackground]);
+
+  const clearFailedOperations = useCallback(async () => {
+    return await syncOperations.clearFailedOperations();
+  }, []);
+
+  return { 
+    syncInBackground, 
+    retryFailedOperations,
+    clearFailedOperations,
+    lastSyncResult
+  };
 }
 
-// Hook for image caching
+// Hook for image caching with IndexedDB storage
 export function useImageCache() {
   const cacheImage = useCallback(async (bookId: string, imageUrl: string): Promise<string | null> => {
     try {
-      // For now, we'll store the original URL
-      // In a full implementation, this would cache the image to IndexedDB
-      return imageUrl;
+      // Fetch the image
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch image');
+      }
+      
+      const blob = await response.blob();
+      
+      // Store in IndexedDB using coverImageOperations
+      const imageId = await coverImageOperations.store(blob, `${bookId}-cover`);
+      
+      // Return the local blob URL
+      const localUrl = await coverImageOperations.getUrl(imageId);
+      return localUrl;
     } catch (error) {
       console.error('Failed to cache image:', error);
       return null;
     }
   }, []);
 
-  const getCachedImage = useCallback(async (_bookId: string): Promise<string | null> => {
-    // Retrieve cached image path
-    return null;
+  const getCachedImage = useCallback(async (bookId: string): Promise<string | null> => {
+    try {
+      const imageId = `${bookId}-cover`;
+      const localUrl = await coverImageOperations.getUrl(imageId);
+      
+      // Update last accessed time
+      if (localUrl) {
+        await coverImageOperations.get(imageId); // This would update lastAccessed in full implementation
+      }
+      
+      return localUrl;
+    } catch (error) {
+      console.error('Failed to get cached image:', error);
+      return null;
+    }
   }, []);
 
-  return { cacheImage, getCachedImage };
+  const deleteCachedImage = useCallback(async (bookId: string): Promise<void> => {
+    try {
+      const imageId = `${bookId}-cover`;
+      await coverImageOperations.delete(imageId);
+    } catch (error) {
+      console.error('Failed to delete cached image:', error);
+    }
+  }, []);
+
+  const clearImageCache = useCallback(async (): Promise<void> => {
+    try {
+      await coverImageOperations.clear();
+    } catch (error) {
+      console.error('Failed to clear image cache:', error);
+    }
+  }, []);
+
+  const getImageCacheSize = useCallback(async (): Promise<number> => {
+    try {
+      const images = await db.coverImages.toArray();
+      return images.reduce((total, img) => total + img.blob.size, 0);
+    } catch (error) {
+      console.error('Failed to get image cache size:', error);
+      return 0;
+    }
+  }, []);
+
+  return { 
+    cacheImage, 
+    getCachedImage, 
+    deleteCachedImage, 
+    clearImageCache,
+    getImageCacheSize 
+  };
+}
+
+// Hook for managing offline sync queue with full visibility
+export function useOfflineSyncQueue() {
+  const [queue, setQueue] = useState<SyncOperation[]>([]);
+  const [failedCount, setFailedCount] = useState(0);
+  const isOnline = useOnlineStatus();
+
+  const refreshQueue = useCallback(async () => {
+    try {
+      const pending = await syncOperations.getPendingOperationsByPriority();
+      const failed = await syncOperations.getFailedOperations();
+      
+      setQueue(pending);
+      setFailedCount(failed.length);
+    } catch (error) {
+      console.error('Failed to refresh sync queue:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshQueue();
+
+    // Listen for sync events
+    const handleSyncEnd = () => refreshQueue();
+    const handleSyncStart = () => {};
+
+    window.addEventListener('sync:end', handleSyncEnd);
+    window.addEventListener('sync:start', handleSyncStart);
+
+    return () => {
+      window.removeEventListener('sync:end', handleSyncEnd);
+      window.removeEventListener('sync:start', handleSyncStart);
+    };
+  }, [refreshQueue]);
+
+  const retryOperation = useCallback(async (id: string) => {
+    await syncOperations.retryOperation(id);
+    await refreshQueue();
+  }, [refreshQueue]);
+
+  const clearOperation = useCallback(async (id: string) => {
+    await syncOperations.markAsSynced(id);
+    await refreshQueue();
+  }, [refreshQueue]);
+
+  const clearAllFailed = useCallback(async () => {
+    await syncOperations.clearFailedOperations();
+    await refreshQueue();
+  }, [refreshQueue]);
+
+  const queueOperation = useCallback(async (
+    type: 'create' | 'update' | 'delete',
+    entity: 'book' | 'rating' | 'tag' | 'collection' | 'readingLog',
+    entityId: string,
+    data: SyncOperationData,
+    priority?: number
+  ) => {
+    await syncOperations.queueOperation({
+      type,
+      entity,
+      entityId,
+      data,
+      priority
+    });
+    await refreshQueue();
+  }, [refreshQueue]);
+
+  return {
+    queue,
+    failedCount,
+    isOnline,
+    refreshQueue,
+    retryOperation,
+    clearOperation,
+    clearAllFailed,
+    queueOperation,
+    totalCount: queue.length + failedCount
+  };
 }
 
 // Hook for pull-to-refresh functionality
