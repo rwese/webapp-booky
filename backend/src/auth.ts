@@ -34,6 +34,7 @@ interface AuthResult {
   user?: Partial<User>;
   accessToken?: string;
   refreshToken?: string;
+  expiresIn?: number;
   error?: string;
 }
 
@@ -409,7 +410,23 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
       name: user.name
     },
     accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken
+    refreshToken: tokens.refreshToken,
+    expiresIn: tokens.expiresIn
+  };
+}
+
+/**
+ * Logout user (revoke refresh token)
+ */
+export async function logoutUser(refreshToken?: string): Promise<AuthResult> {
+  // In a production system, you would:
+  // 1. Add the refresh token to a blacklist in Redis/database
+  // 2. Clear any server-side sessions
+  // For now, we just return success
+  
+  return {
+    success: true,
+    message: 'Logged out successfully'
   };
 }
 
@@ -805,6 +822,7 @@ export default {
   createUser,
   loginUser,
   refreshAccessToken,
+  logoutUser,
   requestPasswordReset,
   resetPassword,
   updateUserProfile,

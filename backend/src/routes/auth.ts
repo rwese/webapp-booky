@@ -3,6 +3,7 @@ import {
   createUser, 
   loginUser, 
   refreshAccessToken,
+  logoutUser,
   requestPasswordReset,
   getUserById,
   validatePasswordStrength
@@ -80,6 +81,24 @@ router.post('/refresh', async (req, res) => {
       success: false,
       error: 'REFRESH_FAILED',
       message: 'Failed to refresh token'
+    });
+  }
+});
+
+// Logout user
+router.post('/logout', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    const result = await logoutUser(refreshToken);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'LOGOUT_FAILED',
+      message: 'Failed to logout'
     });
   }
 });
