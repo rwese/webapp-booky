@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
@@ -11,12 +11,14 @@ import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
 import type { ThemeMode, BookFormat, SyncStatus, Collection } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
   const theme = settings.theme;
   const { addToast } = useToastStore();
   const isOnline = useOnlineStatus();
+  const { isAuthenticated } = useAuth();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -241,6 +243,49 @@ export function SettingsPage() {
           </h2>
           <Card className="p-4">
             <div className="space-y-4">
+              {/* Cloud Sync Toggle */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <Cloud size={20} className="text-primary-600" />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Cloud Sync</p>
+                    <p className="text-sm text-gray-500">
+                      {isAuthenticated ? 'Sync books with your account' : 'Sign in to enable cloud sync'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      addToast({ type: 'warning', message: 'Please sign in to enable cloud sync' });
+                      return;
+                    }
+                    updateSettings({ cloudSyncEnabled: !settings.cloudSyncEnabled });
+                    addToast({ 
+                      type: 'success', 
+                      message: !settings.cloudSyncEnabled ? 'Cloud sync enabled' : 'Cloud sync disabled' 
+                    });
+                  }}
+                  disabled={!isAuthenticated}
+                  className={clsx(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    settings.cloudSyncEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700',
+                    !isAuthenticated && 'opacity-50 cursor-not-allowed',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
+                  )}
+                  role="switch"
+                  aria-checked={settings.cloudSyncEnabled}
+                >
+                  <span
+                    className={clsx(
+                      'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                      settings.cloudSyncEnabled ? 'translate-x-6' : 'translate-x-1'
+                    )}
+                  />
+                </button>
+              </div>
+              
               {/* Sync Section */}
               <div className="flex items-center justify-between">
                 <div>
@@ -248,14 +293,16 @@ export function SettingsPage() {
                   <p className="text-sm text-gray-500">
                     {pendingCount > 0 
                       ? `${pendingCount} pending changes to sync`
-                      : 'Your data is synced with the cloud'}
+                      : settings.cloudSyncEnabled && isAuthenticated 
+                        ? 'Your data is synced with the cloud'
+                        : 'Local-only mode'}
                   </p>
                 </div>
                 <Button 
                   type="button" 
                   variant="secondary" 
                   onClick={handleSync}
-                  disabled={!isOnline || isSyncing}
+                  disabled={!isOnline || isSyncing || !settings.cloudSyncEnabled || !isAuthenticated}
                 >
                   <RefreshCw size={16} className={clsx('mr-1', isSyncing && 'animate-spin')} />
                   {isSyncing ? 'Syncing...' : 'Sync Now'}

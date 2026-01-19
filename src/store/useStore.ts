@@ -18,8 +18,8 @@ interface UIState {
 
 // Persisted settings store
 interface SettingsState {
-  settings: UserSettings;
-  updateSettings: (settings: Partial<UserSettings>) => void;
+  settings: UserSettings & { cloudSyncEnabled?: boolean };
+  updateSettings: (settings: Partial<UserSettings & { cloudSyncEnabled?: boolean }>) => void;
   resetSettings: () => void;
 }
 
@@ -80,6 +80,7 @@ export const useSettingsStore = create<SettingsState>()(
         defaultFormat: 'physical',
         ratingDisplay: 'stars',
         dateFormat: 'MM/dd/yyyy',
+        cloudSyncEnabled: false,
         notificationPreferences: {
           readingReminders: true,
           newRecommendations: true,
@@ -104,6 +105,7 @@ export const useSettingsStore = create<SettingsState>()(
             defaultFormat: 'physical',
             ratingDisplay: 'stars',
             dateFormat: 'MM/dd/yyyy',
+            cloudSyncEnabled: false,
             notificationPreferences: {
               readingReminders: true,
               newRecommendations: true,
