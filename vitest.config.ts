@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Add globals for test environment
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['src/__tests__/setup.ts'],
     // Only run tests in these locations
     include: [
       'src/**/*.test.{ts,tsx,js,jsx}',
