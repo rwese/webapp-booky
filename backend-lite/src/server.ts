@@ -16,6 +16,7 @@ import tagRoutes from './routes/tags.js';
 import collectionRoutes from './routes/collections.js';
 import ratingRoutes from './routes/ratings.js';
 import readingRoutes from './routes/reading.js';
+import fileRoutes from './routes/files.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,6 +137,7 @@ app.get('/api', (req, res) => {
       collections: '/api/collections',
       ratings: '/api/ratings',
       reading: '/api/reading',
+      files: '/api/files',
     },
   });
 });
@@ -148,6 +150,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/collections', collectionRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/reading', readingRoutes);
+app.use('/api/files', fileRoutes);
 
 // File upload endpoint
 app.post('/api/upload/cover', authMiddleware, upload.single('cover'), async (req, res) => {
