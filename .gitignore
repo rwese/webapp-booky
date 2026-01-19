@@ -36,3 +36,8 @@ test-results/
 
 # Backend
 backend/bun.lock
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.test
+backend/package-lock.json
