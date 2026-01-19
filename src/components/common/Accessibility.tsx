@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { clsx } from 'clsx';
 
 // Focus trap for modals
@@ -6,6 +6,7 @@ interface FocusTrapProps {
   children: React.ReactNode;
   active?: boolean;
   initialFocus?: React.RefObject<HTMLElement>;
+  returnFocus?: boolean;
   onDeactivate?: () => void;
   className?: string;
 }
@@ -14,6 +15,7 @@ export function FocusTrap({
   children,
   active = true,
   initialFocus,
+  returnFocus = true,
   onDeactivate,
   className,
 }: FocusTrapProps) {
@@ -22,8 +24,11 @@ export function FocusTrap({
 
   useEffect(() => {
     if (!active) {
-      if (previousActiveElement.current) {
-        previousActiveElement.current.focus();
+      if (returnFocus && previousActiveElement.current) {
+        // Use setTimeout to ensure element is still in DOM
+        setTimeout(() => {
+          previousActiveElement.current?.focus();
+        }, 0);
       }
       return;
     }
@@ -41,7 +46,10 @@ export function FocusTrap({
 
     if (focusableElements.length > 0) {
       const targetElement = initialFocus?.current || focusableElements[0];
-      targetElement?.focus();
+      // Use setTimeout to ensure proper focus
+      setTimeout(() => {
+        targetElement?.focus();
+      }, 0);
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,12 +64,12 @@ export function FocusTrap({
       const lastElement = focusableElements[focusableElements.length - 1];
 
       if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
+        if (document.activeElement === firstElement || !focusableElements[0].contains(document.activeElement as HTMLElement)) {
           e.preventDefault();
           lastElement?.focus();
         }
       } else {
-        if (document.activeElement === lastElement) {
+        if (document.activeElement === lastElement || !focusableElements[0].contains(document.activeElement as HTMLElement)) {
           e.preventDefault();
           firstElement?.focus();
         }
@@ -72,17 +80,57 @@ export function FocusTrap({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      if (document.activeElement === container) {
+      if (returnFocus && document.activeElement === container) {
         previousActiveElement.current?.focus();
       }
     };
-  }, [active, initialFocus, onDeactivate]);
+  }, [active, initialFocus, returnFocus, onDeactivate]);
 
   return (
     <div ref={containerRef} className={className} data-focus-trap-active={active}>
       {children}
     </div>
   );
+}
+
+// Focus ring component for visible focus indicators
+interface FocusRingProps {
+  children: React.ReactNode;
+  visible?: boolean;
+  className?: string;
+}
+
+export function FocusRing({ children, visible = true, className }: FocusRingProps) {
+  return (
+    <div className={clsx('focus-within:outline-none', visible && 'focus-within:ring-2 focus-within:ring-primary-500 focus-within:ring-offset-2', className)}>
+      {children}
+    </div>
+  );
+}
+
+// Focus styles for keyboard navigation
+export function useFocusVisible() {
+  const isFocusVisible = useRef(true);
+
+  useEffect(() => {
+    const handleKeyDown = () => {
+      isFocusVisible.current = true;
+    };
+
+    const handleMouseDown = () => {
+      isFocusVisible.current = false;
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, []);
+
+  return isFocusVisible.current;
 }
 
 // Skip link component
@@ -401,6 +449,542 @@ export function AccessibleField({
       <div aria-labelledby={labelId} aria-describedby={hint ? hintId : undefined}>
         {children}
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Keyboard Shortcuts
+// ============================================================================
+
+interface KeyboardShortcut {
+  key: string;
+  ctrl?: boolean;
+  alt?: boolean;
+  shift?: boolean;
+  meta?: boolean;
+  action: () => void;
+  description: string;
+}
+
+interface UseKeyboardShortcutsOptions {
+  enabled?: boolean;
+  preventDefault?: boolean;
+}
+
+export function useKeyboardShortcuts(
+  shortcuts: KeyboardShortcut[],
+  options: UseKeyboardShortcutsOptions = {}
+) {
+  const { enabled = true, preventDefault = true } = options;
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.isContentEditable;
+
+      if (isInputField && e.key.length === 1) {
+        return;
+      }
+
+      for (const shortcut of shortcuts) {
+        const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
+        const ctrlMatch = shortcut.ctrl ? e.ctrlKey || e.metaKey : !e.ctrlKey && !e.metaKey;
+        const altMatch = shortcut.alt ? e.altKey : !e.altKey;
+        const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey;
+        const metaMatch = shortcut.meta ? e.metaKey : true;
+
+        if (keyMatch && ctrlMatch && altMatch && shiftMatch && metaMatch) {
+          if (preventDefault) {
+            e.preventDefault();
+          }
+          shortcut.action();
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [shortcuts, enabled, preventDefault]);
+}
+
+// Keyboard shortcut help dialog
+interface ShortcutListProps {
+  shortcuts: Array<{
+    key: string;
+    description: string;
+    ctrl?: boolean;
+    alt?: boolean;
+    shift?: boolean;
+    meta?: boolean;
+  }>;
+  className?: string;
+}
+
+export function ShortcutList({ shortcuts, className }: ShortcutListProps) {
+  const formatKey = (key: string) => {
+    const parts: string[] = [];
+    if (key.length === 1) {
+      parts.push(key.toUpperCase());
+    } else {
+      parts.push(key);
+    }
+    return parts;
+  };
+
+  return (
+    <ul className={clsx('space-y-2 list-none', className)} aria-label="Keyboard shortcuts">
+      {shortcuts.map((shortcut) => (
+        <li 
+          key={`${shortcut.ctrl}-${shortcut.key}`}
+          className="flex items-center justify-between py-1"
+        >
+          <span className="text-gray-700 dark:text-gray-300">{shortcut.description}</span>
+          <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono">
+            {[
+              shortcut.ctrl && 'Ctrl',
+              shortcut.meta && '⌘',
+              shortcut.alt && 'Alt',
+              shortcut.shift && 'Shift',
+              ...formatKey(shortcut.key)
+            ].filter(Boolean).join(' + ')}
+          </kbd>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Global keyboard shortcut listener for showing/hiding help
+export function useGlobalShortcutHelp(
+  showHelp: () => void,
+  isHelpOpen: boolean,
+  toggleHelp: () => void
+) {
+  useKeyboardShortcuts(
+    [
+      {
+        key: '?',
+        action: toggleHelp,
+        description: 'Show keyboard shortcuts'
+      },
+      {
+        key: 'Escape',
+        action: () => {
+          if (isHelpOpen) {
+            toggleHelp();
+          }
+        },
+        description: 'Close dialog'
+      }
+    ],
+    { enabled: true, preventDefault: true }
+  );
+}
+
+// ============================================================================
+// Live Region Enhancements
+// ============================================================================
+
+interface EnhancedLiveRegionProps {
+  politeness?: 'polite' | 'assertive' | 'off';
+  atomic?: boolean;
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}
+
+// Enhanced live region with clear function
+export function EnhancedLiveRegion({
+  politeness = 'polite',
+  atomic = true,
+  children,
+  className,
+  id,
+}: EnhancedLiveRegionProps) {
+  const regionRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div
+      ref={regionRef}
+      id={id}
+      role="status"
+      aria-live={politeness}
+      aria-atomic={atomic}
+      className={clsx('sr-only', className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Toast announcement helper
+export function announceToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
+  const priority = type === 'error' || type === 'warning' ? 'assertive' : 'polite';
+  announce(message, priority);
+}
+
+// Search results announcement
+export function announceSearchResults(count: number, query: string) {
+  if (count === 0) {
+    announce(`No results found for "${query}"`);
+  } else if (count === 1) {
+    announce(`Found 1 result for "${query}"`);
+  } else {
+    announce(`Found ${count} results for "${query}"`);
+  }
+}
+
+// Loading state announcement
+export function announceLoading(isLoading: boolean, context: string = 'content') {
+  if (isLoading) {
+    announce(`Loading ${context}`, 'polite');
+  } else {
+    announce(`${context} loaded`, 'polite');
+  }
+}
+
+// Form submission announcement
+export function announceFormSubmit(success: boolean, action: string = 'Form') {
+  if (success) {
+    announce(`${action} submitted successfully`, 'polite');
+  } else {
+    announce(`${action} submission failed`, 'assertive');
+  }
+}
+
+// ============================================================================
+// Chart Accessibility
+// ============================================================================
+
+interface ChartAccessibilityProps {
+  title: string;
+  description: string;
+  dataSummary: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function ChartAccessibility({
+  title,
+  description,
+  dataSummary,
+  children,
+  className,
+}: ChartAccessibilityProps) {
+  const dataSummaryId = `chart-summary-${Math.random().toString(36).substr(2, 9)}`;
+  
+  return (
+    <figure className={className} aria-labelledby={`chart-title-${title}`} aria-describedby={dataSummaryId}>
+      <figcaption id={`chart-title-${title}`} className="sr-only">
+        {title}
+      </figcaption>
+      <div aria-hidden="true" className="sr-only">
+        {description}
+      </div>
+      <div>
+        {children}
+      </div>
+      <p id={dataSummaryId} className="sr-only">
+        {dataSummary}
+      </p>
+    </figure>
+  );
+}
+
+// Accessible data table as chart alternative
+interface AccessibleDataTableProps {
+  caption: string;
+  data: Record<string, string | number>[];
+  columns: Array<{
+    key: string;
+    header: string;
+    format?: (value: string | number) => string;
+  }>;
+  className?: string;
+}
+
+export function AccessibleDataTable({
+  caption,
+  data,
+  columns,
+  className,
+}: AccessibleDataTableProps) {
+  return (
+    <div className={clsx('overflow-x-auto', className)}>
+      <table className="w-full text-sm">
+        <caption className="sr-only">{caption}</caption>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                scope="col"
+                className="px-4 py-2 text-left font-medium text-gray-700 dark:text-gray-300"
+              >
+                {column.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row) => {
+            const rowKey = Object.values(row).join('-');
+            return (
+              <tr key={rowKey} className="border-t border-gray-200 dark:border-gray-700">
+                {columns.map((column) => (
+                  <td
+                    key={`${rowKey}-${column.key}`}
+                    className="px-4 py-2 text-gray-900 dark:text-white"
+                  >
+                    {column.format ? column.format(row[column.key]) : row[column.key]}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Chart legend with proper ARIA
+interface AccessibleChartLegendProps {
+  items: Array<{
+    label: string;
+    color: string;
+    value?: string | number;
+  }>;
+  className?: string;
+}
+
+export function AccessibleChartLegend({ items, className }: AccessibleChartLegendProps) {
+  return (
+    <ul 
+      aria-label="Chart legend" 
+      className={clsx('flex flex-wrap gap-4 list-none', className)}
+    >
+      {items.map((item) => (
+        <li 
+          key={`${item.label}-${item.color}`}
+          className="flex items-center gap-2"
+        >
+          <span 
+            aria-hidden="true"
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: item.color }}
+          />
+          <span className="text-sm text-gray-700 dark:text-gray-300">
+            {item.label}
+            {item.value !== undefined && (
+              <span className="ml-1 font-medium">({item.value})</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ============================================================================
+// Reduced Motion Support
+// ============================================================================
+
+export function useReducedMotion(): boolean {
+  const mediaQuery = typeof window !== 'undefined' 
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+  const getInitialState = useCallback(() => {
+    if (!mediaQuery) return false;
+    return mediaQuery.matches;
+  }, [mediaQuery]);
+
+  const [reducedMotion, setReducedMotion] = React.useState(getInitialState);
+
+  useEffect(() => {
+    if (!mediaQuery) return;
+
+    const handler = (event: MediaQueryListEvent) => {
+      setReducedMotion(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, [mediaQuery]);
+
+  return reducedMotion;
+}
+
+// Animation wrapper with reduced motion support
+interface ReducedMotionProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function ReducedMotion({ children, className }: ReducedMotionProps) {
+  const reducedMotion = useReducedMotion();
+
+  return (
+    <div 
+      className={clsx(
+        reducedMotion ? 'transition-none' : 'transition-all duration-200',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================================================
+// High Contrast Mode Support
+// ============================================================================
+
+export function useHighContrastMode(): boolean {
+  const mediaQuery = typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-contrast: more)')
+    : null;
+
+  const getInitialState = useCallback(() => {
+    if (!mediaQuery) return false;
+    return mediaQuery.matches;
+  }, [mediaQuery]);
+
+  const [highContrast, setHighContrast] = React.useState(getInitialState);
+
+  useEffect(() => {
+    if (!mediaQuery) return;
+
+    const handler = (event: MediaQueryListEvent) => {
+      setHighContrast(event.matches);
+    };
+
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, [mediaQuery]);
+
+  return highContrast;
+}
+
+// ============================================================================
+// Focus Management for Dynamic Content
+// ============================================================================
+
+// Hook for managing focus when content changes
+export function useFocusOnChange<T>(
+  dependency: T,
+  options: {
+    focusElement?: React.RefObject<HTMLElement>;
+    selectText?: boolean;
+    delay?: number;
+  } = {}
+) {
+  const { focusElement, selectText = false, delay = 0 } = options;
+
+  useEffect(() => {
+    if (!focusElement?.current) return;
+
+    const timer = setTimeout(() => {
+      focusElement.current?.focus();
+      if (selectText && focusElement.current instanceof HTMLInputElement) {
+        focusElement.current.select();
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusElement, delay, selectText]);
+}
+
+// Trap focus within a list when items are added/removed
+export function useListFocusManagement<T extends { id: string }>(
+  _items: T[],
+  activeId: string | null,
+  listRef: React.RefObject<HTMLElement>
+) {
+  useEffect(() => {
+    if (!listRef.current || !activeId) return;
+
+    const activeElement = listRef.current.querySelector<HTMLElement>(`[data-id="${activeId}"]`);
+    if (activeElement) {
+      activeElement.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, listRef]);
+}
+
+// ============================================================================
+// Screen Reader Only Content
+// ============================================================================
+
+interface VisuallyHiddenProps {
+  children: React.ReactNode;
+  as?: 'span' | 'div' | 'p' | 'strong' | 'em';
+  className?: string;
+}
+
+export function VisuallyHidden({ 
+  children, 
+  as: Component = 'span',
+  className 
+}: VisuallyHiddenProps) {
+  return (
+    <Component className={clsx('sr-only', className)}>
+      {children}
+    </Component>
+  );
+}
+
+// ============================================================================
+// Loading State Accessibility
+// ============================================================================
+
+interface LoadingAnnouncementProps {
+  isLoading: boolean;
+  message: string;
+  successMessage?: string;
+}
+
+export function useLoadingAnnouncement({
+  isLoading,
+  message,
+  successMessage,
+}: LoadingAnnouncementProps) {
+  useEffect(() => {
+    if (isLoading) {
+      announce(message, 'polite');
+    } else if (successMessage && !isLoading) {
+      announce(successMessage, 'polite');
+    }
+  }, [isLoading, message, successMessage]);
+}
+
+// Skeleton loading with screen reader support
+interface AccessibleSkeletonProps {
+  className?: string;
+  ariaLabel?: string;
+}
+
+export function AccessibleSkeleton({ className, ariaLabel = 'Loading content' }: AccessibleSkeletonProps) {
+  return (
+    <div
+      className={clsx(
+        'animate-pulse bg-gray-200 dark:bg-gray-700 rounded',
+        className
+      )}
+      role="status"
+      aria-label={ariaLabel}
+      aria-busy="true"
+    >
+      <VisuallyHidden>Loading content</VisuallyHidden>
     </div>
   );
 }
