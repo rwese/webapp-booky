@@ -3,12 +3,10 @@ version: '3.8'
 services:
   # Frontend - Static files served by Nginx
   frontend:
-    image: nginx:alpine
+    image: ghcr.io/${CONTAINER_REGISTRY:-ghcr.io}/rwese/webapp-booky/frontend:${IMAGE_TAG:-latest}
     container_name: booky-frontend
     ports:
       - "127.0.0.1:20180:80"
-    volumes:
-      - ./docker/booky:/usr/share/nginx/html:ro
     restart: unless-stopped
     depends_on:
       - backend
@@ -20,9 +18,7 @@ services:
 
   # Backend - Express API with SQLite
   backend:
-    build:
-      context: ./docker/backend-lite
-      dockerfile: Dockerfile
+    image: ghcr.io/${CONTAINER_REGISTRY:-ghcr.io}/rwese/webapp-booky/backend:${IMAGE_TAG:-latest}
     container_name: booky-backend
     ports:
       - "127.0.0.1:3001:3001"

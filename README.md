@@ -167,6 +167,37 @@ sudo ./deploy.sh deploy
 
 See `docs/NAS_DEPLOYMENT.md` for detailed documentation.
 
+### Docker Deployment (Automated)
+
+Deploy using pre-built Docker images from GitHub Container Registry:
+
+```bash
+# Clone and configure
+git clone https://github.com/rwese/webapp-booky.git
+cd webapp-booky
+
+# Copy environment template
+cp docker/.env.production.example .env
+# Edit .env with your configuration
+
+# Start with Docker Compose
+docker-compose -f docker-compose.full.yml up -d
+```
+
+**Automated CI/CD Pipeline:**
+
+- Images are automatically built and pushed to GHCR on every push to main
+- Release tags (v1.0.0) create versioned releases
+- See `docs/CICD_PIPELINE.md` for full documentation
+
+### Image Tags
+
+| Tag          | Description                   |
+| ------------ | ----------------------------- |
+| `latest`     | Latest build from main branch |
+| `v1.0.0`     | Specific version release      |
+| `sha-abc123` | Build from specific commit    |
+
 ## Development Phases
 
 ### Phase 1: Foundation ✅
