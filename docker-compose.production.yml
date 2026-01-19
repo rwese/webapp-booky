@@ -1,0 +1,56 @@
+services:
+  # Frontend - Static files served by Nginx
+  frontend:
+    image: ghcr.io/rwese/webapp-booky/frontend:latest
+    container_name: booky-frontend
+    ports:
+      - "127.0.0.1:20180:80"
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - booky-network
+
+  # Backend - Express API with SQLite
+  backend:
+    image: ghcr.io/rwese/webapp-booky/backend:latest
+    container_name: booky-backend
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - booky_data:/app/data
+      - booky_uploads:/app/uploads
+    env_file:
+      - ./docker/.env.production
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/booky.db
+      - PORT=3001
+      - UPLOAD_DIR=/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - booky-network
+
+volumes:
+  booky_data:
+    driver: local
+  booky_uploads:
+    driver: local
+
+networks:
+  booky-network:
+    name: booky-network
+    driver: bridge

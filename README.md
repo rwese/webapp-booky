@@ -142,7 +142,28 @@ The Playwright configuration (`playwright.config.ts`) includes a `webServer` sec
 
 ### NAS Deployment
 
-Deploy to Synology NAS directly from GitHub:
+Deploy to Synology NAS using Docker Compose with pre-built images:
+
+```bash
+# Clone and configure
+git clone https://github.com/rwese/webapp-booky.git
+cd webapp-booky
+
+# Copy environment template
+cp docker/.env.production.example docker/.env.production
+# Edit docker/.env.production with your configuration
+
+# Deploy using production compose file
+docker-compose -f docker-compose.production.yml up -d
+
+# Check status
+docker-compose -f docker-compose.production.yml ps
+
+# View logs
+docker-compose -f docker-compose.production.yml logs -f
+```
+
+**Manual Deployment via SSH:**
 
 ```bash
 # Copy deployment scripts to NAS
@@ -167,6 +188,10 @@ sudo ./deploy.sh deploy
 
 See `docs/NAS_DEPLOYMENT.md` for detailed documentation.
 
+**For Docker-based deployment:**
+
+See [Docker Deployment](#docker-deployment-automated) above for the recommended approach using `docker-compose.production.yml`.
+
 ### Docker Deployment (Automated)
 
 Deploy using pre-built Docker images from GitHub Container Registry:
@@ -177,12 +202,23 @@ git clone https://github.com/rwese/webapp-booky.git
 cd webapp-booky
 
 # Copy environment template
-cp docker/.env.production.example .env
-# Edit .env with your configuration
+cp docker/.env.production.example docker/.env.production
+# Edit docker/.env.production with your configuration
 
-# Start with Docker Compose
+# Start with Docker Compose (production deployment)
+docker-compose -f docker-compose.production.yml up -d
+
+# Or use full stack (includes build context for development)
 docker-compose -f docker-compose.full.yml up -d
 ```
+
+**Available Docker Compose Files:**
+
+| File                            | Purpose                                                |
+| ------------------------------- | ------------------------------------------------------ |
+| `docker-compose.yml`            | Local development (builds images locally)              |
+| `docker-compose.full.yml`       | Full stack reference with build context                |
+| `docker-compose.production.yml` | **Production deployment** (uses pre-built GHCR images) |
 
 **Automated CI/CD Pipeline:**
 
