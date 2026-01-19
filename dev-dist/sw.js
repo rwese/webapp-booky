@@ -82,7 +82,7 @@ define(['./workbox-36e57b92'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.6s4ltu6l5ko"
+    "revision": "0.0appi8o1t4k"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -128,8 +128,27 @@ define(['./workbox-36e57b92'], (function (workbox) { 'use strict';
   workbox.registerRoute(/^https:\/\/covers\.openlibrary\.org\/.*$/i, new workbox.CacheFirst({
     "cacheName": "covers-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 200,
-      maxAgeSeconds: 604800
+      maxEntries: 500,
+      maxAgeSeconds: 7776000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/books\.google\.com\/books\/.*\/images\/.*$/i, new workbox.CacheFirst({
+    "cacheName": "google-books-covers-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 500,
+      maxAgeSeconds: 7776000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(/^https:\/\/openlibrary\.org\/api\/.*$/i, new workbox.NetworkFirst({
+    "cacheName": "openlibrary-api-cache",
+    "networkTimeoutSeconds": 15,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 100,
+      maxAgeSeconds: 2592000
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]
