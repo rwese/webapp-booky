@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud, Target, Flame } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud, Target, Flame, User, Search, X, Edit2, Plus } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
+import { Input } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
 import { useToastStore } from '../store/useStore';
@@ -10,10 +11,11 @@ import { bookExportService, downloadExportedData, getExportFormats, ExportFormat
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
-import type { ThemeMode, BookFormat, SyncStatus, Collection } from '../types';
+import type { ThemeMode, BookFormat, SyncStatus, Collection, Borrower } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useReadingGoals, useGoalForm } from '../hooks/useReadingGoals';
 import { useReadingStreak } from '../hooks/useReadingStreak';
+import { useBorrowers, useBorrowerActions, useBorrowerLoanSummary } from '../hooks/useBorrowerManagement';
 import { getYear } from 'date-fns';
 
 export function SettingsPage() {
@@ -500,6 +502,17 @@ export function SettingsPage() {
           </Card>
         </section>
         
+        {/* Borrower Management */}
+        <section aria-labelledby="borrowers-heading">
+          <h2 id="borrowers-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <User size={20} />
+            Borrowers
+          </h2>
+          <Card className="p-4">
+            <BorrowerManagementSection />
+          </Card>
+        </section>
+        
         {/* Default Settings */}
         <section aria-labelledby="defaults-heading">
           <h2 id="defaults-heading" className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -776,6 +789,239 @@ function ReadingGoalsSection() {
             {isSubmitting ? 'Saving...' : 'Set Goal'}
           </Button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// Borrower Management Section Component
+function BorrowerManagementSection() {
+  const { addToast } = useToastStore();
+  const borrowers = useBorrowers();
+  const { createBorrower, updateBorrower, deleteBorrower, isLoading, error } = useBorrowerActions();
+  
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingBorrower, setEditingBorrower] = useState<Borrower | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Form state
+  const [formName, setFormName] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formNotes, setFormNotes] = useState('');
+
+  // Filter borrowers based on search
+  const filteredBorrowers = borrowers.filter(borrower =>
+    borrower.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    borrower.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    borrower.phone?.includes(searchQuery)
+  );
+
+  const resetForm = () => {
+    setFormName('');
+    setFormEmail('');
+    setFormPhone('');
+    setFormNotes('');
+    setShowAddForm(false);
+    setEditingBorrower(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formName.trim()) {
+      addToast({ type: 'error', message: 'Name is required' });
+      return;
+    }
+
+    try {
+      if (editingBorrower) {
+        await updateBorrower(editingBorrower.id, {
+          name: formName.trim(),
+          email: formEmail.trim() || undefined,
+          phone: formPhone.trim() || undefined,
+          notes: formNotes.trim() || undefined,
+        });
+        addToast({ type: 'success', message: 'Borrower updated!' });
+      } else {
+        await createBorrower({
+          name: formName.trim(),
+          email: formEmail.trim() || undefined,
+          phone: formPhone.trim() || undefined,
+          notes: formNotes.trim() || undefined,
+        });
+        addToast({ type: 'success', message: 'Borrower added!' });
+      }
+      resetForm();
+    } catch (err) {
+      console.error('Failed to save borrower:', err);
+      addToast({ type: 'error', message: error || 'Failed to save borrower' });
+    }
+  };
+
+  const handleEdit = (borrower: Borrower) => {
+    setEditingBorrower(borrower);
+    setFormName(borrower.name);
+    setFormEmail(borrower.email || '');
+    setFormPhone(borrower.phone || '');
+    setFormNotes(borrower.notes || '');
+    setShowAddForm(true);
+  };
+
+  const handleDelete = async (borrower: Borrower) => {
+    if (window.confirm(`Are you sure you want to delete ${borrower.name}?`)) {
+      try {
+        await deleteBorrower(borrower.id);
+        addToast({ type: 'success', message: 'Borrower deleted!' });
+      } catch (err) {
+        console.error('Failed to delete borrower:', err);
+        addToast({ type: 'error', message: error || 'Failed to delete borrower' });
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search borrowers..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* Add/Edit Form */}
+      {showAddForm && (
+        <form onSubmit={handleSubmit} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+          <h3 className="font-medium text-gray-900 dark:text-white">
+            {editingBorrower ? 'Edit Borrower' : 'Add New Borrower'}
+          </h3>
+          <Input
+            label="Name *"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder="Enter name"
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={formEmail}
+            onChange={(e) => setFormEmail(e.target.value)}
+            placeholder="Enter email"
+          />
+          <Input
+            label="Phone"
+            type="tel"
+            value={formPhone}
+            onChange={(e) => setFormPhone(e.target.value)}
+            placeholder="Enter phone number"
+          />
+          <div>
+            <label htmlFor="borrower-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Notes
+            </label>
+            <textarea
+              id="borrower-notes"
+              value={formNotes}
+              onChange={(e) => setFormNotes(e.target.value)}
+              placeholder="Any notes..."
+              rows={2}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Saving...' : editingBorrower ? 'Update' : 'Add'}
+            </Button>
+            <Button type="button" variant="ghost" onClick={resetForm}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* Add Button */}
+      {!showAddForm && (
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          onClick={() => setShowAddForm(true)}
+          className="w-full"
+          type="button"
+        >
+          <Plus size={16} />
+          Add Borrower
+        </Button>
+      )}
+
+      {filteredBorrowers.length > 0 ? (
+        <div className="space-y-2">
+          {filteredBorrowers.map(borrower => (
+            <BorrowerCard 
+              key={borrower.id} 
+              borrower={borrower}
+              onEdit={() => handleEdit(borrower)}
+              onDelete={() => handleDelete(borrower)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+          {searchQuery ? 'No borrowers found' : 'No borrowers yet. Add one to get started!'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Individual Borrower Card Component
+function BorrowerCard({ 
+  borrower, 
+  onEdit, 
+  onDelete 
+}: { 
+  borrower: Borrower; 
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const loanSummary = useBorrowerLoanSummary(borrower.id);
+
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-gray-900 dark:text-white truncate">{borrower.name}</p>
+          {loanSummary?.activeLoansCount ? (
+            <Badge variant="warning">{loanSummary.activeLoansCount} on loan</Badge>
+          ) : null}
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+          {borrower.email && <span>{borrower.email}</span>}
+          {borrower.email && borrower.phone && <span> • </span>}
+          {borrower.phone && <span>{borrower.phone}</span>}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 ml-2">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title="Edit"
+        >
+          <Edit2 size={16} className="text-gray-400" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title="Delete"
+        >
+          <X size={16} className="text-gray-400" />
+        </button>
       </div>
     </div>
   );

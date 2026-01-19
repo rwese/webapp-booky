@@ -2,20 +2,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Trash2, Book, Calendar, Building, 
-  Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder
+  Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder,
+  User, RotateCcw, AlertTriangle
 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { CategorySelector, CategoryBadge } from '../components/forms/CategorySelector';
+import { LoanModal } from '../components/forms/LoanModal';
 import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
 import { useRating } from '../hooks/useBooks';
+import { useBookLending, useLendingActions, useLendingHistory } from '../hooks/useBookLending';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import type { Book as BookType, Rating, Collection } from '../types';
 import { BookCover } from '../components/image';
+import { format, parseISO } from 'date-fns';
 
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,12 +34,18 @@ export function BookDetailPage() {
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
+  const [showLoanModal, setShowLoanModal] = useState(false);
 
   // Metadata refresh hook
   const { isRefreshing, error, refreshMetadata } = useBookMetadataRefresh();
 
   // Load rating for this book
   const existingRating = useRating(id || '');
+  
+  // Lending hooks
+  const { lendingRecord, borrower, isOverdue } = useBookLending(id || '');
+  const { returnBook, renewLoan, isLoading: isLendingAction } = useLendingActions();
+  const lendingHistory = useLendingHistory(id || '');
   
   // Initialize rating from loaded rating or default to 0
   useEffect(() => {
@@ -217,6 +227,35 @@ export function BookDetailPage() {
       addToast({ type: 'error', message: 'Failed to update categories' });
     }
   }, [book, addToast]);
+
+  // Handle returning a book
+  const handleReturnBook = useCallback(async () => {
+    if (!lendingRecord) return;
+    
+    try {
+      await returnBook(lendingRecord.id);
+      addToast({ type: 'success', message: 'Book marked as returned!' });
+    } catch (error) {
+      console.error('Failed to return book:', error);
+      addToast({ type: 'error', message: 'Failed to return book' });
+    }
+  }, [lendingRecord, returnBook, addToast]);
+
+  // Handle renewing a loan
+  const handleRenewLoan = useCallback(async () => {
+    if (!lendingRecord) return;
+    
+    try {
+      // Renew for 14 more days
+      const newDueDate = new Date();
+      newDueDate.setDate(newDueDate.getDate() + 14);
+      await renewLoan(lendingRecord.id, newDueDate);
+      addToast({ type: 'success', message: 'Loan renewed for 14 more days!' });
+    } catch (error) {
+      console.error('Failed to renew loan:', error);
+      addToast({ type: 'error', message: 'Failed to renew loan' });
+    }
+  }, [lendingRecord, renewLoan, addToast]);
 
   if (loading) {
     return (
@@ -429,6 +468,123 @@ export function BookDetailPage() {
           </div>
         )}
 
+        {/* Lending Status Section */}
+        <Card className="p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 dark:text-white">Lending Status</h3>
+            {lendingRecord ? (
+              <Badge 
+                variant={isOverdue ? 'danger' : lendingRecord.status === 'on_loan' ? 'warning' : 'success'}
+              >
+                {isOverdue ? 'Overdue' : lendingRecord.status === 'on_loan' ? 'On Loan' : 'Available'}
+              </Badge>
+            ) : (
+              <Badge variant="success">Available</Badge>
+            )}
+          </div>
+          
+          {lendingRecord && borrower ? (
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                  <User size={20} className="text-primary-600 dark:text-primary-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 dark:text-white">{borrower.name}</p>
+                  {borrower.email && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{borrower.email}</p>
+                  )}
+                  {borrower.phone && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{borrower.phone}</p>
+                  )}
+                  
+                  <div className="mt-3 flex items-center gap-2 text-sm">
+                    <Calendar size={14} className="text-gray-400" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      Due: {format(
+                        lendingRecord.dueDate instanceof Date 
+                          ? lendingRecord.dueDate 
+                          : parseISO(lendingRecord.dueDate as unknown as string),
+                        'MMM d, yyyy'
+                      )}
+                    </span>
+                    {isOverdue && (
+                      <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                        <AlertTriangle size={14} />
+                        Overdue!
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 flex gap-2">
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  onClick={handleReturnBook}
+                  disabled={isLendingAction}
+                >
+                  <RotateCcw size={16} />
+                  Return Book
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={handleRenewLoan}
+                  disabled={isLendingAction}
+                >
+                  <RotateCcw size={16} />
+                  Renew Loan
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-gray-500 dark:text-gray-400 mb-3">This book is available to loan out</p>
+              <Button 
+                variant="primary" 
+                size="sm"
+                onClick={() => setShowLoanModal(true)}
+              >
+                <User size={16} />
+                Loan Book
+              </Button>
+            </div>
+          )}
+          
+          {/* Lending History */}
+          {lendingHistory.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Lending History</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {lendingHistory.slice(0, 5).map(record => (
+                  <div key={record.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      {record.status === 'returned' ? (
+                        <RotateCcw size={14} className="text-green-500" />
+                      ) : (
+                        <User size={14} className="text-gray-400" />
+                      )}
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {record.status === 'returned' ? 'Returned' : 'Loaned'}
+                      </span>
+                    </div>
+                    <span className="text-gray-400">
+                      {format(
+                        record.loanedAt instanceof Date 
+                          ? record.loanedAt 
+                          : parseISO(record.loanedAt as unknown as string),
+                        'MMM d, yyyy'
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
         {/* Book Metadata */}
         <Card className="p-6 mb-6">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Details</h3>
@@ -562,6 +718,18 @@ export function BookDetailPage() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Loan Modal */}
+      {showLoanModal && book && (
+        <LoanModal
+          bookId={book.id}
+          bookTitle={book.title}
+          onClose={() => setShowLoanModal(false)}
+          onSuccess={() => {
+            addToast({ type: 'success', message: 'Book loaned successfully!' });
+          }}
+        />
       )}
     </div>
   );

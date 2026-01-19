@@ -10,7 +10,9 @@ import type {
   UserSettings,
   SyncOperation,
   ReadingStatus,
-  ReadingGoal
+  ReadingGoal,
+  Borrower,
+  LendingRecord
 } from '../types';
 
 // Cover image storage type
@@ -35,6 +37,8 @@ class BookCollectionDB extends Dexie {
   readingLogs!: Table<ReadingLog>;
   coverImages!: Table<CoverImageRecord>;
   readingGoals!: Table<ReadingGoal>;
+  borrowers!: Table<Borrower>;
+  lendingRecords!: Table<LendingRecord>;
 
   constructor() {
     super('BookCollectionDB');
@@ -51,7 +55,9 @@ class BookCollectionDB extends Dexie {
       settings: 'id',
       readingLogs: 'id, bookId, status, createdAt',
       coverImages: 'id, createdAt',
-      readingGoals: 'id, [type+year], [type+year+month], isActive'
+      readingGoals: 'id, [type+year], [type+year+month], isActive',
+      borrowers: 'id, name, [email+phone]',
+      lendingRecords: 'id, bookId, borrowerId, status, dueDate, loanedAt'
     });
   }
 }
