@@ -798,7 +798,7 @@ function ReadingGoalsSection() {
 function BorrowerManagementSection() {
   const { addToast } = useToastStore();
   const borrowers = useBorrowers();
-  const { createBorrower, updateBorrower, deleteBorrower, isLoading, error } = useBorrowerActions();
+  const { createBorrower, updateBorrower, deleteBorrower, isLoading } = useBorrowerActions();
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBorrower, setEditingBorrower] = useState<Borrower | null>(null);
@@ -855,7 +855,7 @@ function BorrowerManagementSection() {
       resetForm();
     } catch (err) {
       console.error('Failed to save borrower:', err);
-      addToast({ type: 'error', message: error || 'Failed to save borrower' });
+      addToast({ type: 'error', message: err ? err.toString() : 'Failed to save borrower' });
     }
   };
 
@@ -875,7 +875,7 @@ function BorrowerManagementSection() {
         addToast({ type: 'success', message: 'Borrower deleted!' });
       } catch (err) {
         console.error('Failed to delete borrower:', err);
-        addToast({ type: 'error', message: error || 'Failed to delete borrower' });
+        addToast({ type: 'error', message: err ? err.toString() : 'Failed to delete borrower' });
       }
     }
   };
