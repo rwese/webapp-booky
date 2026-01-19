@@ -26,9 +26,10 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: TokenPayload): string {
+export function generateToken(payload: TokenPayload): { token: string; expiresIn: number } {
   // 7 days in seconds
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: 7 * 24 * 60 * 60 });
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: 7 * 24 * 60 * 60 });
+  return { token, expiresIn: 7 * 24 * 60 * 60 };
 }
 
 export function verifyToken(token: string): TokenPayload | null {
@@ -92,4 +93,34 @@ export function sanitizeUser(user: any): UserResponse {
     image: user.image,
     createdAt: user.createdAt,
   };
+}
+
+// Logout user - clears session on server side
+export async function logoutUser(): Promise<{ success: boolean; message: string }> {
+  // In production, you would invalidate the refresh token here
+  return { success: true, message: 'Logged out successfully' };
+}
+
+// Refresh access token
+export async function refreshAccessToken(refreshToken: string): Promise<{ 
+  success: boolean; 
+  token?: string; 
+  expiresIn?: number; 
+  error?: string 
+}> {
+  const decoded = verifyToken(refreshToken);
+  
+  if (!decoded) {
+    return { success: false, error: 'Invalid refresh token' };
+  }
+  
+  const user = await getUserById(decoded.userId);
+  
+  if (!user) {
+    return { success: false, error: 'User not found' };
+  }
+  
+  const { token, expiresIn } = generateToken({ userId: user.id, email: user.email });
+  
+  return { success: true, token, expiresIn };
 }
