@@ -1,8 +1,81 @@
-# NAS Deployment
+# NAS Deployment Guide
 
-## Quick Start
+## Overview
 
-The Book Collection Webapp is deployed at `~/docker/` on the NAS.
+The Book Collection Webapp can be deployed to your Synology NAS in two ways:
+
+1. **GitHub-based Deployment** (Recommended) - Auto-deploy from GitHub
+2. **Docker-based Deployment** - Containerized backend with static frontend
+
+This guide covers both approaches.
+
+## Option 1: GitHub-based Deployment (Recommended)
+
+Deploy directly from GitHub without manual file transfers.
+
+### Quick Start
+
+```bash
+# 1. Copy deployment scripts to NAS
+scp scripts/setup-nas.sh scripts/deploy-nas.sh user@nas-ip:/volume1/webapps/
+
+# 2. SSH into NAS and run setup
+ssh user@nas-ip
+cd /volume1/webapps
+chmod +x setup-nas.sh deploy-nas.sh
+sudo ./setup-nas.sh
+
+# 3. Deploy the application
+sudo ./deploy.sh deploy
+
+# 4. Access your app
+# http://<your-nas-ip>/booky
+```
+
+### Commands
+
+| Command                     | Description                            |
+| --------------------------- | -------------------------------------- |
+| `sudo ./deploy.sh deploy`   | Full deployment (clone, build, deploy) |
+| `sudo ./deploy.sh update`   | Quick update (pull, rebuild, deploy)   |
+| `sudo ./deploy.sh rollback` | Rollback to previous backup            |
+| `sudo ./deploy.sh status`   | Show deployment status                 |
+
+### Features
+
+- **Auto-updates**: Daily cron job at 3 AM
+- **Backups**: Automatic before each deployment
+- **Rollback**: One-click restore to previous version
+- **Logging**: All operations logged to `/var/log/webapps/deploy.log`
+
+### Directory Structure
+
+```
+/var/services/web/booky/
+├── dist/              # Production build (served by web server)
+├── deploy.sh          # Deployment script
+├── .env               # Environment configuration
+└── package.json
+
+/volume1/webapps/backups/booky/
+├── backup-YYYYMMDD-HHMMSS/
+│   └── dist/
+└── ...
+```
+
+## Option 2: Docker-based Deployment (Existing)
+
+The existing Docker setup for backend + frontend deployment.
+
+### Frontend
+
+The frontend files are served from `~/docker/booky/` on the NAS.
+
+### Backend (Docker)
+
+The backend provides authentication, cloud sync, and persistent storage.
+
+**Note**: For GitHub-based deployment, the backend is optional. The app works fully offline with IndexedDB.
 
 ## Current Status
 

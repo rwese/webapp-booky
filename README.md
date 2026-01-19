@@ -140,6 +140,33 @@ The Playwright configuration (`playwright.config.ts`) includes a `webServer` sec
 - `npm run test:e2e` - Run e2e tests with Playwright (port 3001)
 - `npm run test:ui` - Run tests with Vitest UI
 
+### NAS Deployment
+
+Deploy to Synology NAS directly from GitHub:
+
+```bash
+# Copy deployment scripts to NAS
+scp scripts/setup-nas.sh scripts/deploy-nas.sh user@nas-ip:/volume1/webapps/
+
+# SSH into NAS and run setup
+ssh user@nas-ip
+cd /volume1/webapps
+chmod +x setup-nas.sh deploy-nas.sh
+sudo ./setup-nas.sh
+
+# Deploy the application
+sudo ./deploy.sh deploy
+```
+
+**Commands:**
+
+- `sudo ./deploy.sh deploy` - Full deployment (clone, build, deploy)
+- `sudo ./deploy.sh update` - Quick update (pull, rebuild, deploy)
+- `sudo ./deploy.sh rollback` - Rollback to previous backup
+- `sudo ./deploy.sh status` - Show deployment status
+
+See `docs/NAS_DEPLOYMENT.md` for detailed documentation.
+
 ## Development Phases
 
 ### Phase 1: Foundation ✅
