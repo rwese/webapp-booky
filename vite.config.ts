@@ -196,7 +196,7 @@ export default defineConfig({
       }
     },
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 500
+    chunkSizeWarningLimit: 400
   },
   server: {
     port: 3001,
