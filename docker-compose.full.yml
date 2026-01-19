@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Frontend - Static files served by Nginx
+  frontend:
+    image: nginx:alpine
+    container_name: booky-frontend
+    ports:
+      - "127.0.0.1:20180:80"
+    volumes:
+      - ./docker/booky:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend - Express API with SQLite
+  backend:
+    build:
+      context: ./docker/backend-lite
+      dockerfile: Dockerfile
+    container_name: booky-backend
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - booky_data:/app/data
+      - booky_uploads:/app/uploads
+    env_file:
+      - ./docker/backend-lite/.env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/booky.db
+      - PORT=3001
+      - UPLOAD_DIR=/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  booky_data:
+    driver: local
+  booky_uploads:
+    driver: local
+
+networks:
+  default:
+    name: booky-network

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  booky:
+    image: nginx:alpine
+    container_name: booky
+    ports:
+      - "127.0.0.1:20180:80"
+    volumes:
+      - ./docker/booky:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
