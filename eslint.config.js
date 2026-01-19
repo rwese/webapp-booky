@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 
 export default [
   {
-    ignores: ['backend/**/*', 'mobile/**/*', 'dist/**/*', 'dev-dist/**/*', 'node_modules/**/*', '*.config.ts', 'playwright.config.ts', 'regression-tests.test.ts', 'service-worker-test.test.ts', 'tests/**/*', '*.spec.ts', '**/*.js'],
+    ignores: ['backend-lite/**/*', 'mobile/**/*', 'dist/**/*', 'dev-dist/**/*', 'node_modules/**/*', '*.config.ts', 'playwright.config.ts', 'regression-tests.test.ts', 'service-worker-test.test.ts', 'tests/**/*', '*.spec.ts', '**/*.js'],
   },
   {
     files: ['**/*.{ts,tsx}'],
