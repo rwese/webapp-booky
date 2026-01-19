@@ -77,7 +77,7 @@ jobs:
           EOF
 
       - name: Start PostgreSQL
-        uses: supercharge-actions/postgresql-action@v1
+        uses: postgres/setup-postgresql@v1
         with:
           postgresql-version: '15'
           postgresql-db: booky_test
