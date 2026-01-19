@@ -105,7 +105,7 @@ jobs:
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ env.BACKEND_DIR }}
+          context: backend-lite
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
@@ -165,8 +165,8 @@ jobs:
           # Copy custom nginx configuration
           COPY nginx.conf /etc/nginx/conf.d/default.conf
           
-          # Copy built static files
-          COPY dist /usr/share/nginx/html
+          # Copy built static files (artifact is extracted directly to current directory)
+          COPY . /usr/share/nginx/html/
           
           # Expose port
           EXPOSE 80
