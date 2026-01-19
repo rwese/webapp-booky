@@ -178,8 +178,9 @@ export interface User {
   id: string;
   name: string;
   email?: string;
+  image?: string | null;
   createdAt: Date;
-  settings: UserSettings;
+  settings?: UserSettings;
 }
 
 export type ThemeMode = 'light' | 'dark' | 'system';
