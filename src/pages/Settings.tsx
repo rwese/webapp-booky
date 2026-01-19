@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
 import { useToastStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { syncManager } from '../lib/syncManager';
+import { bookExportService, downloadExportedData, getExportFormats, ExportFormat, ExportOptions } from '../lib/exportService';
 import { clsx } from 'clsx';
 import { AccessibleField } from '../components/common/Accessibility';
 import { ImportModal } from '../components/import/ImportModal';
-import type { ThemeMode, BookFormat, SyncStatus } from '../types';
+import type { ThemeMode, BookFormat, SyncStatus, Collection } from '../types';
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettingsStore();
@@ -19,6 +20,18 @@ export function SettingsPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  
+  // Export-related state
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('json');
+  const [isExporting, setIsExporting] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string>('');
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [includeRatings, setIncludeRatings] = useState(true);
+  const [includeReadingLogs, setIncludeReadingLogs] = useState(true);
+  const [includeCollections, setIncludeCollections] = useState(true);
+  const [includeTags, setIncludeTags] = useState(true);
   
   // Set up sync listener
   useEffect(() => {
@@ -33,6 +46,19 @@ export function SettingsPage() {
     });
     
     return unsubscribe;
+  }, []);
+  
+  // Load collections for export options
+  useEffect(() => {
+    const loadCollections = async () => {
+      try {
+        const allCollections = await db.collections.toArray();
+        setCollections(allCollections);
+      } catch (error) {
+        console.error('Failed to load collections:', error);
+      }
+    };
+    loadCollections();
   }, []);
   
   const handleSync = async () => {
@@ -68,20 +94,41 @@ export function SettingsPage() {
     }
   };
   
-  const handleExportData = () => {
-    // Export data as JSON
-    const data = {
-      exportDate: new Date().toISOString(),
-      version: '1.0'
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `book-collection-export-${formatDate(new Date())}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addToast({ type: 'success', message: 'Data exported successfully' });
+  const handleExportData = async () => {
+    setIsExporting(true);
+    setShowExportOptions(false);
+    
+    try {
+      const options: ExportOptions = {
+        format: selectedFormat,
+        collectionId: selectedCollection || undefined,
+        includeRatings,
+        includeReadingLogs,
+        includeCollections,
+        includeTags
+      };
+
+      // Add date range if specified
+      if (dateRange.start && dateRange.end) {
+        options.dateRange = {
+          start: new Date(dateRange.start),
+          end: new Date(dateRange.end)
+        };
+      }
+
+      const { data, filename } = await bookExportService.exportBooks(options);
+      downloadExportedData(data, filename);
+      
+      addToast({ 
+        type: 'success', 
+        message: `Library exported successfully as ${selectedFormat.toUpperCase()}` 
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      addToast({ type: 'error', message: 'Failed to export data. Please try again.' });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -228,15 +275,164 @@ export function SettingsPage() {
               </div>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Export Data</p>
-                  <p className="text-sm text-gray-500">Download your library as JSON</p>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">Export Data</p>
+                    <p className="text-sm text-gray-500">Download your library in various formats</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedFormat}
+                      onChange={(e) => setSelectedFormat(e.target.value as ExportFormat)}
+                      className="input py-1 px-2 text-sm"
+                    >
+                      {getExportFormats().map((format) => (
+                        <option key={format.value} value={format.value}>
+                          {format.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      onClick={() => setShowExportOptions(!showExportOptions)}
+                      disabled={isExporting}
+                    >
+                      <Filter size={16} className="mr-1" />
+                      Options
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="primary" 
+                      onClick={handleExportData}
+                      disabled={isExporting}
+                    >
+                      {isExporting ? (
+                        <>
+                          <RefreshCw size={16} className="mr-1 animate-spin" />
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} className="mr-1" />
+                          Export
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <Button type="button" variant="secondary" onClick={handleExportData}>
-                  Export
-                </Button>
-              </div>
+                
+                {/* Export Options Panel */}
+                {showExportOptions && (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4 mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Collection Filter */}
+                      <div>
+                        <label htmlFor="collection-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <Filter size={14} className="inline mr-1" />
+                          Filter by Collection
+                        </label>
+                        <select
+                          id="collection-filter"
+                          value={selectedCollection}
+                          onChange={(e) => setSelectedCollection(e.target.value)}
+                          className="input"
+                        >
+                          <option value="">All Collections</option>
+                          {collections.map((collection) => (
+                            <option key={collection.id} value={collection.id}>
+                              {collection.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      {/* Date Range */}
+                      <div className="space-y-2">
+                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <Calendar size={14} className="inline mr-1" />
+                          Date Range (Added)
+                        </span>
+                        <div className="flex gap-2">
+                          <div>
+                            <label htmlFor="date-start" className="sr-only">Start date</label>
+                            <input
+                              id="date-start"
+                              type="date"
+                              value={dateRange.start}
+                              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                              className="input py-1 px-2 text-sm"
+                              placeholder="Start date"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="date-end" className="sr-only">End date</label>
+                            <input
+                              id="date-end"
+                              type="date"
+                              value={dateRange.end}
+                              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                              className="input py-1 px-2 text-sm"
+                              placeholder="End date"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Include Options */}
+                    <div>
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <FileText size={14} className="inline mr-1" />
+                        Include in Export
+                      </span>
+                      <div className="flex flex-wrap gap-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={includeRatings}
+                            onChange={(e) => setIncludeRatings(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          Ratings
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={includeReadingLogs}
+                            onChange={(e) => setIncludeReadingLogs(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          Reading History
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={includeCollections}
+                            onChange={(e) => setIncludeCollections(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          Collections
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={includeTags}
+                            onChange={(e) => setIncludeTags(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          Tags
+                        </label>
+                      </div>
+                    </div>
+                    
+                    {/* Format Description */}
+                    <div className="text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 rounded p-2">
+                      <strong>{getExportFormats().find(f => f.value === selectedFormat)?.label}:</strong>{' '}
+                      {getExportFormats().find(f => f.value === selectedFormat)?.description}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
               <div className="flex items-center justify-between">
@@ -379,6 +575,3 @@ function ToggleSetting({ label, description, checked, onChange }: ToggleSettingP
   );
 }
 
-function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
-}

@@ -591,3 +591,287 @@ export function validateImportPath(path: string): boolean {
   // Basic validation of import path
   return path.length > 0 && !path.includes('..');
 }
+
+/**
+ * Goodreads CSV Import Types
+ */
+export interface GoodreadsBookData {
+  bookId: string;
+  title: string;
+  author: string;
+  authorLF?: string;
+  additionalAuthors?: string;
+  isbn?: string;
+  isbn13?: string;
+  myRating?: number;
+  averageRating?: number;
+  publisher?: string;
+  numberOfPages?: number;
+  yearPublished?: number;
+  originalPublicationYear?: number;
+  dateRead?: string;
+  dateAdded?: string;
+  bookshelves?: string[];
+  exclusiveShelf?: string;
+  myReview?: string;
+  spoilerFlag?: boolean;
+  privateNotes?: string;
+  readCount?: number;
+  recommendedFor?: string;
+  recommendedBy?: string;
+  ownedCopies?: number;
+  originalPurchaseDate?: string;
+  originalPurchaseLocation?: string;
+  condition?: string;
+  conditionDescription?: string;
+  bcid?: string;
+}
+
+/**
+ * Parse a Goodreads CSV file
+ */
+export function parseGoodreadsCSV(csvContent: string): GoodreadsBookData[] {
+  const lines = csvContent.trim().split('\n');
+  if (lines.length < 2) {
+    throw new Error('Invalid CSV file: no data rows found');
+  }
+
+  // Parse header to get column indices
+  const header = parseCSVLine(lines[0]);
+  const columnMap = createGoodreadsColumnMap(header);
+
+  // Parse data rows
+  const books: GoodreadsBookData[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const values = parseCSVLine(line);
+    const book = createGoodreadsBookData(values, columnMap);
+    if (book) {
+      books.push(book);
+    }
+  }
+
+  return books;
+}
+
+/**
+ * Parse a single CSV line, handling quoted values
+ */
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let currentValue = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        currentValue += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(currentValue.trim());
+      currentValue = '';
+    } else {
+      currentValue += char;
+    }
+  }
+  values.push(currentValue.trim());
+
+  return values;
+}
+
+/**
+ * Create a column index map from header row
+ */
+function createGoodreadsColumnMap(header: string[]): Map<string, number> {
+  const columnMap = new Map<string, number>();
+  const normalizedHeaders = header.map(h => h.toLowerCase().trim());
+
+  // Map common Goodreads CSV column names to our internal names
+  const columnMappings: [string, string][] = [
+    ['book id', 'bookId'],
+    ['title', 'title'],
+    ['author', 'author'],
+    ['author l-f', 'authorLF'],
+    ['additional authors', 'additionalAuthors'],
+    ['isbn', 'isbn'],
+    ['isbn13', 'isbn13'],
+    ['my rating', 'myRating'],
+    ['average rating', 'averageRating'],
+    ['publisher', 'publisher'],
+    ['number of pages', 'numberOfPages'],
+    ['year published', 'yearPublished'],
+    ['original publication year', 'originalPublicationYear'],
+    ['date read', 'dateRead'],
+    ['date added', 'dateAdded'],
+    ['bookshelves', 'bookshelves'],
+    ['exclusive shelf', 'exclusiveShelf'],
+    ['my review', 'myReview'],
+    ['spoiler', 'spoilerFlag'],
+    ['private notes', 'privateNotes'],
+    ['read count', 'readCount'],
+    ['recommended for', 'recommendedFor'],
+    ['recommended by', 'recommendedBy'],
+    ['owned copies', 'ownedCopies'],
+    ['original purchase date', 'originalPurchaseDate'],
+    ['original purchase location', 'originalPurchaseLocation'],
+    ['condition', 'condition'],
+    ['condition description', 'conditionDescription'],
+    ['bcid', 'bcid']
+  ];
+
+  columnMappings.forEach(([goodreadsName, ourName]) => {
+    const index = normalizedHeaders.findIndex(h => h === goodreadsName);
+    if (index !== -1) {
+      columnMap.set(ourName, index);
+    }
+  });
+
+  return columnMap;
+}
+
+/**
+ * Create a GoodreadsBookData object from CSV values
+ */
+function createGoodreadsBookData(values: string[], columnMap: Map<string, number>): GoodreadsBookData | null {
+  const getValue = (key: string): string | undefined => {
+    const index = columnMap.get(key);
+    if (index !== undefined && index < values.length) {
+      return values[index] || undefined;
+    }
+    return undefined;
+  };
+
+  const title = getValue('title');
+  if (!title) return null;
+
+  const bookshelves = getValue('bookshelves');
+  const dateRead = getValue('dateRead');
+  const exclusiveShelf = getValue('exclusiveShelf');
+
+  return {
+    bookId: getValue('bookId') || '',
+    title,
+    author: getValue('author') || 'Unknown Author',
+    authorLF: getValue('authorLF'),
+    additionalAuthors: getValue('additionalAuthors'),
+    isbn: cleanISBN(getValue('isbn')),
+    isbn13: cleanISBN(getValue('isbn13')),
+    myRating: parseGoodreadsRating(getValue('myRating')),
+    averageRating: parseFloat(getValue('averageRating') || '0'),
+    publisher: getValue('publisher'),
+    numberOfPages: parseInt(getValue('numberOfPages') || '0', 10) || undefined,
+    yearPublished: parseInt(getValue('yearPublished') || '0', 10) || undefined,
+    originalPublicationYear: parseInt(getValue('originalPublicationYear') || '0', 10) || undefined,
+    dateRead,
+    dateAdded: getValue('dateAdded'),
+    bookshelves: bookshelves ? bookshelves.split(',').map(s => s.trim()).filter(Boolean) : [],
+    exclusiveShelf,
+    myReview: getValue('myReview'),
+    spoilerFlag: getValue('spoilerFlag')?.toLowerCase() === 'true',
+    privateNotes: getValue('privateNotes'),
+    readCount: parseInt(getValue('readCount') || '0', 10) || undefined,
+    recommendedFor: getValue('recommendedFor'),
+    recommendedBy: getValue('recommendedBy'),
+    ownedCopies: parseInt(getValue('ownedCopies') || '0', 10) || undefined,
+    originalPurchaseDate: getValue('originalPurchaseDate'),
+    originalPurchaseLocation: getValue('originalPurchaseLocation'),
+    condition: getValue('condition'),
+    conditionDescription: getValue('conditionDescription'),
+    bcid: getValue('bcid')
+  };
+}
+
+/**
+ * Clean ISBN by removing dashes and non-numeric characters
+ */
+function cleanISBN(isbn: string | undefined): string | undefined {
+  if (!isbn) return undefined;
+  return isbn.replace(/[-\s]/g, '').replace(/"/g, '');
+}
+
+/**
+ * Parse Goodreads rating (can be "abandoned" or a number)
+ */
+function parseGoodreadsRating(rating: string | undefined): number | undefined {
+  if (!rating) return undefined;
+  const cleaned = rating.toLowerCase().trim();
+  if (cleaned === 'abandoned' || cleaned === 'did not finish') {
+    return undefined;
+  }
+  const parsed = parseFloat(rating);
+  return isNaN(parsed) ? undefined : parsed;
+}
+
+/**
+ * Convert GoodreadsBookData to ImportBookData
+ */
+export function goodreadsToImportBook(goodreadsBook: GoodreadsBookData): ImportBookData {
+  // Determine reading status
+  let readingStatus: 'Want to Read' | 'Read' | 'Currently Reading' = 'Want to Read';
+  if (goodreadsBook.dateRead) {
+    readingStatus = 'Read';
+  } else if (goodreadsBook.exclusiveShelf === 'currently-reading') {
+    readingStatus = 'Currently Reading';
+  }
+
+  return {
+    id: goodreadsBook.bookId || crypto.randomUUID(),
+    title: goodreadsBook.title,
+    author: goodreadsBook.author,
+    isbn: goodreadsBook.isbn13 || goodreadsBook.isbn,
+    pageCount: goodreadsBook.numberOfPages,
+    publicationYear: goodreadsBook.yearPublished || goodreadsBook.originalPublicationYear,
+    publisher: goodreadsBook.publisher,
+    genre: goodreadsBook.bookshelves?.[0],
+    language: undefined,
+    rating: goodreadsBook.myRating,
+    review: goodreadsBook.myReview,
+    reviewCreatedAt: goodreadsBook.dateRead,
+    containsSpoilers: goodreadsBook.spoilerFlag || false,
+    readingStatus,
+    tags: goodreadsBook.bookshelves || [],
+    coverKey: undefined,
+    coverFilename: undefined,
+    createdAt: goodreadsBook.dateAdded || new Date().toISOString(),
+    updatedAt: goodreadsBook.dateRead || new Date().toISOString(),
+    categoryIds: [],
+    readingSessionIds: [],
+    noteId: undefined
+  };
+}
+
+/**
+ * Validate Goodreads CSV data
+ */
+export function validateGoodreadsCSV(data: GoodreadsBookData[]): {
+  valid: number;
+  invalid: number;
+  errors: Array<{ row: number; error: string }>;
+} {
+  const result = {
+    valid: 0,
+    invalid: 0,
+    errors: [] as Array<{ row: number; error: string }>
+  };
+
+  data.forEach((book, index) => {
+    if (!book.title || !book.author) {
+      result.invalid++;
+      result.errors.push({
+        row: index + 2, // +2 for header row and 0-based index
+        error: 'Missing required fields: title and author are required'
+      });
+    } else {
+      result.valid++;
+    }
+  });
+
+  return result;
+}
