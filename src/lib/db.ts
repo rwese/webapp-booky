@@ -45,7 +45,7 @@ class BookCollectionDB extends Dexie {
     
     // Define schema and indexes
     this.version(3).stores({
-      books: 'id, isbn13, format, addedAt, [externalIds.openLibrary], [externalIds.googleBooks]',
+      books: 'id, isbn13, format, addedAt, title, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name',
       bookTags: '[bookId+tagId], bookId, tagId',
@@ -121,6 +121,199 @@ export const bookOperations = {
         book.authors.some(author => author.toLowerCase().includes(lowerQuery))
       )
       .toArray();
+  },
+
+  /**
+   * Get books with pagination support
+   * Optimized for large libraries (10K+ books)
+   */
+  async getPaginated(options: {
+    page?: number;
+    limit?: number;
+    sortField?: keyof Book;
+    sortDirection?: 'asc' | 'desc';
+    search?: string;
+    formats?: string[];
+    tagIds?: string[];
+    status?: string;
+  }) {
+    const {
+      page = 1,
+      limit = 20,
+      sortField = 'addedAt',
+      sortDirection = 'desc',
+      search,
+      formats,
+      tagIds
+    } = options;
+
+    // Build compound filter
+    // let collection = db.books.toCollection();
+
+    // Apply search filter using index if available
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      // For search, we need to filter in memory as Dexie doesn't support array contains
+      const allBooks = await db.books
+        .filter(book => 
+          book.title.toLowerCase().includes(lowerSearch) ||
+          book.authors.some(author => author.toLowerCase().includes(lowerSearch))
+        )
+        .toArray();
+      
+      // Apply format filter
+      let filtered = allBooks;
+      if (formats && formats.length > 0) {
+        filtered = filtered.filter(book => formats.includes(book.format));
+      }
+      
+      // Apply tag filter
+      if (tagIds && tagIds.length > 0) {
+        const booksWithTags = await Promise.all(
+          filtered.map(async (book) => {
+            const bookTags = await tagOperations.getBookTags(book.id);
+            return {
+              book,
+              hasMatchingTag: tagIds.some(tagId =>
+                bookTags.some(bt => bt.id === tagId)
+              )
+            };
+          })
+        );
+        filtered = booksWithTags
+          .filter(({ hasMatchingTag }) => hasMatchingTag)
+          .map(({ book }) => book);
+      }
+      
+      // Sort and paginate
+      filtered.sort((a, b) => {
+        const aVal = a[sortField] ?? '';
+        const bVal = b[sortField] ?? '';
+        const aDate = aVal instanceof Date ? aVal.getTime() : aVal;
+        const bDate = bVal instanceof Date ? bVal.getTime() : bVal;
+        if (aDate < bDate) return sortDirection === 'asc' ? -1 : 1;
+        if (aDate > bDate) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+      
+      const total = filtered.length;
+      const start = (page - 1) * limit;
+      const paginated = filtered.slice(start, start + limit);
+      
+      return {
+        books: paginated,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      };
+    }
+
+    // Non-search path with better indexing
+    let query = db.books.orderBy(sortField);
+    
+    if (formats && formats.length > 0) {
+      // For format filter, we need to filter in memory as well
+      const allBooks = await query.toArray();
+      let filtered = allBooks.filter(book => formats.includes(book.format));
+      
+      // Apply tag filter
+      if (tagIds && tagIds.length > 0) {
+        const booksWithTags = await Promise.all(
+          filtered.map(async (book) => {
+            const bookTags = await tagOperations.getBookTags(book.id);
+            return {
+              book,
+              hasMatchingTag: tagIds.some(tagId =>
+                bookTags.some(bt => bt.id === tagId)
+              )
+            };
+          })
+        );
+        filtered = booksWithTags
+          .filter(({ hasMatchingTag }) => hasMatchingTag)
+          .map(({ book }) => book);
+      }
+      
+      // Sort and paginate
+      filtered.sort((a, b) => {
+        const aVal = a[sortField] ?? '';
+        const bVal = b[sortField] ?? '';
+        const aDate = aVal instanceof Date ? aVal.getTime() : aVal;
+        const bDate = bVal instanceof Date ? bVal.getTime() : bVal;
+        if (aDate < bDate) return sortDirection === 'asc' ? -1 : 1;
+        if (aDate > bDate) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+      
+      const total = filtered.length;
+      const start = (page - 1) * limit;
+      const paginated = filtered.slice(start, start + limit);
+      
+      return {
+        books: paginated,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      };
+    }
+
+    // Default: use Dexie's offset/limit
+    const start = (page - 1) * limit;
+    const count = await db.books.count();
+    
+    let books = await query
+      .offset(start)
+      .limit(limit)
+      .toArray();
+    
+    // Reverse if descending (Dexie only supports ascending)
+    if (sortDirection === 'desc') {
+      books.reverse();
+    }
+    
+    return {
+      books,
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    };
+  },
+
+  /**
+   * Get total book count with filters
+    */
+   async getCount(options: {
+     search?: string;
+     formats?: string[];
+     tagIds?: string[];
+   }) {
+     const { search, formats } = options;
+     
+     // tagIds is reserved for future use with join queries
+     // let collection = db.books.toCollection();
+     let count = await db.books.count();
+     
+     if (search) {
+       const lowerSearch = search.toLowerCase();
+       const allBooks = await db.books
+         .filter(book => 
+           book.title.toLowerCase().includes(lowerSearch) ||
+           book.authors.some(author => author.toLowerCase().includes(lowerSearch))
+         )
+         .toArray();
+       
+       if (formats && formats.length > 0) {
+         const filtered = allBooks.filter(book => formats.includes(book.format));
+         count = filtered.length;
+       } else {
+         count = allBooks.length;
+       }
+     }
+     
+     return count;
   },
 
   /**

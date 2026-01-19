@@ -22,7 +22,7 @@ export function useSearchBooks(query: string) {
   );
 }
 
-// Hook for books with filters and sorting
+// Hook for books with filters and sorting (legacy - not optimized for large libraries)
 export function useFilteredBooks(
   filters: FilterConfig,
   sortConfig: SortConfig
@@ -82,6 +82,27 @@ export function useFilteredBooks(
 
     return books;
   }, [filters, sortConfig]);
+}
+
+// Hook for books with pagination support (optimized for large libraries 10K+ books)
+export function useFilteredBooksPaginated(
+  filters: FilterConfig,
+  sortConfig: SortConfig,
+  page: number = 1,
+  limit: number = 20
+) {
+  return useLiveQuery(async () => {
+    const result = await bookOperations.getPaginated({
+      page,
+      limit,
+      sortField: sortConfig.field as keyof Book || 'addedAt',
+      sortDirection: sortConfig.direction || 'desc',
+      search: filters.search,
+      formats: filters.formats,
+      tagIds: filters.tags
+    });
+    return result;
+  }, [filters, sortConfig, page, limit]);
 }
 
 // Hook for accessing ratings
