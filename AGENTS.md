@@ -263,13 +263,17 @@ webapp-booky/
 │   └── unit/                  # Vitest unit tests
 │       └── ...
 │
-├── backend/                   # Optional backend (for cloud sync)
-│   ├── src/                   # Backend source code
-│   ├── prisma/                # Prisma schema and migrations
-│   ├── Dockerfile             # Container configuration
-│   └── DEPLOYMENT.md          # Deployment instructions
+├── backend-lite/                # Backend API (SQLite, Express)
+│   ├── src/                     # Backend source code
+│   │   ├── lib/                 # Library functions
+│   │   ├── middleware/          # Auth middleware
+│   │   ├── routes/              # API routes
+│   │   ├── types/               # TypeScript types
+│   │   └── server.ts            # Express server entry
+│   ├── prisma/                  # Prisma schema
+│   └── uploads/                 # Uploaded files storage
 │
-└── dist/                      # Production build output (generated)
+└── dist/                       # Production build output (generated)
 ```
 
 ---
@@ -617,7 +621,7 @@ Only the following file types should exist in the root directory:
 | `tests/`        | Test files                    | `e2e/` for Playwright tests, `unit/` for Vitest tests     |
 | `docs/`         | Project documentation         | All markdown documentation except README.md and AGENTS.md |
 | `spec/`         | Technical specifications      | Architecture docs, API specs, technical design documents  |
-| `backend/`      | Optional backend code         | Express server, Prisma schema, backend tests              |
+| `backend-lite/` | Backend API                   | Express server, Prisma schema, routes                     |
 | `mobile/`       | Mobile-specific code          | Capacitor/React Native mobile implementation              |
 | `tools/`        | Development utilities         | Build scripts, validation tools, one-off scripts          |
 | `scripts/`      | Build/deployment scripts      | Shell scripts, automation scripts                         |

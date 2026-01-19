@@ -32,11 +32,9 @@ A mobile-first, offline-capable webapp for organizing personal book collections 
 ### Backend (Optional)
 
 - **Runtime**: Node.js 18+ with Express
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: SQLite with Prisma ORM (local development)
 - **Authentication**: JWT with refresh tokens
-- **File Storage**: S3-compatible storage for book covers
-- **Deployment**: Docker + Kubernetes or Docker Compose
-- **Monitoring**: Prometheus + Grafana + Sentry
+- **File Storage**: Local filesystem for book covers
 
 ## Project Structure
 
@@ -193,34 +191,26 @@ The Playwright configuration (`playwright.config.ts`) includes a `webServer` sec
 
 ## Backend (Optional Cloud Sync)
 
-The app can optionally use a backend server for cloud sync across devices:
-
-### Quick Start (Docker Compose)
+The app uses **backend-lite** - a lightweight SQLite-based backend for local development:
 
 ```bash
-cd backend
-cp .env.production .env  # Configure environment variables
-docker-compose up -d     # Start PostgreSQL and backend
-
-# Verify deployment
-curl https://api.booky.app/api/health
+cd backend-lite
+npm install
+npm run dev  # Starts on port 3001
 ```
 
 ### Backend Features
 
 - **Authentication**: JWT-based with refresh tokens
-- **Data Sync**: Real-time sync with conflict resolution
-- **File Storage**: S3-compatible storage for book covers
-- **Rate Limiting**: Protection against abuse
-- **Monitoring**: Prometheus metrics and alerting
+- **SQLite Database**: Simple local storage
+- **File Upload**: Local storage for book covers
+- **API Routes**: Auth, books, collections, ratings, reading, tags, files
 
-### Deployment Options
+### Production Deployment
 
-- **Docker Compose**: Single-server deployment
-- **Kubernetes**: Scalable container orchestration
+For production, the app works fully offline with IndexedDB. Optional backend can be deployed separately for cloud sync.
+
 - **Cloud Services**: AWS ECS, GCP Cloud Run, Azure Container Apps
-
-See [backend/DEPLOYMENT.md](backend/DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Contributing
 
