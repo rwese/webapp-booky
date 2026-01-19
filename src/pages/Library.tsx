@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Grid, List, Book, Plus, ChevronLeft, ChevronRight, Edit, Tag as TagIcon } from 'lucide-react';
 import { Card, Badge, Button } from '../components/common/Button';
@@ -99,21 +99,44 @@ export function LibraryPage() {
     return new Map(ratings.map(r => [r.bookId, r.stars]));
   }, [ratings]);
 
-  const handleDeleteBook = async (bookId: string) => {
+  const handleDeleteBook = useCallback(async (bookId: string) => {
     try {
       await bookOperations.delete(bookId);
       addToast({ type: 'success', message: 'Book removed from collection' });
     } catch (error) {
       addToast({ type: 'error', message: 'Failed to remove book' });
     }
-  };
+  }, [addToast]);
 
-  const handleEditBook = (bookId: string) => {
+  const handleEditBook = useCallback((bookId: string) => {
     navigate(`/edit/${bookId}`);
-  };
+  }, [navigate]);
 
   // Get search query for display (from URL or local state)
   const searchQuery = filterConfig.search || localSearch;
+
+  // Memoized tag toggle handler
+  const handleTagToggle = useCallback((tagId: string) => {
+    if (filterConfig.tags?.includes(tagId)) {
+      setFilterConfig({
+        ...filterConfig,
+        tags: filterConfig.tags.filter(id => id !== tagId)
+      });
+    } else {
+      setFilterConfig({
+        ...filterConfig,
+        tags: [...(filterConfig.tags || []), tagId]
+      });
+    }
+  }, [filterConfig, setFilterConfig]);
+
+  // Memoized clear tags handler
+  const handleClearTags = useCallback(() => {
+    setFilterConfig({
+      ...filterConfig,
+      tags: undefined
+    });
+  }, [filterConfig, setFilterConfig]);
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
@@ -188,25 +211,8 @@ export function LibraryPage() {
               onSortChange={setSortConfig}
               onClearFilters={clearFiltersAndUrl}
               activeTags={filterConfig.tags}
-              onTagToggle={(tagId) => {
-                if (filterConfig.tags?.includes(tagId)) {
-                  setFilterConfig({
-                    ...filterConfig,
-                    tags: filterConfig.tags.filter(id => id !== tagId)
-                  });
-                } else {
-                  setFilterConfig({
-                    ...filterConfig,
-                    tags: [...(filterConfig.tags || []), tagId]
-                  });
-                }
-              }}
-              onClearTags={() => {
-                setFilterConfig({
-                  ...filterConfig,
-                  tags: undefined
-                });
-              }}
+              onTagToggle={handleTagToggle}
+              onClearTags={handleClearTags}
             />
           )}
         </div>
@@ -222,13 +228,13 @@ export function LibraryPage() {
                 : 'space-y-4'
             )}>
               {paginatedBooks.map((book) => (
-                <BookCard
+                <MemoizedBookCard
                   key={book.id}
                   book={book}
                   rating={ratingMap.get(book.id)}
                   viewMode={viewMode}
-                  onDelete={() => handleDeleteBook(book.id)}
-                  onEdit={() => handleEditBook(book.id)}
+                  onDelete={handleDeleteBook}
+                  onEdit={handleEditBook}
                   navigate={navigate}
                 />
               ))}
@@ -236,7 +242,7 @@ export function LibraryPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <Pagination
+              <MemoizedPagination
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
@@ -244,7 +250,7 @@ export function LibraryPage() {
             )}
           </>
         ) : (
-          <EmptyLibraryState searchQuery={searchQuery} />
+          <MemoizedEmptyLibraryState searchQuery={searchQuery} />
         )}
       </main>
     </div>
@@ -427,15 +433,33 @@ interface BookCardProps {
   book: BookType;
   rating?: number;
   viewMode: 'grid' | 'list';
-  onDelete: () => void;
-  onEdit: () => void;
+  onDelete: (bookId: string) => void;
+  onEdit: (bookId: string) => void;
   navigate: ReturnType<typeof useNavigate>;
 }
 
 function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCardProps) {
+  // Memoize the navigate function reference to prevent unnecessary re-renders
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+  
+  const handleClick = useCallback(() => {
+    navigateRef.current(`/book/${book.id}`);
+  }, [book.id]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(book.id);
+  }, [onEdit, book.id]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(book.id);
+  }, [onDelete, book.id]);
+
   if (viewMode === 'list') {
     return (
-      <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
+      <Card hover className="overflow-hidden cursor-pointer" onClick={handleClick}>
         <div className="flex p-4 gap-4">
           <div className="flex-shrink-0 w-20 h-28 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
             <BookCover book={book} className="w-full h-full" />
@@ -459,11 +483,11 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
               <Link to={`/book/${book.id}`} className="btn-secondary text-sm">
                 View Details
               </Link>
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Button variant="ghost" size="sm" onClick={handleEditClick}>
                 <Edit size={14} />
                 Edit
               </Button>
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+              <Button variant="ghost" size="sm" onClick={handleDeleteClick}>
                 Remove
               </Button>
             </div>
@@ -474,7 +498,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
   }
 
   return (
-    <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/book/${book.id}`)}>
+    <Card hover className="overflow-hidden cursor-pointer" onClick={handleClick}>
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
         <BookCover book={book} className="w-full h-full" />
         
@@ -495,10 +519,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
           size="sm"
           className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
           aria-label="Edit book"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
+          onClick={handleEditClick}
         >
           <Edit size={16} />
         </Button>
@@ -514,6 +535,8 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
     </Card>
   );
 }
+
+const MemoizedBookCard = memo(BookCard);
 
 interface PaginationProps {
   currentPage: number;
@@ -576,6 +599,8 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
   );
 }
 
+const MemoizedPagination = memo(Pagination);
+
 interface EmptyLibraryStateProps {
   searchQuery: string;
 }
@@ -603,3 +628,5 @@ function EmptyLibraryState({ searchQuery }: EmptyLibraryStateProps) {
     </div>
   );
 }
+
+const MemoizedEmptyLibraryState = memo(EmptyLibraryState);

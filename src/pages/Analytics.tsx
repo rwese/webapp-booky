@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { 
   BarChart2, 
   Calendar, 
@@ -190,7 +190,7 @@ export function AnalyticsPage() {
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
         {/* Dashboard Widgets */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <DashboardWidget
+          <MemoizedDashboardWidget
             icon={<Book className="text-blue-500" />}
             label="Total Books Read"
             value={analytics.totalBooksRead}
@@ -198,7 +198,7 @@ export function AnalyticsPage() {
             trendUp={true}
             color="blue"
           />
-          <DashboardWidget
+          <MemoizedDashboardWidget
             icon={<Calendar className="text-green-500" />}
             label="Read This Year"
             value={analytics.booksReadThisYear}
@@ -206,14 +206,14 @@ export function AnalyticsPage() {
             trendUp={true}
             color="green"
           />
-          <DashboardWidget
+          <MemoizedDashboardWidget
             icon={<Clock className="text-yellow-500" />}
             label="Currently Reading"
             value={analytics.currentlyReading}
             subtitle="Active books"
             color="yellow"
           />
-          <DashboardWidget
+          <MemoizedDashboardWidget
             icon={<Star className="text-purple-500" />}
             label="Average Rating"
             value={analytics.averageRating > 0 ? `${analytics.averageRating}/5` : 'N/A'}
@@ -224,18 +224,18 @@ export function AnalyticsPage() {
         
         {/* Secondary Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          <SmallStatWidget
+          <MemoizedSmallStatWidget
             icon={<TrendingUp className="text-green-500" />}
             label="Pages Read"
             value={analytics.pagesReadEstimate.toLocaleString()}
           />
-          <SmallStatWidget
+          <MemoizedSmallStatWidget
             icon={<Target className="text-blue-500" />}
             label="DNF Books"
             value={analytics.totalDNF}
           />
-          <SmallStatWidget
-            icon={<RotateCcwIcon className="text-indigo-500" />}
+          <MemoizedSmallStatWidget
+            icon={<MemoizedRotateCcwIcon className="text-indigo-500" />}
             label="Re-reads"
             value={analytics.reReadCount}
           />
@@ -559,6 +559,8 @@ function DashboardWidget({ icon, label, value, trend, trendUp, subtitle, color }
   );
 }
 
+const MemoizedDashboardWidget = memo(DashboardWidget);
+
 // Small Stat Widget Component
 interface SmallStatWidgetProps {
   icon: React.ReactNode;
@@ -582,6 +584,8 @@ function SmallStatWidget({ icon, label, value }: SmallStatWidgetProps) {
   );
 }
 
+const MemoizedSmallStatWidget = memo(SmallStatWidget);
+
 // Custom RotateCcw Icon Component
 function RotateCcwIcon({ className }: { className?: string }) {
   return (
@@ -602,4 +606,6 @@ function RotateCcwIcon({ className }: { className?: string }) {
       <path d="M8 16H3v5" />
     </svg>
   );
- }
+}
+
+const MemoizedRotateCcwIcon = memo(RotateCcwIcon);
