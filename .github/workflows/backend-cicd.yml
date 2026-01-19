@@ -4,17 +4,17 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'backend/**'
+      - 'backend-lite/**'
       - '.github/workflows/**'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'backend/**'
+      - 'backend-lite/**'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/booky-backend
-  BACKEND_DIR: backend
+  BACKEND_DIR: backend-lite
 
 jobs:
   # Code Quality Check
