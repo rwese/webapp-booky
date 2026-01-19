@@ -465,6 +465,10 @@ export interface FilterConfig {
     start: Date;
     end: Date;
   };
+  yearRange?: {
+    start: number;
+    end: number;
+  };
 }
 
 export interface PaginationConfig {
