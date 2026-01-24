@@ -63,6 +63,10 @@ export interface Book {
   // Reading status (computed from reading logs)
   readingStatus?: ReadingStatus;
   
+  // Personal notes (2000 character limit)
+  notes?: string;
+  notesUpdatedAt?: Date;
+  
   // ISBN Metadata - Ratings & Reviews
   averageRating?: number;
   
@@ -720,44 +724,6 @@ export interface DayReadingStatus {
   date: string; // YYYY-MM-DD
   hasRead: boolean;
   bookCount: number;
-}
-
-// Book Lending Types
-export interface Borrower {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export type LendingStatus = 'available' | 'on_loan' | 'overdue' | 'returned';
-
-export interface LendingRecord {
-  id: string;
-  bookId: string;
-  borrowerId: string;
-  borrower?: Borrower;
-  status: LendingStatus;
-  loanedAt: Date;
-  dueDate: Date;
-  returnedAt?: Date;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface LendingHistoryEntry {
-  id: string;
-  bookId: string;
-  borrowerId: string;
-  borrowerName: string;
-  action: 'loaned' | 'returned' | 'overdue' | 'reminder_sent';
-  date: Date;
-  notes?: string;
 }
 
 // Import Data Types (from booknotes-export)

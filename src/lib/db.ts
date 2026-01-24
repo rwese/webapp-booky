@@ -10,9 +10,7 @@ import type {
   UserSettings,
   SyncOperation,
   ReadingStatus,
-  ReadingGoal,
-  Borrower,
-  LendingRecord
+  ReadingGoal
 } from '../types';
 
 // Cover image storage type
@@ -37,15 +35,13 @@ class BookCollectionDB extends Dexie {
   readingLogs!: Table<ReadingLog>;
   coverImages!: Table<CoverImageRecord>;
   readingGoals!: Table<ReadingGoal>;
-  borrowers!: Table<Borrower>;
-  lendingRecords!: Table<LendingRecord>;
 
   constructor() {
     super('BookCollectionDB');
 
     // Define schema and indexes with proper upgrade handling
-    // Version 3: Added lendingRecords and borrowers for book lending feature
-    this.version(3).stores({
+    // Version 2: Added readingGoals for reading goals feature
+    this.version(2).stores({
       books: 'id, isbn13, format, addedAt, title, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name',
@@ -56,19 +52,16 @@ class BookCollectionDB extends Dexie {
       settings: 'id',
       readingLogs: 'id, bookId, status, createdAt',
       coverImages: 'id, createdAt',
-      readingGoals: 'id, [type+year], [type+year+month], isActive',
-      borrowers: 'id, name, [email+phone]',
-      lendingRecords: 'id, bookId, borrowerId, status, dueDate, loanedAt'
+      readingGoals: 'id, [type+year], [type+year+month], isActive'
     }).upgrade(async (tx) => {
       // Ensure all stores exist by accessing them
-      // This forces IndexedDB to create any missing stores during version upgrade
+      // This forces IndexedDB to create any missing stores during the upgrade process
       //
       // ROOT CAUSE OF NotFoundError:
       // When data is imported from an older database version (e.g., via
       // ./exports/books_export_archive.zip), the IndexedDB database may be
-      // created with a lower version number that doesn't include the
-      // lendingRecords and borrowers stores. When Dexie.js tries to access
-      // these non-existent stores, it throws:
+      // created with a lower version number that doesn't include all stores.
+      // When Dexie.js tries to access these non-existent stores, it throws:
       // "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase':
       //  One of the specified object stores was not found"
       //
@@ -90,12 +83,9 @@ class BookCollectionDB extends Dexie {
         await tx.table('readingLogs').count();
         await tx.table('coverImages').count();
         await tx.table('readingGoals').count();
-        await tx.table('borrowers').count();
-        await tx.table('lendingRecords').count();
       } catch (error) {
         console.error('Error during database upgrade:', error);
         // Ignore errors - Dexie will handle missing stores
-        // Additional safety is provided by lendingStoreExists() in useBookLending.ts
       }
     });
   }
@@ -321,25 +311,24 @@ export const bookOperations = {
     };
   },
 
-/**
- * IndexedDB Database Setup with Dexie.js
- * 
- * Database Schema Version History:
- * - Version 3: Added lendingRecords and borrowers stores for book lending feature
- * 
- * Root Cause of NotFoundError Issue:
- * When data is imported from an older version (via ./exports/books_export_archive.zip),
- * the IndexedDB database schema might not have all stores because:
- * 1. The import process creates a fresh database that doesn't trigger schema upgrades
- * 2. The database version might be lower than 3, and Dexie.js might not auto-upgrade
- * 3. Missing stores cause "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase'"
- *    when hooks like useBookLending try to access them
- * 
- * Fix Applied:
- * - Added .upgrade() handler that forces creation of all stores during version upgrade
- * - Added defensive error handling in useBookLending hook to check store existence
- * - This ensures graceful degradation when stores don't exist
- */
+  /**
+  * IndexedDB Database Setup with Dexie.js
+  * 
+  * Database Schema Version History:
+  * - Version 2: Added readingGoals store for reading goals feature
+  * 
+  * Root Cause of NotFoundError Issue:
+  * When data is imported from an older version (via ./exports/books_export_archive.zip),
+  * the IndexedDB database schema might not have all stores because:
+  * 1. The import process creates a fresh database that doesn't trigger schema upgrades
+  * 2. The database version might be lower than current, and Dexie.js might not auto-upgrade
+  * 3. Missing stores cause "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase'"
+  *    when trying to access them
+  * 
+  * Fix Applied:
+  * - Added .upgrade() handler that forces creation of all stores during version upgrade
+  * - This ensures graceful degradation when stores don't exist
+  */
    async getCount(options: {
      search?: string;
      formats?: string[];

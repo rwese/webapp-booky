@@ -38,6 +38,7 @@ export function BookForm({
     languageCode: initialData?.languageCode || '',
     categories: initialData?.categories || [],
     averageRating: initialData?.averageRating,
+    notes: initialData?.notes || '',
   });
   
   const [selectedTags, setSelectedTags] = useState<TagType[]>(initialTags);
@@ -75,6 +76,8 @@ export function BookForm({
       languageCode: formData.languageCode,
       categories: formData.categories,
       averageRating: formData.averageRating,
+      notes: formData.notes,
+      notesUpdatedAt: formData.notes ? new Date() : undefined,
     };
 
     await onSubmit(book, selectedTags);
@@ -124,13 +127,6 @@ export function BookForm({
             value={formData.coverUrl}
             onChange={handleCoverChange}
             bookTitle={formData.title || 'book'}
-          />
-          
-          <Input
-            label="Cover URL"
-            value={formData.coverUrl || ''}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, coverUrl: e.target.value })}
-            placeholder="Enter cover image URL (optional)"
           />
           
           <Input
@@ -242,6 +238,24 @@ export function BookForm({
               className="input min-h-[100px] resize-y"
               rows={4}
             />
+          </div>
+          
+          <div className="space-y-1">
+            <label htmlFor="book-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Personal Notes
+            </label>
+            <textarea
+              id="book-notes"
+              value={formData.notes || ''}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Add your personal notes about this book... (max 2000 characters)"
+              className="input min-h-[100px] resize-y"
+              rows={4}
+              maxLength={2000}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+              {(formData.notes?.length || 0)} / 2000 characters
+            </p>
           </div>
           
           {/* Tags Section */}
