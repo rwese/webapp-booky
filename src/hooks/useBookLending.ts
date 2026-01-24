@@ -2,6 +2,26 @@
  * Book Lending Hook
  * 
  * Manages book lending and borrowing tracking.
+ * 
+ * Root Cause of NotFoundError:
+ * The error "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase': 
+ * One of the specified object stores was not found" occurs when:
+ * 1. Data is imported from an older database version
+ * 2. The lendingRecords store doesn't exist in the imported database
+ * 3. The useBookLending hook tries to query the non-existent store
+ * 
+ * Fix Applied:
+ * - Added lendingStoreExists() utility to check store existence before queries
+ * - All hooks now check store existence and return safe defaults if missing
+ * - Actions throw descriptive errors if the store doesn't exist
+ * - This ensures the book detail view loads successfully even without lending data
+ * 
+ * Usage:
+ * - useBookLending(bookId): Returns lending status for a specific book
+ * - useAllLendingRecords(): Returns all lending records
+ * - useActiveLoans(): Returns only active (on_loan/overdue) loans
+ * - useLendingHistory(bookId): Returns lending history for a book
+ * - useLendingActions(): Returns actions (loanBook, returnBook, etc.)
  */
 
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -9,10 +29,30 @@ import { useState, useCallback, useMemo } from 'react';
 import { db } from '../lib/db';
 import { isAfter, parseISO } from 'date-fns';
 
+// Utility to safely check if lendingRecords store exists
+async function lendingStoreExists(): Promise<boolean> {
+  try {
+    await db.lendingRecords.count();
+    return true;
+  } catch (error) {
+    console.warn('lendingRecords store does not exist:', error);
+    return false;
+  }
+}
+
+// Export for testing
+export { lendingStoreExists };
+
 // Hook for lending status of a specific book
 export function useBookLending(bookId: string) {
   const lendingRecordWithBorrower = useLiveQuery(
     async () => {
+      // Check if lendingRecords store exists
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        return null;
+      }
+
       const record = await db.lendingRecords
         .where('bookId')
         .equals(bookId)
@@ -51,24 +91,32 @@ export function useBookLending(bookId: string) {
 
 // Hook for all lending records
 export function useAllLendingRecords() {
-  const records = useLiveQuery(() => 
-    db.lendingRecords
+  const records = useLiveQuery(async () => {
+    const storeExists = await lendingStoreExists();
+    if (!storeExists) {
+      return [];
+    }
+    return db.lendingRecords
       .orderBy('loanedAt')
       .reverse()
-      .toArray()
-  );
+      .toArray();
+  });
   
   return records || [];
 }
 
 // Hook for active loans (on_loan or overdue)
 export function useActiveLoans() {
-  const loans = useLiveQuery(() => 
-    db.lendingRecords
+  const loans = useLiveQuery(async () => {
+    const storeExists = await lendingStoreExists();
+    if (!storeExists) {
+      return [];
+    }
+    return db.lendingRecords
       .where('status')
       .anyOf(['on_loan', 'overdue'])
-      .toArray()
-  );
+      .toArray();
+  });
   
   return loans || [];
 }
@@ -76,6 +124,10 @@ export function useActiveLoans() {
 // Hook for overdue loans
 export function useOverdueLoans() {
   const loans = useLiveQuery(async () => {
+    const storeExists = await lendingStoreExists();
+    if (!storeExists) {
+      return [];
+    }
     const allLoans = await db.lendingRecords
       .where('status')
       .anyOf(['on_loan', 'overdue'])
@@ -107,6 +159,12 @@ export function useLendingActions() {
     setError(null);
     
     try {
+      // Check if lendingRecords store exists
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        throw new Error('Lending feature is not available. Please refresh the page.');
+      }
+      
       // Check if book is already on loan
       const existingLoan = await db.lendingRecords
         .where('bookId')
@@ -147,6 +205,11 @@ export function useLendingActions() {
     setError(null);
     
     try {
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        throw new Error('Lending feature is not available. Please refresh the page.');
+      }
+      
       const record = await db.lendingRecords.get(lendingId);
       if (!record) {
         throw new Error('Lending record not found');
@@ -172,6 +235,11 @@ export function useLendingActions() {
     setError(null);
     
     try {
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        throw new Error('Lending feature is not available. Please refresh the page.');
+      }
+      
       await db.lendingRecords.update(lendingId, {
         status: 'overdue',
         updatedAt: new Date()
@@ -190,6 +258,11 @@ export function useLendingActions() {
     setError(null);
     
     try {
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        throw new Error('Lending feature is not available. Please refresh the page.');
+      }
+      
       const record = await db.lendingRecords.get(lendingId);
       if (!record) {
         throw new Error('Lending record not found');
@@ -222,10 +295,16 @@ export function useLendingActions() {
 // Hook for lending history of a book
 export function useLendingHistory(bookId: string) {
   const history = useLiveQuery(
-    () => db.lendingRecords
-      .where('bookId')
-      .equals(bookId)
-      .sortBy('loanedAt'),
+    async () => {
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        return [];
+      }
+      return db.lendingRecords
+        .where('bookId')
+        .equals(bookId)
+        .sortBy('loanedAt');
+    },
     [bookId]
   );
   
@@ -243,10 +322,16 @@ export function useLendingHistory(bookId: string) {
 // Hook for getting loans by borrower
 export function useBorrowerLoans(borrowerId: string) {
   const loans = useLiveQuery(
-    () => db.lendingRecords
-      .where('borrowerId')
-      .equals(borrowerId)
-      .toArray(),
+    async () => {
+      const storeExists = await lendingStoreExists();
+      if (!storeExists) {
+        return [];
+      }
+      return db.lendingRecords
+        .where('borrowerId')
+        .equals(borrowerId)
+        .toArray();
+    },
     [borrowerId]
   );
   

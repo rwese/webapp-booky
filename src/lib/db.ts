@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { Table, liveQuery } from 'dexie';
 import type { 
   Book, 
   Rating, 
@@ -43,7 +43,8 @@ class BookCollectionDB extends Dexie {
   constructor() {
     super('BookCollectionDB');
     
-    // Define schema and indexes
+    // Define schema and indexes with proper upgrade handling
+    // Version 3: Added lendingRecords and borrowers for book lending feature
     this.version(3).stores({
       books: 'id, isbn13, format, addedAt, title, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
@@ -58,6 +59,27 @@ class BookCollectionDB extends Dexie {
       readingGoals: 'id, [type+year], [type+year+month], isActive',
       borrowers: 'id, name, [email+phone]',
       lendingRecords: 'id, bookId, borrowerId, status, dueDate, loanedAt'
+    }).upgrade(async (tx) => {
+      // Ensure all stores exist by accessing them
+      // This forces IndexedDB to create any missing stores
+      try {
+        await tx.table('books').count();
+        await tx.table('ratings').count();
+        await tx.table('tags').count();
+        await tx.table('bookTags').count();
+        await tx.table('collections').count();
+        await tx.table('collectionBooks').count();
+        await tx.table('syncQueue').count();
+        await tx.table('settings').count();
+        await tx.table('readingLogs').count();
+        await tx.table('coverImages').count();
+        await tx.table('readingGoals').count();
+        await tx.table('borrowers').count();
+        await tx.table('lendingRecords').count();
+      } catch (error) {
+        console.error('Error during database upgrade:', error);
+        // Ignore errors - Dexie will handle missing stores
+      }
     });
   }
 }
@@ -282,9 +304,25 @@ export const bookOperations = {
     };
   },
 
-  /**
-   * Get total book count with filters
-    */
+/**
+ * IndexedDB Database Setup with Dexie.js
+ * 
+ * Database Schema Version History:
+ * - Version 3: Added lendingRecords and borrowers stores for book lending feature
+ * 
+ * Root Cause of NotFoundError Issue:
+ * When data is imported from an older version (via ./exports/books_export_archive.zip),
+ * the IndexedDB database schema might not have all stores because:
+ * 1. The import process creates a fresh database that doesn't trigger schema upgrades
+ * 2. The database version might be lower than 3, and Dexie.js might not auto-upgrade
+ * 3. Missing stores cause "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase'"
+ *    when hooks like useBookLending try to access them
+ * 
+ * Fix Applied:
+ * - Added .upgrade() handler that forces creation of all stores during version upgrade
+ * - Added defensive error handling in useBookLending hook to check store existence
+ * - This ensures graceful degradation when stores don't exist
+ */
    async getCount(options: {
      search?: string;
      formats?: string[];

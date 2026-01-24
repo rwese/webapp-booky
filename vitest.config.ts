@@ -12,6 +12,7 @@ export default defineConfig({
       'src/__tests__/**/*.{ts,tsx,js,jsx}',
       '*.test.{ts,tsx,js,jsx}',
       'regression-tests.test.ts',
+      'tests/unit/**/*.test.{ts,tsx,js,jsx}',
     ],
     // Exclude e2e tests (they use @playwright/test)
     exclude: [
