@@ -14,13 +14,14 @@ export default defineConfig({
       'regression-tests.test.ts',
       'tests/unit/**/*.test.{ts,tsx,js,jsx}',
     ],
-    // Exclude e2e tests (they use @playwright/test)
+    // Exclude e2e tests and setup files (they use @playwright/test)
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/e2e/**',
       '**/.{idea,git,cache,output,temp}/**',
       '**/{祖,node_modules}/**',
+      'src/__tests__/setup.ts', // Exclude setup file from test discovery
     ],
   },
 });

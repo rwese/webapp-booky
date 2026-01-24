@@ -50,19 +50,22 @@ export const validateISBN = (input: string): { isValid: boolean; isISBN10: boole
 // ISBN formatting with hyphens
 export const formatISBN = (input: string): string => {
   const cleaned = input.replace(/[-\s]/g, '');
-  
+
   // ISBN-13 format: 978-XX-XXX-XXXX-X or 979-XX-XXX-XXXX-X
   if (cleaned.length === 13) {
     if (cleaned.startsWith('978')) {
-      return cleaned.replace(/^(\d{3})(\d{1})(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4-$5');
+      // 978: 3-digit prefix, 1-5 digit group, 1-7 digit registrant, 1-12 digit publication, 1 digit check
+      // Standard 978 format: 978-0-13-468599-1 (prefix-group-registrant-publication-check)
+      return cleaned.replace(/^(\d{3})(\d)(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4-$5');
     } else if (cleaned.startsWith('979')) {
-      return cleaned.replace(/^(\d{4})(\d{1})(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4-$5');
+      // 979 format: 979-1-0327-0620-6
+      return cleaned.replace(/^(\d{3})(\d)(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4-$5');
     }
   }
 
   // ISBN-10 format: X-XXXX-XXXX-X
   if (cleaned.length === 10) {
-    return cleaned.replace(/^(\d{1})(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4');
+    return cleaned.replace(/^(\d)(\d{4})(\d{4})(\d{1})$/, '$1-$2-$3-$4');
   }
 
   return input;

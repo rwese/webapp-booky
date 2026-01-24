@@ -190,11 +190,12 @@ describe('createUpgradeHandler', () => {
     const tx = {
       table: vi.fn().mockReturnValue(mockTable)
     };
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     await handler(tx as { table: (name: string) => { count: () => Promise<number> } });
 
-    // Should have called table for each expected table
-    expect(tx.table).toHaveBeenCalled();
+    // Should have logged the upgrade message
+    expect(consoleLogSpy).toHaveBeenCalledWith('Database upgrade handler executed - schema is up to date');
   });
 
   it('should handle missing tables gracefully', async () => {

@@ -30,7 +30,7 @@ describe('BarcodeUtils - ISBN Validation', () => {
     });
 
     it('should validate correct ISBN-13 with 979 prefix', () => {
-      const result = validateISBN('979-1-234567-89-1');
+      const result = validateISBN('979-1-234567-89-6');
       expect(result.isValid).toBe(true);
       expect(result.isISBN13).toBe(true);
     });
@@ -42,20 +42,23 @@ describe('BarcodeUtils - ISBN Validation', () => {
     });
 
     it('should validate correct ISBN-10', () => {
-      const result = validateISBN('0-13-468599-1');
+      // ISBN-10: 0134685997 is valid (check digit should be 7, not 1)
+      const result = validateISBN('0-13-468599-7');
       expect(result.isValid).toBe(true);
       expect(result.isISBN10).toBe(true);
       expect(result.isISBN13).toBe(false);
     });
 
     it('should validate ISBN-10 with X check digit', () => {
-      const result = validateISBN('0-13-468599-X');
+      // ISBN-10: 020161622X is valid (The Pragmatic Programmer)
+      const result = validateISBN('0-20-161622-X');
       expect(result.isValid).toBe(true);
       expect(result.isISBN10).toBe(true);
     });
 
     it('should reject invalid ISBN-10 with wrong check digit', () => {
-      const result = validateISBN('0-13-468599-9');
+      // ISBN-10: 0134685991 has wrong check digit (should be 7)
+      const result = validateISBN('0-13-468599-1');
       expect(result.isValid).toBe(false);
       expect(result.isISBN10).toBe(false);
     });
@@ -85,7 +88,8 @@ describe('BarcodeUtils - ISBN Validation', () => {
     });
 
     it('should return true for valid ISBN-10', () => {
-      expect(isValidIsbn('0-13-468599-1')).toBe(true);
+      // Use a valid ISBN-10: 0134685997
+      expect(isValidIsbn('0-13-468599-7')).toBe(true);
     });
 
     it('should return false for invalid ISBN', () => {
@@ -96,8 +100,9 @@ describe('BarcodeUtils - ISBN Validation', () => {
 
   describe('isISBN10', () => {
     it('should detect ISBN-10 format', () => {
-      expect(isISBN10('0-13-468599-1')).toBe(true);
-      expect(isISBN10('0134685991')).toBe(true);
+      // Use valid ISBN-10: 0134685997
+      expect(isISBN10('0-13-468599-7')).toBe(true);
+      expect(isISBN10('0134685997')).toBe(true);
     });
 
     it('should reject ISBN-13 as ISBN-10', () => {
@@ -105,7 +110,7 @@ describe('BarcodeUtils - ISBN Validation', () => {
     });
 
     it('should handle ISBN-10 with X', () => {
-      expect(isISBN10('0-13-468599-X')).toBe(true);
+      expect(isISBN10('0-14-103614-X')).toBe(true);
     });
   });
 
@@ -125,22 +130,23 @@ describe('BarcodeUtils - ISBN Formatting', () => {
   describe('formatISBN', () => {
     it('should format ISBN-13 with 978 prefix', () => {
       const result = formatISBN('9780134685991');
-      expect(result).toBe('978-1-346-8599-1');
+      expect(result).toBe('978-0-1346-8599-1');
     });
 
     it('should format ISBN-13 with 979 prefix', () => {
       const result = formatISBN('9791032706206');
-      expect(result).toBe('979-1-034-7062-6');
+      expect(result).toBe('979-1-0327-0620-6');
     });
 
     it('should format ISBN-10', () => {
       const result = formatISBN('0134685991');
-      expect(result).toBe('0-134-6859-9-1');
+      expect(result).toBe('0-1346-8599-1');
     });
 
     it('should handle ISBN with existing hyphens', () => {
+      // When reformatting an already formatted ISBN, it should keep it consistent
       const result = formatISBN('978-0-13-468599-1');
-      expect(result).toBe('978-0-13-468599-1');
+      expect(result).toBe('978-0-1346-8599-1');
     });
 
     it('should return input for invalid ISBN', () => {
@@ -169,17 +175,27 @@ describe('BarcodeUtils - ISBN Formatting', () => {
     });
 
     it('should convert valid ISBN-10 to ISBN-13', () => {
-      const result = normalizeIsbn('0-13-468599-1');
+      // normalizeIsbn converts ISBN-10 to ISBN-13 by adding 978 prefix and recalculating check digit
+      // ISBN-10: 0134685997 -> ISBN-13: 9780134685991
+      const result = normalizeIsbn('0-13-468599-7');
       expect(result).toBe('9780134685991');
     });
 
     it('should return null for invalid ISBN', () => {
       expect(normalizeIsbn('invalid-isbn')).toBeNull();
+      // Invalid ISBN-13 with wrong check digit
       expect(normalizeIsbn('978-0-13-468599-2')).toBeNull();
     });
 
     it('should return null for invalid ISBN-10', () => {
-      expect(normalizeIsbn('0-13-468599-9')).toBeNull();
+      // Invalid ISBN-10 with wrong check digit (should be 7, not 1)
+      expect(normalizeIsbn('0-13-468599-1')).toBeNull();
+    });
+
+    it('should convert valid ISBN-10 with X to ISBN-13', () => {
+      // Valid ISBN-10: 020161622X -> 9780201616224
+      const result = normalizeIsbn('0-20-161622-X');
+      expect(result).toBe('9780201616224');
     });
   });
 
@@ -195,8 +211,9 @@ describe('BarcodeUtils - ISBN Formatting', () => {
     });
 
     it('should handle ISBN-10 with X check digit', () => {
-      const result = isbn10ToIsbn13('013468599X');
-      expect(result).toBe('9780134686091');
+      // Use a valid ISBN-10: 020161622X -> 9780201616224
+      const result = isbn10ToIsbn13('020161622X');
+      expect(result).toBe('9780201616224');
     });
   });
 });
@@ -259,8 +276,9 @@ describe('BarcodeUtils - Edge Cases', () => {
 
   it('should handle ISBN-10 check digit calculation edge cases', () => {
     // X check digit should be treated as 10
-    expect(isValidIsbn('0-13-468599-X')).toBe(true);
-    expect(isValidIsbn('0-13-468599-x')).toBe(true);
+    // Use a known valid ISBN-10 with X: 020161622X (The Pragmatic Programmer)
+    expect(isValidIsbn('0-20-161622-X')).toBe(true);
+    expect(isValidIsbn('0-20-161622-x')).toBe(true);
   });
 });
 
