@@ -77,10 +77,16 @@ export async function initializeDatabase(): Promise<{
   success: boolean;
   versionNormalized: boolean;
   error?: string;
+  details?: {
+    storedVersion: number | null;
+    codeVersion: number;
+    needsMigration: boolean;
+  };
 }> {
   try {
     // Check database version compatibility
     const versionCheck = await checkDatabaseVersion();
+    logDatabaseVersionInfo('initializeDatabase');
 
     if (!versionCheck.isValid) {
       console.warn('Database version issue detected:', versionCheck.error);
@@ -89,16 +95,45 @@ export async function initializeDatabase(): Promise<{
       const normalizeResult = await normalizeDatabaseVersion();
 
       if (!normalizeResult.success) {
+        // Provide user-friendly error message
+        const errorMessage = versionCheck.error ||
+          'Database version mismatch and normalization failed. Please try refreshing the page.';
+
+        console.error('Database normalization failed:', errorMessage);
         return {
           success: false,
           versionNormalized: false,
-          error: `Database version mismatch and normalization failed: ${normalizeResult.error}`,
+          error: errorMessage,
+          details: {
+            storedVersion: versionCheck.storedVersion,
+            codeVersion: versionCheck.codeVersion,
+            needsMigration: versionCheck.needsMigration
+          }
+        };
+      }
+
+      // If normalization succeeded but requires reload
+      if (normalizeResult.requiresReload) {
+        return {
+          success: true,
+          versionNormalized: true,
+          error: 'Database was upgraded. Please refresh the page to continue.',
+          details: {
+            storedVersion: versionCheck.storedVersion,
+            codeVersion: versionCheck.codeVersion,
+            needsMigration: true
+          }
         };
       }
 
       return {
         success: true,
         versionNormalized: true,
+        details: {
+          storedVersion: versionCheck.storedVersion,
+          codeVersion: versionCheck.codeVersion,
+          needsMigration: versionCheck.needsMigration
+        }
       };
     }
 
@@ -114,9 +149,18 @@ export async function initializeDatabase(): Promise<{
         ratingDisplay: 'stars',
         dateFormat: 'MM/dd/yyyy'
       } as UserSettings & { id: string });
+      console.log('Default user settings created');
     }
 
-    return { success: true, versionNormalized: false };
+    return {
+      success: true,
+      versionNormalized: false,
+      details: {
+        storedVersion: versionCheck.storedVersion,
+        codeVersion: versionCheck.codeVersion,
+        needsMigration: versionCheck.needsMigration
+      }
+    };
   } catch (error) {
     console.error('Failed to initialize database:', error);
     return {

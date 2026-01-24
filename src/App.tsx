@@ -23,6 +23,7 @@ import { registerServiceWorker } from './lib/serviceWorker';
 import { useModalStore } from './store/useStore';
 import { clsx } from 'clsx';
 import { SkipLink, announce } from './components/common/Accessibility';
+import { initializeDatabase } from './lib/db';
 
 // Loading skeleton component
 function PageLoader() {
@@ -42,9 +43,23 @@ function App() {
   const { activeModal } = useModalStore();
   const syncStatus = useSyncStatus();
   
-  // Initialize service worker
+  // Initialize service worker and database
   useEffect(() => {
     registerServiceWorker();
+    
+    // Initialize database with version checking and normalization
+    // This prevents VersionError crashes by checking and fixing version mismatches early
+    initializeDatabase()
+      .then((result) => {
+        if (!result.success) {
+          console.warn('Database initialization issues:', result.error);
+        } else if (result.versionNormalized) {
+          console.log('Database version normalized successfully - page reload recommended');
+        }
+      })
+      .catch((error) => {
+        console.error('Database initialization failed:', error);
+      });
   }, []);
 
   // Handle connectivity changes

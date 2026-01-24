@@ -5,7 +5,11 @@ import type { Book, FilterConfig, SortConfig } from '../types';
 
 // Hook for accessing all books with live queries
 export function useBooks() {
-  return useLiveQuery(() => bookOperations.getAll());
+  const books = useLiveQuery(() => bookOperations.getAll());
+  
+  // If useLiveQuery fails due to version error, it will return undefined
+  // We handle this gracefully in the bookOperations.getAll function
+  return books;
 }
 
 

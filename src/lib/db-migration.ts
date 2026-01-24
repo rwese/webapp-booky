@@ -6,6 +6,41 @@
  * 1. Schema definitions change during development
  * 2. Users have stale database versions from previous development cycles
  * 3. Features are added/removed causing version changes
+ * 4. Multiple code paths initialize the database with different version numbers
+ * 5. Cached build artifacts contain outdated version configurations
+ *
+ * VERSIONING STRATEGY:
+ * ====================
+ *
+ * The database schema version follows these principles:
+ *
+ * 1. **Single Source of Truth**: DATABASE_SCHEMA_VERSION in this file is the
+ *    authoritative version number. All other code references this constant.
+ *
+ * 2. **Monotonically Increasing**: IndexedDB requires version numbers to only
+ *    increase. We never decrease the version number in code. If a feature is
+ *    removed, we keep the version number but adjust the schema.
+ *
+ * 3. **Version History**:
+ *    - Version 1: Initial schema (books, ratings, tags, etc.)
+ *    - Version 2: Added readingGoals store (commit 484a723)
+ *    - Version 3: Added borrowers and lendingRecords stores (later removed)
+ *    - Version 4: Current version with normalized schema (removed lending feature)
+ *
+ * 4. **Migration Path**: When version numbers need to increase:
+ *    - Update DATABASE_SCHEMA_VERSION
+ *    - Add upgrade logic in createUpgradeHandler() if needed
+ *    - Update the version history comments above
+ *
+ * 5. **Error Recovery**: When stored version > code version (the main issue
+ *    this module handles), we:
+ *    a. Attempt to normalize by deleting the old database
+ *    b. Provide user feedback about the situation
+ *    c. Recommend reloading the page
+ *
+ * 6. **Data Preservation**: When possible, we preserve user data during
+ *    migrations. However, if version mismatch is too severe, we may need
+ *    to delete the database, which results in data loss.
  *
  * @module db-migration
  */
@@ -285,4 +320,120 @@ export function logDatabaseVersionInfo(context: string): void {
   console.log(`Schema Version: ${DATABASE_SCHEMA_VERSION}`);
   console.log(`Min Supported: ${MIN_SUPPORTED_VERSION}`);
   console.groupEnd();
+}
+
+/**
+ * Attempt to recover from a version error by reinitializing the database
+ * This is a last-resort recovery mechanism when version normalization fails
+ */
+export async function recoverFromVersionError(): Promise<{
+  success: boolean;
+  requiresReload: boolean;
+  error?: string;
+}> {
+  console.warn('Attempting emergency database recovery...');
+  
+  try {
+    // First, try to delete and recreate the database
+    await deleteDatabase();
+    console.log('Database deleted successfully for recovery');
+    return { success: true, requiresReload: true };
+  } catch (error) {
+    console.error('Emergency database recovery failed:', error);
+    return {
+      success: false,
+      requiresReload: false,
+      error: error instanceof Error ? error.message : 'Unknown recovery error',
+    };
+  }
+}
+
+/**
+ * Monitor database version consistency and log warnings if issues detected
+ * This helps with debugging version mismatch issues in production
+ */
+export function monitorDatabaseVersion(): void {
+  // Log version info on startup for debugging
+  logDatabaseVersionInfo('Version Monitor');
+  
+  // Periodically check version consistency (every 5 minutes)
+  setInterval(async () => {
+    try {
+      const versionCheck = await checkDatabaseVersion();
+      
+      if (!versionCheck.isValid) {
+        console.warn('Database version inconsistency detected:', {
+          storedVersion: versionCheck.storedVersion,
+          codeVersion: versionCheck.codeVersion,
+          error: versionCheck.error,
+        });
+      }
+    } catch (error) {
+      console.error('Version monitoring check failed:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+}
+
+/**
+ * Get detailed diagnostic information about the database state
+ */
+export async function getDatabaseDiagnostics(): Promise<{
+  version: {
+    stored: number | null;
+    code: number;
+    isValid: boolean;
+    needsMigration: boolean;
+  };
+  database: {
+    name: string;
+    exists: boolean;
+  };
+  stores: string[];
+  error?: string;
+}> {
+  try {
+    const versionCheck = await checkDatabaseVersion();
+    const storedVersion = await getStoredDatabaseVersion();
+    
+    return {
+      version: {
+        stored: storedVersion,
+        code: DATABASE_SCHEMA_VERSION,
+        isValid: versionCheck.isValid,
+        needsMigration: versionCheck.needsMigration,
+      },
+      database: {
+        name: getDatabaseName(),
+        exists: storedVersion !== null,
+      },
+      stores: [
+        'books',
+        'ratings',
+        'tags',
+        'bookTags',
+        'collections',
+        'collectionBooks',
+        'syncQueue',
+        'settings',
+        'readingLogs',
+        'coverImages',
+        'readingGoals',
+      ],
+    };
+  } catch (error) {
+    return {
+      version: {
+        stored: null,
+        code: DATABASE_SCHEMA_VERSION,
+        isValid: false,
+        needsMigration: true,
+      },
+      database: {
+        name: getDatabaseName(),
+        exists: false,
+      },
+      stores: [],
+      error: error instanceof Error ? error.message : 'Unknown diagnostic error',
+    };
+  }
 }
