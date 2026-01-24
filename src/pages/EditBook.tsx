@@ -174,7 +174,7 @@ export function EditBookPage() {
                 bookId={book.id}
                 currentStatus={currentStatus}
                 onStatusChange={setCurrentStatus}
-                variant="tabs"
+                variant="buttons"
               />
             </div>
           )}

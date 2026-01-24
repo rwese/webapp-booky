@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Trash2, Book, Calendar, Building,
   Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder,
-  RotateCcw, BookOpen, CheckCircle, XCircle, Info, Globe, Layers
+  RotateCcw, BookOpen, CheckCircle, Info, Globe, Layers
 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
@@ -18,7 +18,7 @@ import { useRating } from '../hooks/useBooks';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import type { Book as BookType, Rating, Collection, ReadingStatus } from '../types';
+import type { Book as BookType, Rating, Collection, ReadingStatus, ReadingLog } from '../types';
 import { BookCover } from '../components/image';
 import { format, parseISO } from 'date-fns';
 
@@ -36,6 +36,8 @@ export function BookDetailPage() {
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
   const [currentStatus, setCurrentStatus] = useState<ReadingStatus | undefined>(undefined);
+  const [readingLog, setReadingLog] = useState<ReadingLog | undefined>(undefined);
+  const [readingHistory, setReadingHistory] = useState<ReadingLog[]>([]);
   const [showNotesEditor, setShowNotesEditor] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
 
@@ -77,6 +79,15 @@ export function BookDetailPage() {
     return bookInCollections;
   }, []);
 
+  // Load reading history
+  const loadReadingHistory = useCallback(async (bookId: string) => {
+    const allLogs = await readingLogOperations.getAll();
+    const bookLogs = allLogs
+      .filter(log => log.bookId === bookId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setReadingHistory(bookLogs);
+  }, []);
+
   useEffect(() => {
     const loadBook = async () => {
       if (!id) return;
@@ -97,6 +108,10 @@ export function BookDetailPage() {
         // Load reading status
         const readingLog = await readingLogOperations.getByBookId(id);
         setCurrentStatus(readingLog?.status);
+        setReadingLog(readingLog);
+
+        // Load reading history
+        await loadReadingHistory(id);
         
       } catch (error) {
         console.error('Failed to load book:', error);
@@ -107,7 +122,7 @@ export function BookDetailPage() {
     };
 
     loadBook();
-  }, [id, navigate, addToast, loadBookCollections]);
+  }, [id, navigate, addToast, loadBookCollections, loadReadingHistory]);
 
   // Handle rating change
   const handleRatingChange = useCallback(async (rating: number) => {
@@ -209,10 +224,37 @@ export function BookDetailPage() {
     }
   }, [book, refreshMetadata, error, addToast]);
 
-  // Handle status change
-  const handleStatusChange = useCallback((status: ReadingStatus) => {
+  // Handle status change with history tracking
+  const handleStatusChange = useCallback(async (status: ReadingStatus) => {
+    if (!book) return;
+
+    const previousStatus = currentStatus;
+
+    // Create reading log entry
+    const readingLogData: ReadingLog = {
+      id: readingLog?.id || crypto.randomUUID(),
+      bookId: book.id,
+      status,
+      startedAt: status === 'currently_reading' ? new Date() : readingLog?.startedAt,
+      finishedAt: status === 'read' ? new Date() : (status === 'dnf' ? new Date() : undefined),
+      createdAt: readingLog?.createdAt || new Date(),
+      updatedAt: new Date()
+    };
+
+    await readingLogOperations.upsert(readingLogData);
     setCurrentStatus(status);
-  }, []);
+    setReadingLog(readingLogData);
+
+    // Add to reading history
+    const historyEntry: ReadingLog = {
+      ...readingLogData,
+      id: crypto.randomUUID(),
+      createdAt: new Date()
+    };
+    setReadingHistory(prev => [...prev, historyEntry].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ));
+  }, [book, currentStatus, readingLog]);
 
   // Handle category changes
   const handleCategoriesChange = useCallback(async (categories: string[]) => {
@@ -343,7 +385,18 @@ export function BookDetailPage() {
             <p className="text-lg text-gray-600 dark:text-gray-400 mb-1">
               by {book.authors.join(', ')}
             </p>
-            
+
+            {/* Tags Display */}
+            {book.tags && book.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {book.tags.map((tag) => (
+                  <Badge key={tag} variant="primary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center gap-2 mb-4">
               
               <Badge variant="neutral">{book.format}</Badge>
@@ -532,11 +585,6 @@ export function BookDetailPage() {
                   icon={<Building size={14} />}
                 />
               )}
-              <MetadataItem
-                label="Format"
-                value={book.format}
-                icon={<Book size={14} />}
-              />
               {book.languageCode && (
                 <MetadataItem
                   label="Language"
@@ -655,20 +703,17 @@ export function BookDetailPage() {
                 icon={<BookOpen size={14} />}
               />
               <MetadataItem
-                label="Started"
-                value="Not started"
+                label="Added"
+                value={new Date(book.addedAt).toLocaleDateString()}
                 icon={<Clock size={14} />}
               />
-              <MetadataItem
-                label="Finished"
-                value="Not finished"
-                icon={<CheckCircle size={14} />}
-              />
-              <MetadataItem
-                label="Progress"
-                value="0%"
-                icon={<RotateCcw size={14} />}
-              />
+              {currentStatus === 'read' && readingLog?.finishedAt && (
+                <MetadataItem
+                  label="Finished"
+                  value={new Date(readingLog.finishedAt).toLocaleDateString()}
+                  icon={<CheckCircle size={14} />}
+                />
+              )}
             </MetadataGrid>
           </MetadataGroup>
         </div>
@@ -710,6 +755,32 @@ export function BookDetailPage() {
         {/* Reading History */}
         <Card className="p-6">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Reading History</h3>
+          {readingHistory.length > 0 ? (
+            <div className="space-y-3">
+              {readingHistory.map((log, index) => (
+                <div key={log.id} className="flex items-start gap-3 text-sm">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                    log.status === 'read' ? 'bg-green-500' :
+                    log.status === 'currently_reading' ? 'bg-blue-500' :
+                    log.status === 'want_to_read' ? 'bg-gray-400' : 'bg-red-500'
+                  }`} />
+                  <div className="flex-1">
+                    <p className="text-gray-900 dark:text-white">
+                      Status changed to <span className="font-medium capitalize">{log.status.replace(/_/g, ' ')}</span>
+                    </p>
+                    <p className="text-gray-500 text-xs">
+                      {new Date(log.createdAt).toLocaleDateString()} at {new Date(log.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  {index === 0 && (
+                    <Badge variant="primary">Latest</Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No reading history yet. Status changes will be recorded here.</p>
+          )}
         </Card>
       </main>
 
@@ -751,7 +822,11 @@ export function BookDetailPage() {
                     maxLength={2000}
                   />
                   <div className="flex justify-between items-center mt-2">
-                    <p className="text-xs text-gray-500">
+                    <p className={`text-xs ${
+                      (book.notes?.length || 0) > 1800 
+                        ? 'text-orange-500 dark:text-orange-400' 
+                        : 'text-gray-500'
+                    }`}>
                       {(book.notes?.length || 0)} / 2000 characters
                     </p>
                     <div className="flex gap-2">
