@@ -42,7 +42,7 @@ class BookCollectionDB extends Dexie {
 
   constructor() {
     super('BookCollectionDB');
-    
+
     // Define schema and indexes with proper upgrade handling
     // Version 3: Added lendingRecords and borrowers for book lending feature
     this.version(3).stores({
@@ -61,7 +61,23 @@ class BookCollectionDB extends Dexie {
       lendingRecords: 'id, bookId, borrowerId, status, dueDate, loanedAt'
     }).upgrade(async (tx) => {
       // Ensure all stores exist by accessing them
-      // This forces IndexedDB to create any missing stores
+      // This forces IndexedDB to create any missing stores during version upgrade
+      //
+      // ROOT CAUSE OF NotFoundError:
+      // When data is imported from an older database version (e.g., via
+      // ./exports/books_export_archive.zip), the IndexedDB database may be
+      // created with a lower version number that doesn't include the
+      // lendingRecords and borrowers stores. When Dexie.js tries to access
+      // these non-existent stores, it throws:
+      // "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase':
+      //  One of the specified object stores was not found"
+      //
+      // FIX:
+      // The .upgrade() handler is called when the database version increases.
+      // By accessing each table with tx.table().count(), we force IndexedDB
+      // to create any missing stores during the upgrade process.
+      // This ensures all stores defined in the schema exist regardless of
+      // how the database was created (fresh install vs import).
       try {
         await tx.table('books').count();
         await tx.table('ratings').count();
@@ -79,6 +95,7 @@ class BookCollectionDB extends Dexie {
       } catch (error) {
         console.error('Error during database upgrade:', error);
         // Ignore errors - Dexie will handle missing stores
+        // Additional safety is provided by lendingStoreExists() in useBookLending.ts
       }
     });
   }

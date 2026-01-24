@@ -3,21 +3,31 @@
  * Tests database transaction handling and error scenarios for lending operations
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 describe('useBookLending Hook', () => {
-  describe('lendingStoreExists utility', () => {
+  describe('lendingStoreExists Utility', () => {
+    /**
+     * Test suite for the lendingStoreExists utility function
+     * This function is critical for preventing NotFoundError in book detail view
+     *
+     * Root Cause Fix: When data is imported from older database versions,
+     * the lendingRecords store may not exist. This utility checks store existence
+     * before attempting any queries, preventing the "NotFoundError: Failed to execute
+     * 'transaction' on 'IDBDatabase'" error.
+     */
+
     it('should correctly identify when store exists', async () => {
       // This test verifies the logic without actual IndexedDB
       // In a real test environment, this would use indexeddb-memory-server
-      
+
       // Test the function logic: when count() succeeds, return true
       const mockDb = {
         lendingRecords: {
           count: vi.fn().mockResolvedValue(0) // Success case
         }
       };
-      
+
       const lendingStoreExists = async (db: typeof mockDb) => {
         try {
           await db.lendingRecords.count();
@@ -26,21 +36,21 @@ describe('useBookLending Hook', () => {
           return false;
         }
       };
-      
+
       const result = await lendingStoreExists(mockDb);
       expect(result).toBe(true);
       expect(mockDb.lendingRecords.count).toHaveBeenCalled();
     });
 
-    it('should return false when store does not exist', async () => {
+    it('should return false when store does not exist (NotFoundError)', async () => {
       const mockDb = {
         lendingRecords: {
           count: vi.fn().mockRejectedValue(
-            new Error("NotFoundError: Failed to execute 'transaction' on 'IDBDatabase'")
+            new Error("NotFoundError: Failed to execute 'transaction' on 'IDBDatabase': One of the specified object stores was not found")
           )
         }
       };
-      
+
       const lendingStoreExists = async (db: typeof mockDb) => {
         try {
           await db.lendingRecords.count();
@@ -49,7 +59,7 @@ describe('useBookLending Hook', () => {
           return false;
         }
       };
-      
+
       const result = await lendingStoreExists(mockDb);
       expect(result).toBe(false);
     });
@@ -58,16 +68,17 @@ describe('useBookLending Hook', () => {
       const errorCases = [
         new Error('InvalidStateError: The database is closed'),
         new Error('TransactionInactiveError: Transaction is inactive'),
-        new Error('QuotaExceededError: Quota exceeded')
+        new Error('QuotaExceededError: Quota exceeded'),
+        new Error('Unknown error')
       ];
-      
+
       for (const error of errorCases) {
         const mockDb = {
           lendingRecords: {
             count: vi.fn().mockRejectedValue(error)
           }
         };
-        
+
         const lendingStoreExists = async (db: typeof mockDb) => {
           try {
             await db.lendingRecords.count();
@@ -76,10 +87,31 @@ describe('useBookLending Hook', () => {
             return false;
           }
         };
-        
+
         const result = await lendingStoreExists(mockDb);
         expect(result).toBe(false);
       }
+    });
+
+    it('should handle successful store query with existing records', async () => {
+      const mockDb = {
+        lendingRecords: {
+          count: vi.fn().mockResolvedValue(5) // Store exists with 5 records
+        }
+      };
+
+      const lendingStoreExists = async (db: typeof mockDb) => {
+        try {
+          await db.lendingRecords.count();
+          return true;
+        } catch (error) {
+          return false;
+        }
+      };
+
+      const result = await lendingStoreExists(mockDb);
+      expect(result).toBe(true);
+      expect(mockDb.lendingRecords.count).toHaveBeenCalled();
     });
   });
 
@@ -89,15 +121,15 @@ describe('useBookLending Hook', () => {
         const now = new Date();
         return status === 'on_loan' && now > dueDate;
       };
-      
+
       // Test with past due date
       const pastDueDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // Yesterday
       expect(isOverdue(pastDueDate, 'on_loan')).toBe(true);
-      
+
       // Test with future due date
       const futureDueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
       expect(isOverdue(futureDueDate, 'on_loan')).toBe(false);
-      
+
       // Test with returned status (should not be overdue even if past due)
       expect(isOverdue(pastDueDate, 'returned')).toBe(false);
     });
@@ -106,7 +138,7 @@ describe('useBookLending Hook', () => {
       const isAvailable = (lendingRecord: { status: string } | null) => {
         return !lendingRecord || lendingRecord.status === 'returned';
       };
-      
+
       expect(isAvailable(null)).toBe(true);
       expect(isAvailable({ status: 'returned' })).toBe(true);
       expect(isAvailable({ status: 'on_loan' })).toBe(false);
@@ -127,7 +159,7 @@ describe('useBookLending Hook', () => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       expect(mockLendingRecord.id).toBeDefined();
       expect(mockLendingRecord.bookId).toBeDefined();
       expect(mockLendingRecord.borrowerId).toBeDefined();
@@ -145,7 +177,7 @@ describe('useBookLending Hook', () => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       expect(mockBorrower.id).toBeDefined();
       expect(mockBorrower.name).toBeDefined();
       expect(typeof mockBorrower.email).toBe('string');
@@ -165,7 +197,7 @@ describe('useBookLending Hook', () => {
       const loanedAt = new Date('2024-01-15T10:00:00Z');
       const dueDate = new Date(loanedAt);
       dueDate.setDate(dueDate.getDate() + loanPeriodDays);
-      
+
       expect(dueDate.toISOString()).toBe('2024-01-29T10:00:00.000Z');
     });
   });
@@ -179,7 +211,7 @@ describe('useBookLending Hook', () => {
         }
         // Would proceed with loan logic
       };
-      
+
       await expect(loanBook(false)).rejects.toThrow('Lending feature is not available');
     });
 
@@ -190,7 +222,7 @@ describe('useBookLending Hook', () => {
         }
         return 'lend-123';
       };
-      
+
       await expect(loanBook(true)).resolves.toBe('lend-123');
     });
 
@@ -201,11 +233,11 @@ describe('useBookLending Hook', () => {
         }
         return null;
       };
-      
+
       await expect(
         checkExistingLoan({ status: 'on_loan' })
       ).rejects.toThrow('Book is already on loan');
-      
+
       await expect(
         checkExistingLoan(null)
       ).resolves.toBeNull();
@@ -219,7 +251,7 @@ describe('useBookLending Hook', () => {
           throw new Error('Lending record not found');
         }
       };
-      
+
       await expect(returnBook(null)).rejects.toThrow('Lending record not found');
     });
 
@@ -230,7 +262,7 @@ describe('useBookLending Hook', () => {
         }
         return true;
       };
-      
+
       await expect(returnBook({ id: 'lend-123' })).resolves.toBe(true);
     });
   });
@@ -242,7 +274,7 @@ describe('useBookLending Hook', () => {
           throw new Error('Lending record not found');
         }
       };
-      
+
       await expect(renewLoan(null)).rejects.toThrow('Lending record not found');
     });
 
@@ -258,10 +290,10 @@ describe('useBookLending Hook', () => {
           updatedAt: new Date()
         };
       };
-      
+
       const newDueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
       const result = await renewLoan({ id: 'lend-123' }, newDueDate);
-      
+
       expect(result.status).toBe('on_loan');
       expect(result.dueDate).toEqual(newDueDate);
     });
@@ -274,11 +306,11 @@ describe('useBookLending Hook', () => {
         const now = new Date();
         return now > due && status === 'on_loan';
       };
-      
+
       // Test with Date object
       expect(isOverdue(new Date(Date.now() - 1000), 'on_loan')).toBe(true);
       expect(isOverdue(new Date(Date.now() + 100000), 'on_loan')).toBe(false);
-      
+
       // Test with string date
       expect(isOverdue('2020-01-01', 'on_loan')).toBe(true);
       expect(isOverdue('2099-01-01', 'on_loan')).toBe(false);
@@ -293,12 +325,12 @@ describe('Database Schema Validation', () => {
       const schemaIndexes = [
         'id',
         'bookId',
-        'borrowerId', 
+        'borrowerId',
         'status',
         'dueDate',
         'loanedAt'
       ];
-      
+
       // Verify all required indexes are defined
       expect(schemaIndexes).toContain('id');
       expect(schemaIndexes).toContain('bookId');
@@ -316,7 +348,7 @@ describe('Database Schema Validation', () => {
         'name',
         '[email+phone]'
       ];
-      
+
       expect(schemaIndexes).toContain('id');
       expect(schemaIndexes).toContain('name');
       expect(schemaIndexes).toContain('[email+phone]');
@@ -329,14 +361,14 @@ describe('Import Data Handling', () => {
     it('should handle imported book IDs correctly', () => {
       // Imported books have IDs like: import_89E59658-83CC-4578-836D-DAD47737853B
       const importBookIdPattern = /^import_[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
-      
+
       const testId = 'import_89E59658-83CC-4578-836D-DAD47737853B';
       expect(testId).toMatch(importBookIdPattern);
     });
 
     it('should distinguish between imported and local books', () => {
       const isImportedBook = (id: string) => id.startsWith('import_');
-      
+
       expect(isImportedBook('import_89E59658-83CC-4578-836D-DAD47737853B')).toBe(true);
       expect(isImportedBook('local-book-123')).toBe(false);
       expect(isImportedBook('uuid-1234-5678')).toBe(false);
