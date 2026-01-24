@@ -49,8 +49,8 @@ test.describe('Book Cataloging Workflow', () => {
       // Lookup button should be visible
       await expect(page.getByRole('button', { name: 'Lookup' })).toBeVisible();
       
-      // Scan barcode button should be visible
-      await expect(page.locator('button[aria-label="Scan barcode"]')).toBeVisible();
+      // Scan barcode button should be visible - use first() to avoid strict mode violation
+      await expect(page.locator('button[aria-label="Scan barcode"]').first()).toBeVisible();
     });
 
     test('should show manual entry form when Manual Entry tab is active', async ({ page }) => {

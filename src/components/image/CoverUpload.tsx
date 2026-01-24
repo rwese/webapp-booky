@@ -292,19 +292,22 @@ export function CoverUpload({
             </div>
           ) : (
             // Upload area
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={disabled ? -1 : 0}
               className={twMerge(
                 clsx(
                   'relative aspect-[6/9] w-full border-2 border-dashed rounded-xl transition-colors',
                   'flex flex-col items-center justify-center gap-3 cursor-pointer',
                   'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800',
                   'border-gray-300 dark:border-gray-600',
+                  !disabled && 'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )
               )}
               onClick={() => !disabled && fileInputRef.current?.click()}
-              disabled={disabled}
+              onKeyDown={(e) => !disabled && e.key === 'Enter' && fileInputRef.current?.click()}
+              aria-disabled={disabled}
             >
               <input
                 ref={fileInputRef}
@@ -315,7 +318,7 @@ export function CoverUpload({
                 disabled={disabled}
                 aria-label="Upload cover image"
               />
-              
+
               <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-700">
                 {isProcessing ? (
                   <RefreshCw size={24} className="animate-spin text-gray-400" />
@@ -323,7 +326,7 @@ export function CoverUpload({
                   <Upload size={24} className="text-gray-400" />
                 )}
               </div>
-              
+
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Click to upload cover image
@@ -331,12 +334,12 @@ export function CoverUpload({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   JPEG, PNG, GIF, WebP up to 5MB
                 </p>
-                
+
                 {/* Camera button */}
                 {!disabled && (
                   <button
                     type="button"
-                    onClick={() => setIsUsingCamera(true)}
+                    onClick={(e) => { e.stopPropagation(); setIsUsingCamera(true); }}
                     className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
                   >
                     <Camera size={18} />
@@ -344,7 +347,7 @@ export function CoverUpload({
                   </button>
                 )}
               </div>
-            </button>
+            </div>
           )}
 
           {/* Hidden file input when there's a cover (for replacement) */}
