@@ -1,4 +1,4 @@
-import Dexie, { Table, liveQuery } from 'dexie';
+import Dexie, { Table } from 'dexie';
 import type { 
   Book, 
   Rating, 
