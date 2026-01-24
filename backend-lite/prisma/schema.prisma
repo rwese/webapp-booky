@@ -75,6 +75,10 @@ model Book {
   subjects       String?  // JSON array stored as string
   seriesName     String?
   seriesVolume   Int?
+  
+  // Personal notes
+  notes          String?  // 2000 character limit
+  notesUpdatedAt DateTime?
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

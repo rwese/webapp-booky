@@ -25,6 +25,7 @@ const createBookSchema = z.object({
   subjects: z.array(z.string()).optional(),
   seriesName: z.string().optional(),
   seriesVolume: z.number().optional(),
+  notes: z.string().max(2000).optional(),
 });
 
 const updateBookSchema = createBookSchema.partial();

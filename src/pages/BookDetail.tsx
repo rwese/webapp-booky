@@ -1,21 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Edit, Trash2, Book, Calendar, Building, 
+import {
+  ArrowLeft, Edit, Trash2, Book, Calendar, Building,
   Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder,
-  RotateCcw
+  RotateCcw, BookOpen, CheckCircle, XCircle, Info, Globe, Layers
 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
 import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { CategorySelector, CategoryBadge } from '../components/forms/CategorySelector';
-import { bookOperations, ratingOperations, collectionOperations } from '../lib/db';
+import { StatusSelector, StatusBadge } from '../components/forms/StatusSelector';
+import { NotesDisplay } from '../components/forms/NotesEditor';
+import { MetadataGroup, MetadataItem, MetadataGrid } from '../components/common/MetadataGroup';
+import { bookOperations, ratingOperations, collectionOperations, readingLogOperations } from '../lib/db';
 import { useRating } from '../hooks/useBooks';
 import { formatISBN } from '../lib/barcodeUtils';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import type { Book as BookType, Rating, Collection } from '../types';
+import type { Book as BookType, Rating, Collection, ReadingStatus } from '../types';
 import { BookCover } from '../components/image';
 import { format, parseISO } from 'date-fns';
 
@@ -32,6 +35,9 @@ export function BookDetailPage() {
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
+  const [currentStatus, setCurrentStatus] = useState<ReadingStatus | undefined>(undefined);
+  const [showNotesEditor, setShowNotesEditor] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
 
   // Metadata refresh hook
   const { isRefreshing, error, refreshMetadata } = useBookMetadataRefresh();
@@ -87,6 +93,10 @@ export function BookDetailPage() {
         
         // Load collections
         await loadBookCollections(id);
+        
+        // Load reading status
+        const readingLog = await readingLogOperations.getByBookId(id);
+        setCurrentStatus(readingLog?.status);
         
       } catch (error) {
         console.error('Failed to load book:', error);
@@ -199,6 +209,11 @@ export function BookDetailPage() {
     }
   }, [book, refreshMetadata, error, addToast]);
 
+  // Handle status change
+  const handleStatusChange = useCallback((status: ReadingStatus) => {
+    setCurrentStatus(status);
+  }, []);
+
   // Handle category changes
   const handleCategoriesChange = useCallback(async (categories: string[]) => {
     if (!book) return;
@@ -217,6 +232,28 @@ export function BookDetailPage() {
     } catch (error) {
       console.error('Failed to update categories:', error);
       addToast({ type: 'error', message: 'Failed to update categories' });
+    }
+  }, [book, addToast]);
+
+  // Handle notes save
+  const handleNotesSave = useCallback(async (notes: string) => {
+    if (!book) return;
+    
+    try {
+      const updatedBook: BookType = {
+        ...book,
+        notes,
+        notesUpdatedAt: new Date()
+      };
+      
+      await bookOperations.update(book.id, updatedBook);
+      setBook(updatedBook);
+      setShowNotesEditor(false);
+      
+      addToast({ type: 'success', message: 'Notes saved!' });
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      addToast({ type: 'error', message: 'Failed to save notes' });
     }
   }, [book, addToast]);
 
@@ -373,6 +410,17 @@ export function BookDetailPage() {
                 Categories
               </Button>
             </div>
+
+            {/* Reading Status */}
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Reading Status</h3>
+              <StatusSelector
+                bookId={book.id}
+                currentStatus={currentStatus}
+                onStatusChange={handleStatusChange}
+                variant="tabs"
+              />
+            </div>
           </div>
         </div>
 
@@ -432,104 +480,220 @@ export function BookDetailPage() {
           </div>
         )}
 
-        {/* Book Metadata */}
-        <Card className="p-6 mb-6">
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Details</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {book.isbn13 && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                  <Tag size={14} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">ISBN</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatISBN(book.isbn13)}
-                  </p>
-                </div>
-              </div>
-            )}
+        {/* Book Metadata - Grouped */}
+        <div className="space-y-4 mb-6">
+          {/* Group 1: Basic Information */}
+          <MetadataGroup
+            title="Basic Information"
+            icon={<Info size={18} />}
+            defaultExpanded={true}
+          >
+            <MetadataGrid columns={2}>
+              {book.isbn13 && (
+                <MetadataItem
+                  label="ISBN"
+                  value={formatISBN(book.isbn13)}
+                  icon={<Tag size={14} />}
+                />
+              )}
+              {book.publishedYear && (
+                <MetadataItem
+                  label="Published"
+                  value={book.publishedYear}
+                  icon={<Calendar size={14} />}
+                />
+              )}
+              {book.pageCount && (
+                <MetadataItem
+                  label="Pages"
+                  value={book.pageCount}
+                  icon={<Book size={14} />}
+                />
+              )}
+              <MetadataItem
+                label="Added to Library"
+                value={new Date(book.addedAt).toLocaleDateString()}
+                icon={<Clock size={14} />}
+              />
+            </MetadataGrid>
+          </MetadataGroup>
+
+          {/* Group 2: Publishing Details */}
+          <MetadataGroup
+            title="Publishing Details"
+            icon={<Building size={18} />}
+            defaultExpanded={true}
+          >
+            <MetadataGrid columns={2}>
+              {book.publisher && (
+                <MetadataItem
+                  label="Publisher"
+                  value={book.publisher}
+                  icon={<Building size={14} />}
+                />
+              )}
+              <MetadataItem
+                label="Format"
+                value={book.format}
+                icon={<Book size={14} />}
+              />
+              {book.languageCode && (
+                <MetadataItem
+                  label="Language"
+                  value={book.languageCode.toUpperCase()}
+                  icon={<Globe size={14} />}
+                />
+              )}
+              {(book.seriesName || book.seriesVolume) && (
+                <MetadataItem
+                  label="Series"
+                  value={book.seriesVolume 
+                    ? `${book.seriesName} #${book.seriesVolume}`
+                    : book.seriesName}
+                  icon={<Layers size={14} />}
+                />
+              )}
+            </MetadataGrid>
             
-            {book.publishedYear && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                  <Calendar size={14} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Published</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {book.publishedYear}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {book.publisher && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                  <Building size={14} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Publisher</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {book.publisher}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {book.pageCount && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                  <Book size={14} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Pages</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {book.pageCount}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
-                <Clock size={14} className="text-gray-500" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Added to Library</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {new Date(book.addedAt).toLocaleDateString()}
-                </p>
-              </div>
+            {/* External Links */}
+            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              {book.externalIds.openLibrary && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => window.open(`https://openlibrary.org/works/${book.externalIds.openLibrary}`, '_blank')}
+                >
+                  <ExternalLink size={14} />
+                  Open Library
+                </Button>
+              )}
+              {book.externalIds.googleBooks && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => window.open(`https://books.google.com/books?id=${book.externalIds.googleBooks}`, '_blank')}
+                >
+                  <ExternalLink size={14} />
+                  Google Books
+                </Button>
+              )}
             </div>
-          </div>
-          
-          {/* External Links */}
-          <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            {book.externalIds.openLibrary && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => window.open(`https://openlibrary.org/works/${book.externalIds.openLibrary}`, '_blank')}
-              >
-                <ExternalLink size={14} />
-                View on Open Library
-              </Button>
-            )}
-            {book.externalIds.googleBooks && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => window.open(`https://books.google.com/books?id=${book.externalIds.googleBooks}`, '_blank')}
-              >
-                <ExternalLink size={14} />
-                View on Google Books
-              </Button>
-            )}
-          </div>
-        </Card>
+          </MetadataGroup>
+
+          {/* Group 3: Collection & Organization */}
+          <MetadataGroup
+            title="Collection & Organization"
+            icon={<Folder size={18} />}
+            defaultExpanded={true}
+          >
+            <div className="space-y-4">
+              {/* Collections */}
+              {bookCollections.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Collections</p>
+                  <div className="flex flex-wrap gap-2">
+                    {bookCollections.map(collection => (
+                      <CollectionBadge key={collection.id} collection={collection} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Categories */}
+              {(book.categories && book.categories.length > 0) && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {book.categories.map(category => (
+                      <CategoryBadge key={category} category={category} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Tags */}
+              {book.tags && book.tags.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {book.tags.map((tag) => (
+                      <Badge key={tag} variant="neutral">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Rating */}
+              {currentRating > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Your Rating</p>
+                  <StarRating 
+                    rating={currentRating} 
+                    onRatingChange={handleRatingChange}
+                    interactive={true}
+                    size="md"
+                  />
+                </div>
+              )}
+            </div>
+          </MetadataGroup>
+
+          {/* Group 4: Reading Progress */}
+          <MetadataGroup
+            title="Reading Progress"
+            icon={<BookOpen size={18} />}
+            defaultExpanded={true}
+          >
+            <MetadataGrid columns={2}>
+              <MetadataItem
+                label="Status"
+                value={
+                  <StatusBadge status={currentStatus} />
+                }
+                icon={<BookOpen size={14} />}
+              />
+              <MetadataItem
+                label="Started"
+                value="Not started"
+                icon={<Clock size={14} />}
+              />
+              <MetadataItem
+                label="Finished"
+                value="Not finished"
+                icon={<CheckCircle size={14} />}
+              />
+              <MetadataItem
+                label="Progress"
+                value="0%"
+                icon={<RotateCcw size={14} />}
+              />
+            </MetadataGrid>
+          </MetadataGroup>
+        </div>
+
+          {/* Personal Notes */}
+          {(book.notes || true) && (
+            <Card className="p-6 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Personal Notes</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowNotesEditor(true)}>
+                  {book.notes ? 'Edit' : 'Add Notes'}
+                </Button>
+              </div>
+              <NotesDisplay
+                notes={book.notes}
+                maxLength={300}
+                onEdit={() => setShowNotesEditor(true)}
+              />
+              {book.notesUpdatedAt && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Last updated: {new Date(book.notesUpdatedAt).toLocaleDateString()}
+                </p>
+              )}
+            </Card>
+          )}
 
         {/* Description */}
         {book.description && (
@@ -549,19 +713,66 @@ export function BookDetailPage() {
         </Card>
       </main>
 
-      {/* Review Editor Modal */}
-      {showReviewEditor && (
+      {/* Notes Editor Modal */}
+      {showNotesEditor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Write Review</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Notes</h2>
             </div>
             <div className="p-4">
-              <ReviewEditor
-                initialReview={currentReview}
-                onSave={handleReviewSave}
-                onCancel={() => setShowReviewEditor(false)}
+              <NotesDisplay
+                notes={book.notes}
+                maxLength={300}
+                onEdit={() => setEditingNotes(true)}
               />
+              {book.notes && !editingNotes && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  className="mt-3"
+                  onClick={() => setEditingNotes(true)}
+                >
+                  Edit Notes
+                </Button>
+              )}
+              {(editingNotes || !book.notes) && (
+                <div className="mt-4">
+                  <textarea
+                    id="book-notes-detail"
+                    value={book.notes || ''}
+                    onChange={(e) => {
+                      const updatedBook = { ...book, notes: e.target.value };
+                      setBook(updatedBook);
+                    }}
+                    placeholder="Add your personal notes about this book... (max 2000 characters)"
+                    className="input min-h-[150px] resize-y w-full"
+                    rows={6}
+                    maxLength={2000}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-gray-500">
+                      {(book.notes?.length || 0)} / 2000 characters
+                    </p>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          setShowNotesEditor(false);
+                          setEditingNotes(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={() => handleNotesSave(book.notes || '')}
+                      >
+                        Save Notes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

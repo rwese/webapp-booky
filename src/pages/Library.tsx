@@ -9,6 +9,7 @@ import { bookOperations, tagOperations } from '../lib/db';
 import { BookCover } from '../components/image';
 import { type TagWithCount } from '../components/forms/TagListing';
 import { StarRating } from '../components/forms/StarRating';
+import { StatusBadge } from '../components/forms/StatusSelector';
 import type { Book as BookType, FilterConfig, SortConfig, BookFormat } from '../types';
 import { clsx } from 'clsx';
 import { useUrlFilterSync, urlParamsToFilters } from '../hooks/useUrlFilterSync';
@@ -479,6 +480,24 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
               </div>
               <Badge variant="neutral">{book.format}</Badge>
             </div>
+            
+            {/* Notes excerpt */}
+            {book.notes && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {book.notes.length > 150 ? book.notes.slice(0, 150) + '...' : book.notes}
+                </p>
+                {book.notes.length > 150 && (
+                  <Link 
+                    to={`/book/${book.id}`}
+                    className="text-xs text-primary-600 dark:text-primary-400 hover:underline mt-1 inline-block"
+                  >
+                    Show more
+                  </Link>
+                )}
+              </div>
+            )}
+            
             <div className="mt-2 flex items-center gap-2">
               <Link to={`/book/${book.id}`} className="btn-secondary text-sm">
                 View Details
@@ -501,6 +520,11 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
     <Card hover className="overflow-hidden cursor-pointer" onClick={handleClick}>
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
         <BookCover book={book} className="w-full h-full" />
+        
+        {/* Status badge */}
+        <div className="absolute top-2 left-2">
+          <StatusBadge status={book.readingStatus} size="sm" />
+        </div>
         
         {/* Rating overlay - only show if book has a rating */}
         {rating !== undefined && rating > 0 && (

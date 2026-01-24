@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { BookForm } from '../components/forms/BookForm';
-import { bookOperations, tagOperations, coverImageOperations } from '../lib/db';
+import { bookOperations, tagOperations, coverImageOperations, readingLogOperations } from '../lib/db';
 import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
-import type { Book as BookType, Tag as TagType } from '../types';
+import { StatusSelector } from '../components/forms/StatusSelector';
+import type { Book as BookType, Tag as TagType, ReadingStatus } from '../types';
 
 export function EditBookPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export function EditBookPage() {
   const [tags, setTags] = useState<TagType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState<ReadingStatus | undefined>(undefined);
   const { isRefreshing, refreshMetadata } = useBookMetadataRefresh();
 
   useEffect(() => {
@@ -48,6 +50,10 @@ export function EditBookPage() {
         // Load existing tags for this book
         const bookTags = await tagOperations.getBookTags(id);
         setTags(bookTags);
+
+        // Load reading status
+        const readingLog = await readingLogOperations.getByBookId(id);
+        setCurrentStatus(readingLog?.status);
       } catch (error) {
         console.error('Failed to load book:', error);
         addToast({ type: 'error', message: 'Failed to load book' });
@@ -158,6 +164,18 @@ export function EditBookPage() {
                   )}
                 </button>
               )}
+            </div>
+          )}
+          
+          {/* Reading Status */}
+          {book && (
+            <div className="mt-4">
+              <StatusSelector
+                bookId={book.id}
+                currentStatus={currentStatus}
+                onStatusChange={setCurrentStatus}
+                variant="tabs"
+              />
             </div>
           )}
         </div>
