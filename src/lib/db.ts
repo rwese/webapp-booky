@@ -674,13 +674,20 @@ export const tagOperations = {
   },
   
   async addTagToBook(bookId: string, tagId: string) {
-    const existing = await db.bookTags
-      .where('[bookId+tagId]')
-      .equals([bookId, tagId])
-      .first();
-    
-    if (!existing) {
-      return await db.bookTags.add({ bookId, tagId });
+    try {
+      const existing = await db.bookTags
+        .where('[bookId+tagId]')
+        .equals([bookId, tagId])
+        .first();
+      
+      if (!existing) {
+        return await db.bookTags.add({ bookId, tagId });
+      }
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some tags or books to free up space.');
+      }
+      throw error;
     }
   },
   

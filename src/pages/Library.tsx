@@ -518,9 +518,10 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
 
   return (
     <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
-      <button
-        type="button"
-        className="w-full text-left cursor-pointer"
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full text-left cursor-pointer outline-none"
         onClick={(e) => {
           // Only navigate if the click is not on the edit button
           if (!(e.target as HTMLElement).closest('[aria-label="Edit book"]')) {
@@ -537,7 +538,6 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
             }
           }
         }}
-        tabIndex={0}
         aria-label={`View details for ${book.title}`}
       >
         <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative">
@@ -567,7 +567,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
             {book.authors.join(', ')}
           </p>
         </div>
-      </button>
+      </div>
 
       {/* Edit button - positioned in top-right corner, separate from card link */}
       <button
