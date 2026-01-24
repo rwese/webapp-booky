@@ -10,7 +10,6 @@ import {
   checkDatabaseVersion, 
   normalizeDatabaseVersion, 
   deleteDatabase,
-  getDatabaseDiagnostics,
   type VersionCheckResult
 } from '../lib/db-migration';
 

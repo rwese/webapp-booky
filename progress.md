@@ -302,3 +302,36 @@ All critical bugs have been **verified as fixed** through code inspection and te
 - No breaking changes to public APIs
 - Offline-first architecture preserved
 - Mobile-responsive design maintained
+
+---
+
+## Validation Issues Fixed - January 24, 2026
+
+### Unused Variable Errors Fixed ✅
+
+**BookDetail.tsx:**
+
+- Removed unused `RotateCcw` import from lucide-react
+- Removed unused `ReviewEditor` import (was imported but not used)
+- Removed unused `format` and `parseISO` imports from date-fns
+- Removed unused `showReviewEditor` state variable
+- Removed unused `handleReviewSave` callback function
+- Removed unused `previousStatus` variable in handleStatusChange
+- Fixed lint warning about unnecessary dependencies in handleStatusChange
+
+### DOM Nesting Fix ✅
+
+**Library.tsx BookCard Component:**
+
+- Refactored grid view BookCard to use `<div>` with `role="link"` instead of nested `<a>` and `<button>` elements
+- Added proper keyboard navigation support with `onKeyDown` handlers
+- Maintained accessibility with proper `aria-label` attributes
+- Preserved click handlers and navigation functionality
+- Added `z-index` to edit button to ensure it's clickable
+
+### Build Verification ✅
+
+- Build successful with no compilation errors
+- All linting checks pass (--max-warnings 0 --quiet)
+- Service worker generated with 31 precache entries
+- Main bundle: 469.43 kB (gzipped: 125.45 kB)

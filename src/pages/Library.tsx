@@ -517,54 +517,58 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
   }
 
   return (
-    <article
+    <div
       className="overflow-hidden cursor-pointer bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`View details for ${book.title}`}
     >
-      <a
-        href={`/book/${book.id}`}
-        className="block focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-inset"
-        aria-label={`View details for ${book.title}`}
-      >
-        <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
-          <BookCover book={book} className="w-full h-full" />
+      <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
+        <BookCover book={book} className="w-full h-full" />
 
-          {/* Status badge */}
-          <div className="absolute top-2 left-2">
-            <StatusBadge status={book.readingStatus} size="sm" />
-          </div>
+        {/* Status badge */}
+        <div className="absolute top-2 left-2">
+          <StatusBadge status={book.readingStatus} size="sm" />
+        </div>
 
-          {/* Rating overlay - only show if book has a rating */}
-          {rating !== undefined && rating > 0 && (
-            <div
-              className="absolute bottom-2 left-2 bg-black/60 dark:bg-black/80 rounded-lg px-1.5 py-1"
-              role="img"
-              aria-label={`Rating: ${rating} out of 5 stars`}
-            >
-              <StarRating rating={rating} size="sm" interactive={false} />
-            </div>
-          )}
-
-          {/* Edit button - icon-only, positioned in top-right corner */}
-          <button
-            type="button"
-            className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:opacity-100"
-            aria-label="Edit book"
-            onClick={handleEditClick}
-            onKeyDown={(e) => e.stopPropagation()}
+        {/* Rating overlay - only show if book has a rating */}
+        {rating !== undefined && rating > 0 && (
+          <div
+            className="absolute bottom-2 left-2 bg-black/60 dark:bg-black/80 rounded-lg px-1.5 py-1"
+            role="img"
+            aria-label={`Rating: ${rating} out of 5 stars`}
           >
-            <Edit size={16} />
-          </button>
-        </div>
-        <div className="p-3">
-          <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-            {book.title}
-          </h3>
-          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-            {book.authors.join(', ')}
-          </p>
-        </div>
-      </a>
-    </article>
+            <StarRating rating={rating} size="sm" interactive={false} />
+          </div>
+        )}
+
+        {/* Edit button - icon-only, positioned in top-right corner */}
+        <button
+          type="button"
+          className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:opacity-100 z-10"
+          aria-label="Edit book"
+          onClick={handleEditClick}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Edit size={16} />
+        </button>
+      </div>
+      <div className="p-3">
+        <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+          {book.title}
+        </h3>
+        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+          {book.authors.join(', ')}
+        </p>
+      </div>
+    </div>
   );
 }
 

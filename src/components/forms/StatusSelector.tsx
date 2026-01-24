@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { BookOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { Button } from '../common/Button';
 import { readingLogOperations } from '../../lib/db';
 import type { ReadingStatus } from '../../types';
 import { useToastStore } from '../../store/useStore';
@@ -80,7 +79,6 @@ export function StatusSelector({
     [bookId, currentStatus, onStatusChange, addToast]
   );
 
-  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 20 : 16;
   const buttonClassName = size === 'sm' ? 'px-2 py-1 text-xs' : size === 'lg' ? 'px-4 py-2 text-base' : 'px-3 py-1.5 text-sm';
 
   if (variant === 'dropdown') {

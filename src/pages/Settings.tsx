@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud, Target, Flame, Search, X, Edit2, Plus } from 'lucide-react';
+import { Settings, Moon, Sun, Monitor, Bell, Download, Trash2, Palette, Upload, RefreshCw, FileText, Calendar, Filter, Cloud, Target, Flame } from 'lucide-react';
 import { Card, Button, Badge } from '../components/common/Button';
-import { Input } from '../components/common/Button';
 import { useSettingsStore } from '../store/useStore';
 import { useOnlineStatus } from '../hooks/useOffline';
 import { useToastStore } from '../store/useStore';

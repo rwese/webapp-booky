@@ -3,11 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Trash2, Book, Calendar, Building,
   Tag, Clock, ExternalLink, Share2, Heart, RefreshCw, Folder,
-  RotateCcw, BookOpen, CheckCircle, Info, Globe, Layers
+  BookOpen, CheckCircle, Info, Globe, Layers
 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/common/Button';
 import { StarRating } from '../components/forms/StarRating';
-import { ReviewEditor } from '../components/forms/ReviewEditor';
 import { CollectionSelector, CollectionBadge } from '../components/forms/CollectionManager';
 import { CategorySelector, CategoryBadge } from '../components/forms/CategorySelector';
 import { StatusSelector, StatusBadge } from '../components/forms/StatusSelector';
@@ -20,7 +19,7 @@ import { useToastStore } from '../store/useStore';
 import { useBookMetadataRefresh } from '../hooks/useBookMetadataRefresh';
 import type { Book as BookType, Rating, Collection, ReadingStatus, ReadingLog } from '../types';
 import { BookCover } from '../components/image';
-import { format, parseISO } from 'date-fns';
+
 
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +30,6 @@ export function BookDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
-  const [showReviewEditor, setShowReviewEditor] = useState(false);
   const [bookCollections, setBookCollections] = useState<Collection[]>([]);
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [currentReview, setCurrentReview] = useState<string>('');
@@ -148,33 +146,6 @@ export function BookDetailPage() {
     }
   }, [book, currentReview, addToast]);
 
-  // Handle review save
-  const handleReviewSave = useCallback(async (review: string) => {
-    if (!book) return;
-    
-    try {
-      const ratingRecord: Rating = {
-        id: crypto.randomUUID(),
-        bookId: book.id,
-        stars: currentRating,
-        review: review,
-        reviewCreatedAt: currentReview ? undefined : new Date(),
-        updatedAt: new Date(),
-        containsSpoilers: false
-      };
-      
-      await ratingOperations.upsert(ratingRecord);
-      setCurrentReview(review);
-      setShowReviewEditor(false);
-      
-      addToast({ type: 'success', message: 'Review saved!' });
-    } catch (error) {
-      console.error('Failed to save review:', error);
-      addToast({ type: 'error', message: 'Failed to save review' });
-    }
-  }, [book, currentRating, currentReview, addToast]);
-  
-
   // Handle book deletion
   const handleDelete = useCallback(async () => {
     if (!book) return;
@@ -228,8 +199,6 @@ export function BookDetailPage() {
   const handleStatusChange = useCallback(async (status: ReadingStatus) => {
     if (!book) return;
 
-    const previousStatus = currentStatus;
-
     // Create reading log entry
     const readingLogData: ReadingLog = {
       id: readingLog?.id || crypto.randomUUID(),
@@ -254,7 +223,7 @@ export function BookDetailPage() {
     setReadingHistory(prev => [...prev, historyEntry].sort((a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     ));
-  }, [book, currentStatus, readingLog]);
+  }, [book, readingLog]);
 
   // Handle category changes
   const handleCategoriesChange = useCallback(async (categories: string[]) => {
@@ -421,25 +390,8 @@ export function BookDetailPage() {
               {currentReview ? (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{currentReview}</p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="mt-1"
-                    onClick={() => setShowReviewEditor(true)}
-                  >
-                    Edit Review
-                  </Button>
                 </div>
-              ) : (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="mt-3"
-                onClick={() => setShowReviewEditor(true)}
-              >
-                Write a Review
-              </Button>
-              )}
+              ) : null}
             </div>
 
             {/* Quick Actions */}
