@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Book } from 'lucide-react';
 import { coverImageOperations } from '../../lib/db';
 import type { Book as BookType } from '../../types';
@@ -17,9 +17,16 @@ interface BookCoverProps {
 export function BookCover({ book, className = '', alt }: BookCoverProps) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     const resolveCover = async () => {
+      // Revoke previous blob URL if it exists
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+
       // If we have a remote coverUrl, use it directly
       if (book.coverUrl) {
         setCoverUrl(book.coverUrl);
@@ -32,12 +39,13 @@ export function BookCover({ book, className = '', alt }: BookCoverProps) {
         try {
           const url = await coverImageOperations.getUrl(book.localCoverPath);
           if (url) {
+            blobUrlRef.current = url;
             setCoverUrl(url);
           } else {
             console.warn(`Cover ID ${book.localCoverPath} not found in IndexedDB`);
           }
-          } catch (error) {
-            console.error('Error loading cover from IndexedDB:', error);
+        } catch (error) {
+          console.error('Error loading cover from IndexedDB:', error);
         } finally {
           setLoading(false);
         }
@@ -45,7 +53,15 @@ export function BookCover({ book, className = '', alt }: BookCoverProps) {
     };
 
     resolveCover();
-  }, [book.coverUrl, book.localCoverPath, book.id]);
+
+    // Cleanup: revoke blob URL when component unmounts or cover changes
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [book.coverUrl, book.localCoverPath]);
 
   if (loading) {
     return (

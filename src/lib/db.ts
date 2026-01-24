@@ -17,6 +17,7 @@ import {
   createUpgradeHandler,
   isVersionError,
   isDatabaseClosedError,
+  isQuotaExceededError,
   checkDatabaseVersion,
   normalizeDatabaseVersion,
   logDatabaseVersionInfo
@@ -264,6 +265,9 @@ export const bookOperations = {
     } catch (error) {
       if (isVersionError(error) || isDatabaseClosedError(error)) {
         throw new Error('Database is not available. Please refresh the page.');
+      }
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some books or cover images to free up space.');
       }
       throw error;
     }
@@ -924,13 +928,20 @@ export const readingLogOperations = {
 export const coverImageOperations = {
   async store(blob: Blob, id?: string): Promise<string> {
     const imageId = id || crypto.randomUUID();
-    await db.coverImages.put({
-      id: imageId,
-      blob,
-      mimeType: blob.type,
-      createdAt: new Date()
-    });
-    return imageId;
+    try {
+      await db.coverImages.put({
+        id: imageId,
+        blob,
+        mimeType: blob.type,
+        createdAt: new Date()
+      });
+      return imageId;
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some cover images to free up space.');
+      }
+      throw error;
+    }
   },
 
   async get(id: string): Promise<Blob | null> {

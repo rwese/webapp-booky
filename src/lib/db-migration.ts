@@ -72,6 +72,7 @@ export const DB_ERROR_CODES = {
   VERSION_ERROR: 'VersionError',
   NOT_FOUND_ERROR: 'NotFoundError',
   DATABASE_CLOSED_ERROR: 'DatabaseClosedError',
+  QUOTA_EXCEEDED_ERROR: 'QuotaExceededError',
 } as const;
 
 /**
@@ -118,6 +119,24 @@ export function isDatabaseClosedError(error: unknown): boolean {
   return (
     errorMessage.includes('DatabaseClosedError') ||
     errorMessage.includes('database closed')
+  );
+}
+
+/**
+ * Check if an error is a quota exceeded error
+ * QuotaExceededError is thrown when IndexedDB storage quota is exceeded
+ */
+export function isQuotaExceededError(error: unknown): boolean {
+  if (!error) return false;
+
+  const errorName = error instanceof Error ? error.name : String(error);
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  return (
+    errorName === 'QuotaExceededError' ||
+    errorMessage.includes('QuotaExceededError') ||
+    errorMessage.includes('quota exceeded') ||
+    errorMessage.includes('storage quota')
   );
 }
 

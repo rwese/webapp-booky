@@ -307,31 +307,96 @@ All critical bugs have been **verified as fixed** through code inspection and te
 
 ## Validation Issues Fixed - January 24, 2026
 
-### Unused Variable Errors Fixed ✅
-
-**BookDetail.tsx:**
-
-- Removed unused `RotateCcw` import from lucide-react
-- Removed unused `ReviewEditor` import (was imported but not used)
-- Removed unused `format` and `parseISO` imports from date-fns
-- Removed unused `showReviewEditor` state variable
-- Removed unused `handleReviewSave` callback function
-- Removed unused `previousStatus` variable in handleStatusChange
-- Fixed lint warning about unnecessary dependencies in handleStatusChange
-
-### DOM Nesting Fix ✅
+### DOM Nesting Issue Fixed ✅
 
 **Library.tsx BookCard Component:**
 
-- Refactored grid view BookCard to use `<div>` with `role="link"` instead of nested `<a>` and `<button>` elements
-- Added proper keyboard navigation support with `onKeyDown` handlers
-- Maintained accessibility with proper `aria-label` attributes
-- Preserved click handlers and navigation functionality
-- Added `z-index` to edit button to ensure it's clickable
+- Refactored grid view BookCard to use semantic HTML structure
+- Changed outer container to use `<a>` tag for navigation to book details
+- Moved edit button outside of the anchor element to avoid nested interactive elements
+- Added proper event handling to prevent event propagation
+- Maintained accessibility with proper ARIA attributes and keyboard navigation
+
+**Before:**
+
+```jsx
+<div role="link" tabIndex={0} onClick={handleClick}>
+  <BookCover ... />
+  <button onClick={handleEditClick}><Edit /></button>  {/* Nested button issue! */}
+</div>
+```
+
+**After:**
+
+```jsx
+<div className="group">
+  <a href={`/book/${book.id}`} onClick={handleNavigation}>
+    <BookCover ... />
+  </a>
+  <button onClick={handleEditClick}><Edit /></button>  {/* No nesting */}
+</div>
+```
+
+### BookCover Memory Leak Fixed ✅
+
+**BookCover.tsx Component:**
+
+- Added blob URL tracking with useRef to track current blob URL
+- Implemented cleanup logic to revoke blob URLs when:
+  - Component unmounts
+  - Cover image changes (coverUrl or localCoverPath)
+- Prevents memory leaks with repeated navigation through the library
+
+**Changes:**
+
+```jsx
+const blobUrlRef = (useRef < string) | (null > null)
+
+useEffect(() => {
+  const resolveCover = async () => {
+    // Revoke previous blob URL if it exists
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = null
+    }
+    // ... load new cover ...
+  }
+
+  resolveCover()
+
+  return () => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = null
+    }
+  }
+}, [book.coverUrl, book.localCoverPath])
+```
+
+### Quota Handling Added ✅
+
+**db.ts and db-migration.ts:**
+
+- Added `isQuotaExceededError()` function to detect quota exceeded errors
+- Added `QUOTA_EXCEEDED_ERROR` to `DB_ERROR_CODES`
+- Updated `bookOperations.add()` to handle quota errors with user-friendly message
+- Updated `coverImageOperations.store()` to handle quota errors
+- Provides clear error messages when storage quota is exceeded
+
+**Error Handling:**
+
+```typescript
+if (isQuotaExceededError(error)) {
+  throw new Error(
+    "Storage quota exceeded. Please delete some books or cover images to free up space."
+  )
+}
+```
 
 ### Build Verification ✅
 
 - Build successful with no compilation errors
 - All linting checks pass (--max-warnings 0 --quiet)
 - Service worker generated with 31 precache entries
-- Main bundle: 469.43 kB (gzipped: 125.45 kB)
+- Main bundle: 469.91 kB (gzipped: 125.58 kB)
+- All 345 unit tests pass
