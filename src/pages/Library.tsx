@@ -517,7 +517,19 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
   }
 
   return (
-    <Card hover className="overflow-hidden cursor-pointer" onClick={handleClick}>
+    <div 
+      className="overflow-hidden cursor-pointer bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+      onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`View details for ${book.title}`}
+    >
       <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 relative group">
         <BookCover book={book} className="w-full h-full" />
         
@@ -538,15 +550,14 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
         )}
         
         {/* Edit button - icon-only, positioned in top-right corner */}
-        <Button
-          variant="secondary"
-          size="sm"
-          className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        <button
+          type="button"
+          className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           aria-label="Edit book"
           onClick={handleEditClick}
         >
           <Edit size={16} />
-        </Button>
+        </button>
       </div>
       <div className="p-3">
         <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
@@ -556,7 +567,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
           {book.authors.join(', ')}
         </p>
       </div>
-    </Card>
+    </div>
   );
 }
 

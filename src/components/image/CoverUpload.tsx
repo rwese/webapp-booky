@@ -40,16 +40,29 @@ export function CoverUpload({
   const [cropError, setCropError] = useState<string | null>(null);
   const [isUsingCamera, setIsUsingCamera] = useState(false);
   const [cameraFileName, setCameraFileName] = useState<string | null>(null);
+  const [originalCoverUrl, setOriginalCoverUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cleanup function for blob URLs
+  const cleanupBlobUrl = useCallback((url: string | null) => {
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.warn('Failed to revoke blob URL:', e);
+      }
+    }
+  }, []);
 
   // Handle file selection
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset previous state
+    // Reset previous state and cleanup
     setCropError(null);
     setSelectedFile(null);
+    cleanupBlobUrl(previewUrl);
     setPreviewUrl(null);
 
     // Validate file
@@ -69,9 +82,11 @@ export function CoverUpload({
       );
 
       if (needsCropping) {
-        // Show cropping UI
+        // Show cropping UI - store original for restoration on cancel
+        setOriginalCoverUrl(value || null);
         setSelectedFile(file);
-        setPreviewUrl(URL.createObjectURL(file));
+        const newPreviewUrl = URL.createObjectURL(file);
+        setPreviewUrl(newPreviewUrl);
         setIsCropping(true);
       } else {
         // Image is suitable, use directly
@@ -89,18 +104,19 @@ export function CoverUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [bookTitle, onChange]);
+  }, [bookTitle, onChange, previewUrl, cleanupBlobUrl, value]);
 
   // Handle camera capture
   const handleCameraCapture = useCallback(async (blob: Blob, fileName: string) => {
     setCameraFileName(fileName);
     
-    // Create preview URL for cropping
+    // Create preview URL for cropping - store original for restoration
+    setOriginalCoverUrl(value || null);
     const previewUrl = URL.createObjectURL(blob);
     setPreviewUrl(previewUrl);
     setIsUsingCamera(false);
     setIsCropping(true);
-  }, []);
+  }, [value]);
 
   // Handle camera cancellation
   const handleCameraCancel = useCallback(() => {
@@ -118,53 +134,59 @@ export function CoverUpload({
       );
       onChange(localPath, file);
       
-      // Reset cropping state
+      // Reset cropping state and cleanup
       setIsCropping(false);
       setSelectedFile(null);
       setCameraFileName(null);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
+      cleanupBlobUrl(previewUrl);
+      setPreviewUrl(null);
+      setOriginalCoverUrl(null);
     } catch (err) {
       setCropError('Failed to apply crop');
       console.error('Error applying crop:', err);
     } finally {
       setIsProcessing(false);
     }
-  }, [bookTitle, selectedFile, cameraFileName, previewUrl, onChange]);
+  }, [bookTitle, selectedFile, cameraFileName, previewUrl, onChange, cleanupBlobUrl]);
 
-  // Handle crop cancellation
+  // Handle crop cancellation - restore original cover
   const handleCropCancel = useCallback(() => {
+    // Restore original cover if it exists
+    if (originalCoverUrl) {
+      onChange(originalCoverUrl);
+    }
+    
+    // Reset cropping state and cleanup
     setIsCropping(false);
     setSelectedFile(null);
     setCameraFileName(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-  }, [previewUrl]);
+    cleanupBlobUrl(previewUrl);
+    setPreviewUrl(null);
+    setOriginalCoverUrl(null);
+  }, [previewUrl, onChange, cleanupBlobUrl, originalCoverUrl]);
 
   // Cleanup effect to revoke blob URLs on unmount
   useEffect(() => {
     return () => {
       // Cleanup any remaining blob URLs when component unmounts
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      cleanupBlobUrl(previewUrl);
     };
-  }, [previewUrl]);
+  }, [previewUrl, cleanupBlobUrl]);
 
   // Handle cover removal
   const handleRemove = useCallback(() => {
-    onChange('');
-    setSelectedFile(null);
+    // Cleanup preview URL if it exists
+    cleanupBlobUrl(previewUrl);
     setPreviewUrl(null);
-  }, [onChange]);
+    setOriginalCoverUrl(null);
+    onChange('');
+  }, [onChange, cleanupBlobUrl, previewUrl]);
 
   // Handle re-crop
   const handleReCrop = useCallback(() => {
     if (value) {
+      // Store current cover as original before starting new crop
+      setOriginalCoverUrl(value);
       setSelectedFile(null);
       setPreviewUrl(value);
       setIsCropping(true);
@@ -173,9 +195,9 @@ export function CoverUpload({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <h3 className="block text-sm font-medium text-gray-700 dark:text-gray-300">
         Cover Image
-      </label>
+      </h3>
 
       {/* Error message */}
       {(error || cropError) && (
@@ -207,6 +229,7 @@ export function CoverUpload({
               onClick={handleCropCancel}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               disabled={isProcessing}
+              aria-label="Close cropper"
             >
               <X size={20} />
             </button>
@@ -269,7 +292,8 @@ export function CoverUpload({
             </div>
           ) : (
             // Upload area
-            <div
+            <button
+              type="button"
               className={twMerge(
                 clsx(
                   'relative aspect-[6/9] w-full border-2 border-dashed rounded-xl transition-colors',
@@ -280,14 +304,7 @@ export function CoverUpload({
                 )
               )}
               onClick={() => !disabled && fileInputRef.current?.click()}
-              role="button"
-              tabIndex={disabled ? -1 : 0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  !disabled && fileInputRef.current?.click();
-                }
-              }}
+              disabled={disabled}
             >
               <input
                 ref={fileInputRef}
@@ -327,7 +344,7 @@ export function CoverUpload({
                   </button>
                 )}
               </div>
-            </div>
+            </button>
           )}
 
           {/* Hidden file input when there's a cover (for replacement) */}
