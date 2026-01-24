@@ -12,6 +12,15 @@ import type {
   ReadingStatus,
   ReadingGoal
 } from '../types';
+import { 
+  DATABASE_SCHEMA_VERSION,
+  createUpgradeHandler,
+  isVersionError,
+  isDatabaseClosedError,
+  checkDatabaseVersion,
+  normalizeDatabaseVersion,
+  logDatabaseVersionInfo
+} from './db-migration';
 
 // Cover image storage type
 interface CoverImageRecord {
@@ -39,9 +48,12 @@ class BookCollectionDB extends Dexie {
   constructor() {
     super('BookCollectionDB');
 
+    // Log version info for debugging
+    logDatabaseVersionInfo('DB Constructor');
+
     // Define schema and indexes with proper upgrade handling
-    // Version 2: Added readingGoals for reading goals feature
-    this.version(2).stores({
+    // Version 4: Normalized schema after lending feature removal
+    this.version(DATABASE_SCHEMA_VERSION).stores({
       books: 'id, isbn13, format, addedAt, title, [externalIds.openLibrary], [externalIds.googleBooks]',
       ratings: 'id, bookId, stars, updatedAt',
       tags: 'id, name',
@@ -53,50 +65,43 @@ class BookCollectionDB extends Dexie {
       readingLogs: 'id, bookId, status, createdAt',
       coverImages: 'id, createdAt',
       readingGoals: 'id, [type+year], [type+year+month], isActive'
-    }).upgrade(async (tx) => {
-      // Ensure all stores exist by accessing them
-      // This forces IndexedDB to create any missing stores during the upgrade process
-      //
-      // ROOT CAUSE OF NotFoundError:
-      // When data is imported from an older database version (e.g., via
-      // ./exports/books_export_archive.zip), the IndexedDB database may be
-      // created with a lower version number that doesn't include all stores.
-      // When Dexie.js tries to access these non-existent stores, it throws:
-      // "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase':
-      //  One of the specified object stores was not found"
-      //
-      // FIX:
-      // The .upgrade() handler is called when the database version increases.
-      // By accessing each table with tx.table().count(), we force IndexedDB
-      // to create any missing stores during the upgrade process.
-      // This ensures all stores defined in the schema exist regardless of
-      // how the database was created (fresh install vs import).
-      try {
-        await tx.table('books').count();
-        await tx.table('ratings').count();
-        await tx.table('tags').count();
-        await tx.table('bookTags').count();
-        await tx.table('collections').count();
-        await tx.table('collectionBooks').count();
-        await tx.table('syncQueue').count();
-        await tx.table('settings').count();
-        await tx.table('readingLogs').count();
-        await tx.table('coverImages').count();
-        await tx.table('readingGoals').count();
-      } catch (error) {
-        console.error('Error during database upgrade:', error);
-        // Ignore errors - Dexie will handle missing stores
-      }
-    });
+    }).upgrade(createUpgradeHandler());
   }
 }
 
 // Singleton instance
 export const db = new BookCollectionDB();
 
-// Initialize database with default settings
-export async function initializeDatabase() {
+// Initialize database with version checking and normalization
+export async function initializeDatabase(): Promise<{
+  success: boolean;
+  versionNormalized: boolean;
+  error?: string;
+}> {
   try {
+    // Check database version compatibility
+    const versionCheck = await checkDatabaseVersion();
+
+    if (!versionCheck.isValid) {
+      console.warn('Database version issue detected:', versionCheck.error);
+
+      // Attempt to normalize the version
+      const normalizeResult = await normalizeDatabaseVersion();
+
+      if (!normalizeResult.success) {
+        return {
+          success: false,
+          versionNormalized: false,
+          error: `Database version mismatch and normalization failed: ${normalizeResult.error}`,
+        };
+      }
+
+      return {
+        success: true,
+        versionNormalized: true,
+      };
+    }
+
     // Check if settings exist
     const existingSettings = await db.settings.get('userSettings');
     
@@ -110,46 +115,109 @@ export async function initializeDatabase() {
         dateFormat: 'MM/dd/yyyy'
       } as UserSettings & { id: string });
     }
+
+    return { success: true, versionNormalized: false };
   } catch (error) {
     console.error('Failed to initialize database:', error);
-    throw error;
+    return {
+      success: false,
+      versionNormalized: false,
+      error: error instanceof Error ? error.message : 'Unknown error during initialization',
+    };
   }
 }
 
 // Utility functions for common database operations
 export const bookOperations = {
+  /**
+   * Get all books with error handling for version mismatches
+   */
   async getAll() {
-    return await db.books.toArray();
+    try {
+      return await db.books.toArray();
+    } catch (error) {
+      // Handle version mismatch errors
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        console.error('Database version error detected in getAll:', error);
+        // Return empty array to allow graceful degradation
+        // The application should handle initialization/recovery
+        return [];
+      }
+      throw error;
+    }
   },
   
   async getById(id: string) {
-    return await db.books.get(id);
+    try {
+      return await db.books.get(id);
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        console.error('Database version error detected in getById:', error);
+        return undefined;
+      }
+      throw error;
+    }
   },
   
   async getByIsbn(isbn: string) {
-    return await db.books.where('isbn13').equals(isbn).first();
+    try {
+      return await db.books.where('isbn13').equals(isbn).first();
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   },
   
   async add(book: Book) {
-    return await db.books.add(book);
+    try {
+      return await db.books.add(book);
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        throw new Error('Database is not available. Please refresh the page.');
+      }
+      throw error;
+    }
   },
   
   async update(id: string, changes: Partial<Book>) {
-    return await db.books.update(id, changes);
+    try {
+      return await db.books.update(id, changes);
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        throw new Error('Database is not available. Please refresh the page.');
+      }
+      throw error;
+    }
   },
   
   async delete(id: string) {
-    return await db.books.delete(id);
+    try {
+      return await db.books.delete(id);
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        throw new Error('Database is not available. Please refresh the page.');
+      }
+      throw error;
+    }
   },
   
   async search(query: string) {
-    const lowerQuery = query.toLowerCase();
-    return await db.books
-      .filter(book => 
-        book.title.toLowerCase().includes(lowerQuery) ||
-        book.authors.some(author => author.toLowerCase().includes(lowerQuery))
-      )
-      .toArray();
+    try {
+      const lowerQuery = query.toLowerCase();
+      return await db.books
+        .filter(book => 
+          book.title.toLowerCase().includes(lowerQuery) ||
+          book.authors.some(author => author.toLowerCase().includes(lowerQuery))
+        )
+        .toArray();
+    } catch (error) {
+      if (isVersionError(error) || isDatabaseClosedError(error)) {
+        return [];
+      }
+      throw error;
+    }
   },
 
   /**
@@ -312,53 +380,44 @@ export const bookOperations = {
   },
 
   /**
-  * IndexedDB Database Setup with Dexie.js
-  * 
-  * Database Schema Version History:
-  * - Version 2: Added readingGoals store for reading goals feature
-  * 
-  * Root Cause of NotFoundError Issue:
-  * When data is imported from an older version (via ./exports/books_export_archive.zip),
-  * the IndexedDB database schema might not have all stores because:
-  * 1. The import process creates a fresh database that doesn't trigger schema upgrades
-  * 2. The database version might be lower than current, and Dexie.js might not auto-upgrade
-  * 3. Missing stores cause "NotFoundError: Failed to execute 'transaction' on 'IDBDatabase'"
-  *    when trying to access them
-  * 
-  * Fix Applied:
-  * - Added .upgrade() handler that forces creation of all stores during version upgrade
-  * - This ensures graceful degradation when stores don't exist
-  */
+   * Get book count with error handling for version mismatches
+   */
    async getCount(options: {
      search?: string;
      formats?: string[];
      tagIds?: string[];
    }) {
      const { search, formats } = options;
-     
-     // tagIds is reserved for future use with join queries
-     // let collection = db.books.toCollection();
-     let count = await db.books.count();
-     
-     if (search) {
-       const lowerSearch = search.toLowerCase();
-       const allBooks = await db.books
-         .filter(book => 
-           book.title.toLowerCase().includes(lowerSearch) ||
-           book.authors.some(author => author.toLowerCase().includes(lowerSearch))
-         )
-         .toArray();
-       
-       if (formats && formats.length > 0) {
-         const filtered = allBooks.filter(book => formats.includes(book.format));
-         count = filtered.length;
-       } else {
-         count = allBooks.length;
+
+     try {
+       // tagIds is reserved for future use with join queries
+       let count = await db.books.count();
+
+       if (search) {
+         const lowerSearch = search.toLowerCase();
+         const allBooks = await db.books
+           .filter(book =>
+             book.title.toLowerCase().includes(lowerSearch) ||
+             book.authors.some(author => author.toLowerCase().includes(lowerSearch))
+           )
+           .toArray();
+
+         if (formats && formats.length > 0) {
+           const filtered = allBooks.filter(book => formats.includes(book.format));
+           count = filtered.length;
+         } else {
+           count = allBooks.length;
+         }
        }
+
+       return count;
+     } catch (error) {
+       if (isVersionError(error) || isDatabaseClosedError(error)) {
+         return 0;
+       }
+       throw error;
      }
-     
-     return count;
-  },
+   },
 
   /**
    * Merge update: Apply partial book data to an existing book
