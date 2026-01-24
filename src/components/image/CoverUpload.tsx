@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ImageCropper } from './ImageCropper';
 import { CameraCapture } from '../camera/CameraCapture';
 import {
@@ -143,6 +143,16 @@ export function CoverUpload({
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
+  }, [previewUrl]);
+
+  // Cleanup effect to revoke blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup any remaining blob URLs when component unmounts
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
   }, [previewUrl]);
 
   // Handle cover removal

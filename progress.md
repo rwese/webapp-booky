@@ -8,6 +8,44 @@ This document tracks the implementation of change requests for the Book Collecti
 
 January 24, 2025
 
+## Critical Bug Fixes - January 24, 2026
+
+### Data Persistence Fix
+
+- **Enhanced** database module with lazy initialization to prevent early instantiation issues
+- **Added** proper blob URL cleanup in `getImageDimensions()` to prevent memory leaks
+- **Added** cleanup effect in `CoverUpload.tsx` to handle component unmounting
+- **Improved** service worker configuration with proper cache strategies
+- **Added** `cleanupOutdatedCaches: true` to automatically clean old caches
+- **Enhanced** cache matching with `ignoreVary: true` for proper header handling
+- **Extended** Google Fonts and API caching with proper configuration
+
+**Files Modified:**
+
+- `src/lib/db.ts` - Added lazy initialization pattern
+- `src/lib/db-migration.ts` - Enhanced data persistence monitoring
+- `src/lib/coverImageUtils.ts` - Added blob URL cleanup in getImageDimensions
+- `src/components/image/CoverUpload.tsx` - Added cleanup effect for blob URLs
+- `vite.config.ts` - Improved service worker configuration
+
+### Image Crop Cancellation Fix
+
+- **Fixed** blob URL cleanup when component unmounts
+- **Added** useEffect cleanup to revoke any remaining blob URLs
+- **Ensured** proper cleanup on both successful crop and cancellation
+
+### Service Worker Configuration Fix
+
+- **Added** `cleanupOutdatedCaches: true` to prevent cache bloat
+- **Added** `ignoreVary: true` to cache matching options for proper header handling
+- **Enhanced** cache strategies for all external resources
+- **Improved** swDest configuration for better manifest injection
+
+### DOM Nesting Fix
+
+- **Verified** Card component already uses `div` instead of `button` to avoid nested button issues
+- **Confirmed** existing accessibility attributes are properly implemented
+
 ## Completed Changes
 
 ### 1. Book Detail View - Reading Progress ✅

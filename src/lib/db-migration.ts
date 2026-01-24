@@ -353,12 +353,12 @@ export async function recoverFromVersionError(): Promise<{
 export function monitorDatabaseVersion(): void {
   // Log version info on startup for debugging
   logDatabaseVersionInfo('Version Monitor');
-  
+
   // Periodically check version consistency (every 5 minutes)
   setInterval(async () => {
     try {
       const versionCheck = await checkDatabaseVersion();
-      
+
       if (!versionCheck.isValid) {
         console.warn('Database version inconsistency detected:', {
           storedVersion: versionCheck.storedVersion,

@@ -190,14 +190,16 @@ export function getImageDimensions(file: File | Blob): Promise<{ width: number; 
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.addEventListener('load', () => {
+      // Revoke the blob URL to prevent memory leaks
+      URL.revokeObjectURL(image.src);
       resolve({ width: image.width, height: image.height });
     });
-    image.addEventListener('error', error => reject(error));
-    if (file instanceof Blob) {
-      image.src = URL.createObjectURL(file);
-    } else {
-      image.src = URL.createObjectURL(file);
-    }
+    image.addEventListener('error', error => {
+      URL.revokeObjectURL(image.src);
+      reject(error);
+    });
+    const blobUrl = URL.createObjectURL(file);
+    image.src = blobUrl;
   });
 }
 

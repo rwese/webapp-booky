@@ -59,8 +59,12 @@ export default defineConfig({
         ignoreURLParametersMatching: [/^v$/, /^t$/],
         // Suppress console warnings for missing precache matches
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
+        // Clean outdated caches on activation
+        cleanupOutdatedCaches: true,
+        // Define runtime caching strategies
         runtimeCaching: [
           {
+            // Cache Open Library API responses
             urlPattern: /^https:\/\/.*\.openlibrary\.org\/.*$/i,
             handler: 'CacheFirst',
             options: {
@@ -71,10 +75,15 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              },
+              // Handle Vary: Origin header properly
+              matchOptions: {
+                ignoreVary: true
               }
             }
           },
           {
+            // Cache Google Fonts stylesheets and fonts
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*$/i,
             handler: 'StaleWhileRevalidate',
             options: {
@@ -85,10 +94,15 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              },
+              // Handle Vary: Origin header for font loading
+              matchOptions: {
+                ignoreVary: true
               }
             }
           },
           {
+            // Cache Google Books API responses
             urlPattern: /^https:\/\/books\.google\.com\/.*$/i,
             handler: 'CacheFirst',
             options: {
@@ -99,10 +113,14 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              },
+              matchOptions: {
+                ignoreVary: true
               }
             }
           },
           {
+            // Cache Google Books API endpoint
             urlPattern: /^https:\/\/www\.googleapis\.com\/books\/.*$/i,
             handler: 'NetworkFirst',
             options: {
@@ -114,10 +132,14 @@ export default defineConfig({
               cacheableResponse: {
                 statuses: [0, 200]
               },
-              networkTimeoutSeconds: 10
+              networkTimeoutSeconds: 10,
+              matchOptions: {
+                ignoreVary: true
+              }
             }
           },
           {
+            // Cache Open Library cover images
             urlPattern: /^https:\/\/covers\.openlibrary\.org\/.*$/i,
             handler: 'CacheFirst',
             options: {
@@ -128,11 +150,15 @@ export default defineConfig({
               },
               cacheableResponse: {
                 statuses: [0, 200]
+              },
+              // Handle Vary: Origin header for cover images
+              matchOptions: {
+                ignoreVary: true
               }
             }
           },
-          // Enhanced Google Books cover caching
           {
+            // Enhanced Google Books cover caching
             urlPattern: /^https:\/\/books\.google\.com\/books\/.*\/images\/.*$/i,
             handler: 'CacheFirst',
             options: {
@@ -146,8 +172,8 @@ export default defineConfig({
               }
             }
           },
-          // Add cache for API responses (longer term)
           {
+            // Cache Open Library API responses (longer term)
             urlPattern: /^https:\/\/openlibrary\.org\/api\/.*$/i,
             handler: 'NetworkFirst',
             options: {
@@ -159,7 +185,10 @@ export default defineConfig({
               cacheableResponse: {
                 statuses: [0, 200]
               },
-              networkTimeoutSeconds: 15
+              networkTimeoutSeconds: 15,
+              matchOptions: {
+                ignoreVary: true
+              }
             }
           }
         ]
@@ -167,7 +196,9 @@ export default defineConfig({
       // Precaching for critical assets
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB for larger assets
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB for larger assets
+        // Suppress warning about missing precache matches
+        swDest: 'dist/sw.js'
       },
       devOptions: {
         enabled: true,

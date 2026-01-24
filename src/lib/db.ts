@@ -69,8 +69,18 @@ class BookCollectionDB extends Dexie {
   }
 }
 
-// Singleton instance
-export const db = new BookCollectionDB();
+// Singleton instance with lazy initialization
+let dbInstance: BookCollectionDB | null = null;
+
+export function getDatabase(): BookCollectionDB {
+  if (!dbInstance) {
+    dbInstance = new BookCollectionDB();
+  }
+  return dbInstance;
+}
+
+// Re-export the singleton as 'db' for backward compatibility
+export const db = getDatabase();
 
 // Initialize database with version checking and normalization
 export async function initializeDatabase(): Promise<{
