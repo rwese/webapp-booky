@@ -400,3 +400,158 @@ if (isQuotaExceededError(error)) {
 - Service worker generated with 31 precache entries
 - Main bundle: 469.91 kB (gzipped: 125.58 kB)
 - All 345 unit tests pass
+
+---
+
+## Additional Validation Issues Fixed - January 24, 2026
+
+### DOM Nesting Issue (Final Fix) ✅
+
+**Library.tsx BookCard Component:**
+
+- Converted anchor-based navigation to semantic button element
+- Added proper event handling to distinguish between card click and edit button click
+- Used `tabIndex={-1}` on edit button to prevent duplicate keyboard focus
+- Added `e.stopPropagation()` to edit button click handler
+- Ensured accessibility with proper ARIA labels and keyboard navigation
+
+**Before:**
+
+```jsx
+<a
+  href={`/book/${book.id}`}
+  className="block cursor-pointer"
+  onClick={(e) => { e.preventDefault(); navigate(`/book/${book.id}`); }}
+  tabIndex={0}
+  aria-label={`View details for ${book.title}`}
+>
+  {/* Card content */}
+</a>
+<button
+  aria-label="Edit book"
+  onClick={(e) => { e.preventDefault(); onEdit(book.id); }}
+>
+  <Edit size={16} />
+</button>
+```
+
+**After:**
+
+```jsx
+<button
+  type="button"
+  className="w-full text-left cursor-pointer"
+  onClick={(e) => {
+    if (!(e.target as HTMLElement).closest('[aria-label="Edit book"]')) {
+      e.preventDefault();
+      navigate(`/book/${book.id}`);
+    }
+  }}
+  tabIndex={0}
+  aria-label={`View details for ${book.title}`}
+>
+  {/* Card content */}
+</button>
+<button
+  type="button"
+  aria-label="Edit book"
+  onClick={(e) => {
+    e.stopPropagation();
+    onEdit(book.id);
+  }}
+  tabIndex={-1}
+>
+  <Edit size={16} />
+</button>
+```
+
+### Data Persistence Memory Leak (EditBook.tsx) ✅
+
+**EditBook.tsx Component:**
+
+- Added blob URL tracking with useRef to track current blob URL
+- Implemented cleanup effect to revoke blob URLs on component unmount
+- Added proper cleanup before creating new blob URL
+- Prevents memory leaks when navigating to/from edit book page
+
+**Changes:**
+
+```tsx
+const coverBlobUrlRef = useRef<string | null>(null)
+
+// Cleanup on unmount
+useEffect(() => {
+  return () => {
+    if (coverBlobUrlRef.current) {
+      URL.revokeObjectURL(coverBlobUrlRef.current)
+      coverBlobUrlRef.current = null
+    }
+  }
+}, [])
+
+// Load book and handle blob URL
+if (!loadedBook.coverUrl && loadedBook.localCoverPath) {
+  // Revoke previous blob URL if exists
+  if (coverBlobUrlRef.current) {
+    URL.revokeObjectURL(coverBlobUrlRef.current)
+    coverBlobUrlRef.current = null
+  }
+
+  const coverUrl = await coverImageOperations.getUrl(loadedBook.localCoverPath)
+  if (coverUrl) {
+    coverBlobUrlRef.current = coverUrl
+    loadedBook.coverUrl = coverUrl
+  }
+}
+```
+
+### Quota Handling Extended ✅
+
+**db.ts Database Operations:**
+
+- Added quota handling to `tagOperations.add()` and `tagOperations.update()`
+- Added quota handling to `collectionOperations.add()` and `collectionOperations.update()`
+- Added quota handling to `syncOperations.queueOperation()`
+- Added quota handling to `readingLogOperations.upsert()`
+- Added quota handling to `ratingOperations.upsert()`
+- Added quota handling to `settingsOperations.update()`
+- Added quota handling to `collectionOperations.addBookToCollection()`
+- Added quota handling to `bookOperations.update()`
+
+**Operations with Quota Handling:**
+
+- ✅ bookOperations.add
+- ✅ bookOperations.update
+- ✅ tagOperations.add
+- ✅ tagOperations.update
+- ✅ collectionOperations.add
+- ✅ collectionOperations.update
+- ✅ collectionOperations.addBookToCollection
+- ✅ syncOperations.queueOperation
+- ✅ readingLogOperations.upsert
+- ✅ ratingOperations.upsert
+- ✅ settingsOperations.update
+- ✅ coverImageOperations.store
+
+---
+
+## Verification Results - January 24, 2026
+
+### Build & Tests ✅
+
+| Check                  | Status                         |
+| ---------------------- | ------------------------------ |
+| TypeScript Compilation | ✅ Passed                      |
+| Production Build       | ✅ Passed (11.81s)             |
+| Linting                | ✅ Passed (0 warnings)         |
+| Unit Tests             | ✅ Passed (345/345)            |
+| Bundle Size            | 469.91 kB (gzipped: 125.58 kB) |
+| Service Worker         | 31 precache entries            |
+
+### Code Changes Summary
+
+| File                     | Changes                                              |
+| ------------------------ | ---------------------------------------------------- |
+| `src/pages/Library.tsx`  | DOM nesting fix - button element for card navigation |
+| `src/pages/EditBook.tsx` | Memory leak fix - blob URL cleanup with useRef       |
+| `src/lib/db.ts`          | Extended quota handling to 12 database operations    |

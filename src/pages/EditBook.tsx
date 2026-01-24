@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react';
 import { BookForm } from '../components/forms/BookForm';
@@ -19,6 +19,17 @@ export function EditBookPage() {
   const [saving, setSaving] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<ReadingStatus | undefined>(undefined);
   const { isRefreshing, refreshMetadata } = useBookMetadataRefresh();
+  const coverBlobUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Cleanup: revoke any existing blob URL when component unmounts
+    return () => {
+      if (coverBlobUrlRef.current) {
+        URL.revokeObjectURL(coverBlobUrlRef.current);
+        coverBlobUrlRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const loadBook = async () => {
@@ -39,8 +50,15 @@ export function EditBookPage() {
         // Resolve localCoverPath to a URL if coverUrl is not set
         // This ensures cover images from imports are visible in the edit view
         if (!loadedBook.coverUrl && loadedBook.localCoverPath) {
+          // Revoke previous blob URL if exists
+          if (coverBlobUrlRef.current) {
+            URL.revokeObjectURL(coverBlobUrlRef.current);
+            coverBlobUrlRef.current = null;
+          }
+          
           const coverUrl = await coverImageOperations.getUrl(loadedBook.localCoverPath);
           if (coverUrl) {
+            coverBlobUrlRef.current = coverUrl;
             loadedBook.coverUrl = coverUrl;
           }
         }

@@ -518,17 +518,23 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
 
   return (
     <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
-      <a
-        href={`/book/${book.id}`}
-        className="block cursor-pointer"
+      <button
+        type="button"
+        className="w-full text-left cursor-pointer"
         onClick={(e) => {
-          e.preventDefault();
-          navigate(`/book/${book.id}`);
+          // Only navigate if the click is not on the edit button
+          if (!(e.target as HTMLElement).closest('[aria-label="Edit book"]')) {
+            e.preventDefault();
+            navigate(`/book/${book.id}`);
+          }
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            navigate(`/book/${book.id}`);
+            // Only navigate if the focus is not on the edit button
+            if (!(e.target as HTMLElement).closest('[aria-label="Edit book"]')) {
+              e.preventDefault();
+              navigate(`/book/${book.id}`);
+            }
           }
         }}
         tabIndex={0}
@@ -561,7 +567,7 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
             {book.authors.join(', ')}
           </p>
         </div>
-      </a>
+      </button>
 
       {/* Edit button - positioned in top-right corner, separate from card link */}
       <button
@@ -569,12 +575,10 @@ function BookCard({ book, rating, viewMode, onDelete, onEdit, navigate }: BookCa
         className="absolute top-2 right-2 p-2 rounded-full shadow-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:opacity-100 z-10"
         aria-label="Edit book"
         onClick={(e) => {
-          e.preventDefault();
+          e.stopPropagation();
           onEdit(book.id);
         }}
-        onKeyDown={(e) => {
-          e.preventDefault();
-        }}
+        tabIndex={-1}
       >
         <Edit size={16} />
       </button>

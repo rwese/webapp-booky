@@ -280,6 +280,9 @@ export const bookOperations = {
       if (isVersionError(error) || isDatabaseClosedError(error)) {
         throw new Error('Database is not available. Please refresh the page.');
       }
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some books or cover images to free up space.');
+      }
       throw error;
     }
   },
@@ -612,11 +615,18 @@ export const ratingOperations = {
   },
   
   async upsert(rating: Rating) {
-    const existing = await db.ratings.where('bookId').equals(rating.bookId).first();
-    if (existing) {
-      return await db.ratings.update(existing.id, rating);
+    try {
+      const existing = await db.ratings.where('bookId').equals(rating.bookId).first();
+      if (existing) {
+        return await db.ratings.update(existing.id, rating);
+      }
+      return await db.ratings.add(rating);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some ratings to free up space.');
+      }
+      throw error;
     }
-    return await db.ratings.add(rating);
   }
 };
 
@@ -630,11 +640,25 @@ export const tagOperations = {
   },
   
   async add(tag: Tag) {
-    return await db.tags.add(tag);
+    try {
+      return await db.tags.add(tag);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some tags to free up space.');
+      }
+      throw error;
+    }
   },
   
   async update(id: string, changes: Partial<Tag>) {
-    return await db.tags.update(id, changes);
+    try {
+      return await db.tags.update(id, changes);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some tags to free up space.');
+      }
+      throw error;
+    }
   },
   
   async delete(id: string) {
@@ -697,11 +721,25 @@ export const collectionOperations = {
   },
   
   async add(collection: Collection) {
-    return await db.collections.add(collection);
+    try {
+      return await db.collections.add(collection);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some collections to free up space.');
+      }
+      throw error;
+    }
   },
   
   async update(id: string, changes: Partial<Collection>) {
-    return await db.collections.update(id, changes);
+    try {
+      return await db.collections.update(id, changes);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some collections to free up space.');
+      }
+      throw error;
+    }
   },
   
   async delete(id: string) {
@@ -725,26 +763,33 @@ export const collectionOperations = {
   },
   
   async addBookToCollection(collectionId: string, bookId: string) {
-    const existing = await db.collectionBooks
-      .where('[collectionId+bookId]')
-      .equals([collectionId, bookId])
-      .first();
-    
-    if (!existing) {
-      // Get max order
-      const collectionBooks = await db.collectionBooks
-        .where('collectionId')
-        .equals(collectionId)
-        .toArray();
+    try {
+      const existing = await db.collectionBooks
+        .where('[collectionId+bookId]')
+        .equals([collectionId, bookId])
+        .first();
       
-      const maxOrder = collectionBooks.reduce((max, cb) => Math.max(max, cb.order), 0);
-      
-      return await db.collectionBooks.add({
-        collectionId,
-        bookId,
-        order: maxOrder + 1,
-        addedAt: new Date()
-      });
+      if (!existing) {
+        // Get max order
+        const collectionBooks = await db.collectionBooks
+          .where('collectionId')
+          .equals(collectionId)
+          .toArray();
+        
+        const maxOrder = collectionBooks.reduce((max, cb) => Math.max(max, cb.order), 0);
+        
+        return await db.collectionBooks.add({
+          collectionId,
+          bookId,
+          order: maxOrder + 1,
+          addedAt: new Date()
+        });
+      }
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some collection items to free up space.');
+      }
+      throw error;
     }
   },
   
@@ -770,13 +815,20 @@ export const collectionOperations = {
 
 export const syncOperations = {
   async queueOperation(operation: Omit<SyncOperation, 'id' | 'timestamp' | 'synced'>) {
-    return await db.syncQueue.add({
-      ...operation,
-      id: crypto.randomUUID(),
-      timestamp: new Date(),
-      synced: false,
-      retryCount: 0
-    });
+    try {
+      return await db.syncQueue.add({
+        ...operation,
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        synced: false,
+        retryCount: 0
+      });
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please clear some sync operations to free up space.');
+      }
+      throw error;
+    }
   },
   
   async getPendingOperations() {
@@ -882,11 +934,18 @@ export const settingsOperations = {
   },
   
   async update(changes: Partial<UserSettings>) {
-    const existing = await db.settings.get('userSettings');
-    if (existing) {
-      return await db.settings.update('userSettings', changes);
+    try {
+      const existing = await db.settings.get('userSettings');
+      if (existing) {
+        return await db.settings.update('userSettings', changes);
+      }
+      return await db.settings.put({ id: 'userSettings', ...changes } as UserSettings);
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please free up space.');
+      }
+      throw error;
     }
-    return await db.settings.put({ id: 'userSettings', ...changes } as UserSettings);
   }
 };
 
@@ -906,13 +965,20 @@ export const readingLogOperations = {
   },
   
   async upsert(readingLog: ReadingLog): Promise<string> {
-    const existing = await db.readingLogs.where('bookId').equals(readingLog.bookId).first();
-    if (existing) {
-      await db.readingLogs.update(existing.id, readingLog);
-      return existing.id;
+    try {
+      const existing = await db.readingLogs.where('bookId').equals(readingLog.bookId).first();
+      if (existing) {
+        await db.readingLogs.update(existing.id, readingLog);
+        return existing.id;
+      }
+      const id = await db.readingLogs.add(readingLog);
+      return id as string;
+    } catch (error) {
+      if (isQuotaExceededError(error)) {
+        throw new Error('Storage quota exceeded. Please delete some reading logs to free up space.');
+      }
+      throw error;
     }
-    const id = await db.readingLogs.add(readingLog);
-    return id as string;
   },
   
   async deleteByBookId(bookId: string): Promise<number> {
