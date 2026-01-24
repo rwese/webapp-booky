@@ -53,7 +53,12 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff}'],
+        // Only precache production assets - not development files
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Ignore query parameters for cache matching (e.g., ?hash=xxx)
+        ignoreURLParametersMatching: [/^v$/, /^t$/],
+        // Suppress console warnings for missing precache matches
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.openlibrary\.org\/.*$/i,

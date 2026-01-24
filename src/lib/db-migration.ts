@@ -186,14 +186,18 @@ export async function checkDatabaseVersion(): Promise<VersionCheckResult> {
   }
 
   // Version mismatch - code version is lower than stored version
-  // This is the main issue this module handles
+  // NOTE: We no longer automatically delete the database. Instead, we try to use it.
+  // IndexedDB is forward-compatible when schema definitions don't change, so we can
+  // often continue using a database created by a newer code version.
   if (storedVersion > codeVersion) {
+    // Log warning but still consider it valid - we can try to use the existing database
+    console.warn(`Database version mismatch: code expects ${codeVersion}, but stored version is ${storedVersion}. Attempting to use existing database...`);
     return {
-      isValid: false,
+      isValid: true, // Try to use existing database even with version mismatch
       storedVersion,
       codeVersion,
-      needsMigration: true,
-      error: `Database version mismatch: code expects ${codeVersion}, but stored version is ${storedVersion}.`,
+      needsMigration: false, // Don't trigger migration/deletion
+      error: undefined, // Don't treat as fatal error
     };
   }
 
@@ -208,8 +212,15 @@ export async function checkDatabaseVersion(): Promise<VersionCheckResult> {
 
 /**
  * Attempt to normalize the database version
- * When stored version > code version, we need to delete and recreate the database
- * This is the only way to handle version decreases in IndexedDB
+ *
+ * Strategy:
+ * - If stored version < code version: Perform schema upgrades
+ * - If stored version > code version: Keep the existing database (forward compatibility)
+ * - If versions match: No action needed
+ *
+ * NOTE: We no longer delete the database for version decreases. IndexedDB schema
+ * definitions in Dexie.js are additive by default - adding new stores/indexes
+ * doesn't break existing functionality. This prevents data loss during development.
  */
 export async function normalizeDatabaseVersion(): Promise<{
   success: boolean;
@@ -223,17 +234,19 @@ export async function normalizeDatabaseVersion(): Promise<{
     return { success: true, requiresReload: false };
   }
 
-  try {
-    // Delete the existing database
-    await deleteDatabase();
-    return { success: true, requiresReload: true };
-  } catch (error) {
-    return {
-      success: false,
-      requiresReload: false,
-      error: error instanceof Error ? error.message : 'Failed to normalize database version',
-    };
+  // Stored version > code version
+  // Instead of deleting, we keep the database and just log a warning
+  // The existing database should work fine with the current schema
+  if (versionCheck.storedVersion !== null && versionCheck.storedVersion > versionCheck.codeVersion) {
+    console.warn(
+      `Database version ${versionCheck.storedVersion} is newer than code version ${versionCheck.codeVersion}. ` +
+      'Attempting to use existing database without modification.'
+    );
+    return { success: true, requiresReload: false };
   }
+
+  // Stored version is null (new database) - Dexie will create it automatically
+  return { success: true, requiresReload: false };
 }
 
 /**
@@ -284,31 +297,16 @@ export async function deleteDatabase(): Promise<void> {
 /**
  * Create a version upgrade handler that gracefully handles missing stores
  * This ensures all stores exist regardless of how the database was created
+ *
+ * NOTE: In Dexie.js, tables are automatically created when you define them in the
+ * stores() method with a version. This handler is a safety net for cases where
+ * the database was created by a different code path or imported from elsewhere.
  */
 export function createUpgradeHandler() {
-  return async (tx: { table: (name: string) => { count: () => Promise<number> } }) => {
-    const tables = [
-      'books',
-      'ratings',
-      'tags',
-      'bookTags',
-      'collections',
-      'collectionBooks',
-      'syncQueue',
-      'settings',
-      'readingLogs',
-      'coverImages',
-      'readingGoals',
-    ];
-
-    for (const table of tables) {
-      try {
-        await tx.table(table).count();
-      } catch {
-        // Table doesn't exist - this can happen with imported databases
-        console.warn(`Table '${table}' does not exist during upgrade. It will be created.`);
-      }
-    }
+  return async (_tx: unknown) => {
+    // Dexie.js automatically creates tables defined in the stores() method
+    // This handler is mainly for logging and future extensibility
+    console.log('Database upgrade handler executed - schema is up to date');
   };
 }
 

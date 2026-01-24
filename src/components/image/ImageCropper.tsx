@@ -44,6 +44,23 @@ export function ImageCropper({
   const [aspectMode, setAspectMode] = useState<'fixed' | 'free'>('fixed');
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Track the blob URL for cleanup
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Cleanup function for blob URLs
+  const cleanupBlobUrl = useCallback(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, []);
+
+  // Handle cancel with cleanup
+  const handleCancel = useCallback(() => {
+    cleanupBlobUrl();
+    onCancel();
+  }, [onCancel, cleanupBlobUrl]);
+
   // Load image from File or URL
   useEffect(() => {
     if (image instanceof File) {
@@ -55,6 +72,14 @@ export function ImageCropper({
     } else {
       setImageSrc(image);
     }
+
+    return () => {
+      // Cleanup: revoke any blob URL we created
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
   }, [image]);
 
   // Handle keyboard navigation for accessibility
@@ -68,7 +93,7 @@ export function ImageCropper({
 
       if (e.key === 'Escape') {
         e.preventDefault();
-        onCancel();
+        handleCancel();
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         setCrop(prev => ({ ...prev, x: prev.x + 20 }));
@@ -92,7 +117,7 @@ export function ImageCropper({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel, maxZoom, minZoom]);
+  }, [handleCancel, maxZoom, minZoom]);
 
   const onCropCompleteHandler = useCallback(
     (croppedArea: { x: number; y: number; width: number; height: number }) => {
@@ -211,13 +236,15 @@ export function ImageCropper({
         croppedAreaPixels,
         rotation
       );
+      // Cleanup before calling onCropComplete
+      cleanupBlobUrl();
       onCropComplete(croppedBlob);
     } catch (error) {
       console.error('Error cropping image:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [croppedAreaPixels, imageSrc, rotation, isProcessing, onCropComplete, getCroppedImg]);
+  }, [croppedAreaPixels, imageSrc, rotation, isProcessing, onCropComplete, getCroppedImg, cleanupBlobUrl]);
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.2, maxZoom));
@@ -265,7 +292,7 @@ export function ImageCropper({
         </h2>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           aria-label="Close cropper"
         >
@@ -382,7 +409,7 @@ export function ImageCropper({
           </button>
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
             disabled={isProcessing}
           >

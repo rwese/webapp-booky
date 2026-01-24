@@ -101,20 +101,27 @@ interface CardProps {
 }
 
 export function Card({ children, className, hover = false, onClick }: CardProps) {
-  const Component = hover ? 'button' : 'div';
-
+  // Always use div to avoid nested button issues
+  // Use proper ARIA attributes for accessibility when interactive
   return (
-    <Component
+    <div
       className={twMerge(clsx(
         cardStyles.base,
         hover && cardStyles.interactive,
         className
       ))}
       onClick={onClick}
-      type={onClick ? 'button' : undefined}
+      role={onClick || hover ? 'button' : undefined}
+      tabIndex={onClick || hover ? 0 : undefined}
+      onKeyDown={onClick || hover ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
     >
       {children}
-    </Component>
+    </div>
   );
 }
 
