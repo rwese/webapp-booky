@@ -30,6 +30,7 @@ export function BookForm({
     authors: initialData?.authors || [],
     isbn13: initialData?.isbn13 || '',
     coverUrl: initialData?.coverUrl || '',
+    localCoverPath: initialData?.localCoverPath || '',
     description: initialData?.description || '',
     publisher: initialData?.publisher || '',
     publishedYear: initialData?.publishedYear || undefined,
@@ -49,8 +50,8 @@ export function BookForm({
   const authorSearch = useAutocomplete('authors', 10);
   const publisherSearch = useAutocomplete('publishers', 10);
 
-  const handleCoverChange = (coverUrl: string) => {
-    setFormData({ ...formData, coverUrl });
+  const handleCoverChange = (coverUrl: string, localCoverPath?: string) => {
+    setFormData({ ...formData, coverUrl, localCoverPath });
   };
 
   const handleAuthorChange = (value: string) => {
@@ -78,6 +79,7 @@ export function BookForm({
       authors: formData.authors || [],
       isbn13: formData.isbn13,
       coverUrl: formData.coverUrl,
+      localCoverPath: formData.localCoverPath,
       description: formData.description,
       publisher: formData.publisher,
       publishedYear: formData.publishedYear,

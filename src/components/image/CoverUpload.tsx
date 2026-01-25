@@ -17,10 +17,11 @@ import {
   processCroppedImage,
   BOOK_COVER_ASPECT_RATIO
 } from '../../lib/coverImageUtils';
+import { coverImageOperations } from '../../lib/db';
 
 interface CoverUploadProps {
   value?: string; // Current cover URL
-  onChange: (coverUrl: string, coverFile?: File) => void;
+  onChange: (coverUrl: string, localCoverPath?: string) => void;
   bookTitle: string;
   error?: string;
   disabled?: boolean;
@@ -89,10 +90,16 @@ export function CoverUpload({
         setPreviewUrl(newPreviewUrl);
         setIsCropping(true);
       } else {
-        // Image is suitable, use directly
+        // Image is suitable, use directly - store in IndexedDB
         setIsProcessing(true);
-        const { localPath } = await processCroppedImage(file, file.name, bookTitle);
-        onChange(localPath, file);
+        const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        await coverImageOperations.store(file, imageId);
+        const coverUrl = await coverImageOperations.getUrl(imageId);
+        if (coverUrl) {
+          onChange(coverUrl, imageId);
+        } else {
+          setCropError('Failed to process image');
+        }
         setIsProcessing(false);
       }
     } catch (err) {
@@ -127,12 +134,27 @@ export function CoverUpload({
   const handleCropComplete = useCallback(async (croppedBlob: Blob) => {
     setIsProcessing(true);
     try {
-      const { localPath, file } = await processCroppedImage(
-        croppedBlob, 
-        bookTitle,
-        cameraFileName || selectedFile?.name
-      );
-      onChange(localPath, file);
+      // Store the cropped blob directly in IndexedDB (no need to create File first)
+      const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      
+      console.log('Storing cropped image in IndexedDB:', {
+        size: croppedBlob.size,
+        type: croppedBlob.type,
+        imageId
+      });
+      
+      await coverImageOperations.store(croppedBlob, imageId);
+      
+      // Get the blob URL
+      const coverUrl = await coverImageOperations.getUrl(imageId);
+      
+      console.log('Retrieved cover URL:', coverUrl);
+      
+      if (coverUrl) {
+        onChange(coverUrl, imageId);
+      } else {
+        throw new Error('Failed to generate cover URL');
+      }
       
       // Reset cropping state and cleanup
       setIsCropping(false);
@@ -147,13 +169,13 @@ export function CoverUpload({
     } finally {
       setIsProcessing(false);
     }
-  }, [bookTitle, selectedFile, cameraFileName, previewUrl, onChange, cleanupBlobUrl]);
+  }, [previewUrl, onChange, cleanupBlobUrl]);
 
   // Handle crop cancellation - restore original cover
   const handleCropCancel = useCallback(() => {
-    // Restore original cover if it exists
+    // Restore original cover if it exists (pass null for localCoverPath since we're restoring existing)
     if (originalCoverUrl) {
-      onChange(originalCoverUrl);
+      onChange(originalCoverUrl, undefined);
     }
     
     // Reset cropping state and cleanup
@@ -165,21 +187,13 @@ export function CoverUpload({
     setOriginalCoverUrl(null);
   }, [previewUrl, onChange, cleanupBlobUrl, originalCoverUrl]);
 
-  // Cleanup effect to revoke blob URLs on unmount
-  useEffect(() => {
-    return () => {
-      // Cleanup any remaining blob URLs when component unmounts
-      cleanupBlobUrl(previewUrl);
-    };
-  }, [previewUrl, cleanupBlobUrl]);
-
   // Handle cover removal
   const handleRemove = useCallback(() => {
     // Cleanup preview URL if it exists
     cleanupBlobUrl(previewUrl);
     setPreviewUrl(null);
     setOriginalCoverUrl(null);
-    onChange('');
+    onChange('', '');
   }, [onChange, cleanupBlobUrl, previewUrl]);
 
   // Handle re-crop
