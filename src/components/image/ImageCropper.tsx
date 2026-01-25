@@ -221,11 +221,18 @@ export function ImageCropper({
             viewMode={1}
             dragMode="move"
             autoCropArea={1}
+            cropBoxMovable={false}
+            toggleDragModeOnDblclick={false}
             responsive={true}
             background={false}
             checkOrientation={true}
             ready={onCropperReady}
           />
+          <style>{`
+            .cropper-face {
+              pointer-events: none !important;
+            }
+          `}</style>
         </div>
 
         {/* Controls */}
