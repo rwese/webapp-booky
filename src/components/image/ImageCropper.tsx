@@ -218,9 +218,9 @@ export function ImageCropper({
             src={imageSrc}
             style={{ height: '100%', width: '100%' }}
             aspectRatio={currentAspectRatio}
-            viewMode={2}
+            viewMode={1}
             dragMode="move"
-            autoCropArea={0.9}
+            autoCropArea={1}
             responsive={true}
             background={false}
             checkOrientation={true}
