@@ -212,13 +212,13 @@ export function ImageCropper({
         </div>
 
         {/* Cropper Container */}
-        <div className="relative flex-1 min-h-[250px] max-h-[40vh] sm:max-h-[50vh] bg-gray-100 dark:bg-gray-900">
+        <div className="relative flex-1 min-h-[300px] bg-gray-100 dark:bg-gray-900 overflow-hidden">
           <Cropper
             ref={cropperRef}
             src={imageSrc}
             style={{ height: '100%', width: '100%' }}
             aspectRatio={currentAspectRatio}
-            viewMode={1}
+            viewMode={2}
             dragMode="move"
             autoCropArea={0.9}
             responsive={true}
