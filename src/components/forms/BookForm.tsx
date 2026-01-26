@@ -87,6 +87,7 @@ export function BookForm({
       pageCount: formData.pageCount,
       format: formData.format as BookFormat,
       addedAt: initialData?.addedAt || new Date(),
+      updatedAt: new Date(),
       externalIds: initialData?.externalIds || {},
       needsSync: true,
       localOnly: true,

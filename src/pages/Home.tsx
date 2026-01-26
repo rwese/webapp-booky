@@ -2,14 +2,12 @@ import { Link } from 'react-router-dom';
 import { Plus, ArrowRight, Library, TrendingUp, Clock } from 'lucide-react';
 import { Card, Badge } from '../components/common/Button';
 import { useBooks } from '../hooks/useBooks';
-import { useSyncStatus } from '../hooks/useSync';
 import { useNavigate } from 'react-router-dom';
 import { BookCover } from '../components/image/BookCover';
 import type { Book as BookType } from '../types';
 
 export function HomePage() {
   const books = useBooks();
-  const { isOnline, pendingCount } = useSyncStatus();
   const navigate = useNavigate();
   
   const recentBooks = books?.slice(0, 3) || [];
@@ -122,21 +120,6 @@ export function HomePage() {
             }
           />
         )}
-        
-        {/* Sync Status */}
-        <div className="mt-8 flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-          </div>
-          {pendingCount > 0 && (
-            <Badge variant="warning">
-              {pendingCount} pending sync
-            </Badge>
-          )}
-        </div>
       </div>
     </div>
   );

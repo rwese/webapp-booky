@@ -218,6 +218,7 @@ export async function searchByISBN(isbn: string, preferGerman: boolean = true): 
         },
         format: 'physical' as BookFormat,
         addedAt: new Date(),
+        updatedAt: new Date(),
         needsSync: true,
         localOnly: true
       }
@@ -352,6 +353,7 @@ export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null
         },
         format: volumeData.saleInfo?.isEbook ? 'pdf' : 'physical' as BookFormat,
         addedAt: new Date(),
+        updatedAt: new Date(),
         needsSync: true,
         localOnly: true
       }

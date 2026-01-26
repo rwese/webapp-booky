@@ -303,6 +303,7 @@ export function AddBookPage() {
       pageCount: newBook.pageCount,
       format: newBook.format as BookType['format'],
       addedAt: new Date(),
+      updatedAt: new Date(),
       externalIds: {},
       needsSync: true,
       localOnly: true
