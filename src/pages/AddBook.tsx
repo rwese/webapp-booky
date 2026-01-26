@@ -469,7 +469,6 @@ export function AddBookPage() {
               <CoverUpload
                 value={newBook.coverUrl}
                 onChange={(coverUrl) => setNewBook({ ...newBook, coverUrl })}
-                bookTitle={newBook.title || 'book'}
               />
               
               <Input

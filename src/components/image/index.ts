@@ -1,3 +1,2 @@
-export { ImageCropper } from './ImageCropper';
-export type { ImageCropperProps } from './ImageCropper';
 export { BookCover } from './BookCover';
+export { default as CoverUpload } from './CoverUpload';

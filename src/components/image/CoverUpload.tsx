@@ -1,28 +1,21 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ImageCropper } from './ImageCropper';
+import React, { useState, useRef, useCallback } from 'react';
 import { CameraCapture } from '../camera/CameraCapture';
 import {
   Upload,
   X,
-  Crop as CropIcon,
   RefreshCw,
   Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
-  isValidCoverImage,
-  getImageDimensions,
-  imageNeedsCropping,
-  processCroppedImage,
-  BOOK_COVER_ASPECT_RATIO
+  isValidCoverImage
 } from '../../lib/coverImageUtils';
 import { coverImageOperations } from '../../lib/db';
 
 interface CoverUploadProps {
   value?: string; // Current cover URL
   onChange: (coverUrl: string, localCoverPath?: string) => void;
-  bookTitle: string;
   error?: string;
   disabled?: boolean;
 }
@@ -30,182 +23,73 @@ interface CoverUploadProps {
 export function CoverUpload({
   value,
   onChange,
-  bookTitle,
   error,
   disabled = false
 }: CoverUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isCropping, setIsCropping] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cropError, setCropError] = useState<string | null>(null);
   const [isUsingCamera, setIsUsingCamera] = useState(false);
-  const [cameraFileName, setCameraFileName] = useState<string | null>(null);
-  const [originalCoverUrl, setOriginalCoverUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Cleanup function for blob URLs
-  const cleanupBlobUrl = useCallback((url: string | null) => {
-    if (url && url.startsWith('blob:')) {
-      try {
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        console.warn('Failed to revoke blob URL:', e);
-      }
-    }
-  }, []);
 
   // Handle file selection
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset previous state and cleanup
-    setCropError(null);
-    setSelectedFile(null);
-    cleanupBlobUrl(previewUrl);
-    setPreviewUrl(null);
-
     // Validate file
     if (!isValidCoverImage(file)) {
-      setCropError('Please select a valid image file (JPEG, PNG, GIF, WebP) under 5MB');
+      onChange('', '');
       return;
     }
 
+    setIsProcessing(true);
     try {
-      // Check if image needs cropping
-      const dimensions = await getImageDimensions(file);
-      const needsCropping = imageNeedsCropping(
-        dimensions.width,
-        dimensions.height,
-        BOOK_COVER_ASPECT_RATIO,
-        2000
-      );
-
-      if (needsCropping) {
-        // Show cropping UI - store original for restoration on cancel
-        setOriginalCoverUrl(value || null);
-        setSelectedFile(file);
-        const newPreviewUrl = URL.createObjectURL(file);
-        setPreviewUrl(newPreviewUrl);
-        setIsCropping(true);
-      } else {
-        // Image is suitable, use directly - store in IndexedDB
-        setIsProcessing(true);
-        const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-        await coverImageOperations.store(file, imageId);
-        const coverUrl = await coverImageOperations.getUrl(imageId);
-        if (coverUrl) {
-          onChange(coverUrl, imageId);
-        } else {
-          setCropError('Failed to process image');
-        }
-        setIsProcessing(false);
+      // Store the image directly in IndexedDB
+      const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      await coverImageOperations.store(file, imageId);
+      const coverUrl = await coverImageOperations.getUrl(imageId);
+      if (coverUrl) {
+        onChange(coverUrl, imageId);
       }
     } catch (err) {
-      setCropError('Failed to process image');
-      console.error('Error processing image:', err);
+      console.error('Error storing cover image:', err);
+    } finally {
+      setIsProcessing(false);
     }
 
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [bookTitle, onChange, previewUrl, cleanupBlobUrl, value]);
+  }, [onChange]);
 
   // Handle camera capture
-  const handleCameraCapture = useCallback(async (blob: Blob, fileName: string) => {
-    setCameraFileName(fileName);
-    
-    // Create preview URL for cropping - store original for restoration
-    setOriginalCoverUrl(value || null);
-    const previewUrl = URL.createObjectURL(blob);
-    setPreviewUrl(previewUrl);
-    setIsUsingCamera(false);
-    setIsCropping(true);
-  }, [value]);
+  const handleCameraCapture = useCallback(async (blob: Blob, _fileName: string) => {
+    setIsProcessing(true);
+    try {
+      // Store the captured image directly
+      const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      await coverImageOperations.store(blob, imageId);
+      const coverUrl = await coverImageOperations.getUrl(imageId);
+      if (coverUrl) {
+        onChange(coverUrl, imageId);
+      }
+    } catch (err) {
+      console.error('Error storing captured image:', err);
+    } finally {
+      setIsProcessing(false);
+      setIsUsingCamera(false);
+    }
+  }, [onChange]);
 
   // Handle camera cancellation
   const handleCameraCancel = useCallback(() => {
     setIsUsingCamera(false);
   }, []);
 
-  // Handle crop completion
-  const handleCropComplete = useCallback(async (croppedBlob: Blob) => {
-    setIsProcessing(true);
-    try {
-      // Store the cropped blob directly in IndexedDB (no need to create File first)
-      const imageId = `book-cover-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      
-      console.log('Storing cropped image in IndexedDB:', {
-        size: croppedBlob.size,
-        type: croppedBlob.type,
-        imageId
-      });
-      
-      await coverImageOperations.store(croppedBlob, imageId);
-      
-      // Get the blob URL
-      const coverUrl = await coverImageOperations.getUrl(imageId);
-      
-      console.log('Retrieved cover URL:', coverUrl);
-      
-      if (coverUrl) {
-        onChange(coverUrl, imageId);
-      } else {
-        throw new Error('Failed to generate cover URL');
-      }
-      
-      // Reset cropping state and cleanup
-      setIsCropping(false);
-      setSelectedFile(null);
-      setCameraFileName(null);
-      cleanupBlobUrl(previewUrl);
-      setPreviewUrl(null);
-      setOriginalCoverUrl(null);
-    } catch (err) {
-      setCropError('Failed to apply crop');
-      console.error('Error applying crop:', err);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [previewUrl, onChange, cleanupBlobUrl]);
-
-  // Handle crop cancellation - restore original cover
-  const handleCropCancel = useCallback(() => {
-    // Restore original cover if it exists (pass null for localCoverPath since we're restoring existing)
-    if (originalCoverUrl) {
-      onChange(originalCoverUrl, undefined);
-    }
-    
-    // Reset cropping state and cleanup
-    setIsCropping(false);
-    setSelectedFile(null);
-    setCameraFileName(null);
-    cleanupBlobUrl(previewUrl);
-    setPreviewUrl(null);
-    setOriginalCoverUrl(null);
-  }, [previewUrl, onChange, cleanupBlobUrl, originalCoverUrl]);
-
   // Handle cover removal
   const handleRemove = useCallback(() => {
-    // Cleanup preview URL if it exists
-    cleanupBlobUrl(previewUrl);
-    setPreviewUrl(null);
-    setOriginalCoverUrl(null);
     onChange('', '');
-  }, [onChange, cleanupBlobUrl, previewUrl]);
-
-  // Handle re-crop
-  const handleReCrop = useCallback(() => {
-    if (value) {
-      // Store current cover as original before starting new crop
-      setOriginalCoverUrl(value);
-      setSelectedFile(null);
-      setPreviewUrl(value);
-      setIsCropping(true);
-    }
-  }, [value]);
+  }, [onChange]);
 
   return (
     <div className="space-y-2">
@@ -214,14 +98,14 @@ export function CoverUpload({
       </h3>
 
       {/* Error message */}
-      {(error || cropError) && (
+      {error && (
         <p className="text-sm text-red-600 dark:text-red-400">
-          {error || cropError}
+          {error}
         </p>
       )}
 
       {/* Camera View */}
-      {isUsingCamera && !isCropping && (
+      {isUsingCamera && (
         <div className="relative">
           <CameraCapture
             onCapture={handleCameraCapture}
@@ -231,45 +115,8 @@ export function CoverUpload({
         </div>
       )}
 
-      {/* Cropping View */}
-      {isCropping && (
-        <div className="relative">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Adjust the crop area for your cover image
-            </p>
-            <button
-              type="button"
-              onClick={handleCropCancel}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              disabled={isProcessing}
-              aria-label="Close cropper"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          
-          {isProcessing ? (
-            <div className="flex items-center justify-center p-12 bg-gray-100 dark:bg-gray-800 rounded-xl">
-              <div className="text-center">
-                <RefreshCw size={32} className="animate-spin mx-auto text-primary-600" />
-                <p className="mt-2 text-gray-600 dark:text-gray-400">Processing image...</p>
-              </div>
-            </div>
-          ) : (
-            <ImageCropper
-              image={previewUrl || selectedFile!}
-              onCropComplete={handleCropComplete}
-              onCancel={handleCropCancel}
-              aspectRatio={BOOK_COVER_ASPECT_RATIO}
-              aspectLabel="6:9"
-            />
-          )}
-        </div>
-      )}
-
       {/* Cover Preview/Upload View */}
-      {!isCropping && (
+      {!isUsingCamera && (
         <>
           {value ? (
             // Show current cover with options
@@ -280,17 +127,17 @@ export function CoverUpload({
                   alt="Book cover"
                   className="w-full h-full object-cover"
                 />
-                
+
                 {/* Overlay with actions */}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                   <button
                     type="button"
-                    onClick={handleReCrop}
+                    onClick={() => fileInputRef.current?.click()}
                     className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                     disabled={disabled}
                   >
-                    <CropIcon size={18} />
-                    Re-crop
+                    <Camera size={18} />
+                    Change
                   </button>
                   <button
                     type="button"

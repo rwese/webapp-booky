@@ -151,7 +151,6 @@ export function BookForm({
             <CoverUpload
               value={formData.coverUrl}
               onChange={handleCoverChange}
-              bookTitle={formData.title || 'book'}
             />
           </div>
 
