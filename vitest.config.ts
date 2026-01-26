@@ -23,5 +23,19 @@ export default defineConfig({
       '**/{祖,node_modules}/**',
       'src/__tests__/setup.ts', // Exclude setup file from test discovery
     ],
+    // Coverage configuration for CI
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      reportsDirectory: './coverage',
+      include: ['src/**'],
+      exclude: [
+        'src/__tests__/**',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/types/**',
+        'src/vite-env.d.ts',
+      ],
+    },
   },
 });
