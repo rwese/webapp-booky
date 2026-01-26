@@ -404,9 +404,7 @@ export function BookDetailPage() {
               </Button>
             </div>
 
-            {/* Reading Status */}
             <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Reading Status</h3>
               <StatusSelector
                 bookId={book.id}
                 currentStatus={currentStatus}
