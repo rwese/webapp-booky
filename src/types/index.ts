@@ -47,6 +47,7 @@ export interface Book {
   pageCount?: number;
   format: BookFormat;
   addedAt: Date;
+  updatedAt: Date; // Added for backup functionality
   externalIds: {
     openLibrary?: string;
     googleBooks?: string;
@@ -691,6 +692,7 @@ export interface ReadingLog {
   status: ReadingStatus;
   startedAt?: Date;
   finishedAt?: Date;
+  dnfReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
