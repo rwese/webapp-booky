@@ -389,8 +389,7 @@ export const performanceMonitoring = {
     
     try {
       // Store metrics in IndexedDB for persistence
-      const metricsToStore = [...metrics];
-      metrics = []; // Clear after storing
+      metrics = []; // Clear after storing ( IndexedDB storage would go here if implemented )
     } catch (error) {
       // Silently fail - metrics flushing is non-critical
     }
