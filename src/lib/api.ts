@@ -230,7 +230,6 @@ export async function searchByISBN(isbn: string, preferGerman: boolean = true): 
     return result.data;
   }
   
-  console.info(`Open Library lookup for ISBN ${isbn}: ${result.error || 'Not found'}`);
   return null;
 }
 
@@ -365,7 +364,6 @@ export async function searchGoogleBooksByISBN(isbn: string): Promise<Book | null
     return result.data;
   }
   
-  console.info(`Google Books lookup for ISBN ${isbn}: ${result.error || 'Not found'}`);
   return null;
 }
 

@@ -74,7 +74,6 @@ export const performanceMonitoring = {
     if (isMonitoring) return;
     
     isMonitoring = true;
-    console.log('[Performance] Monitoring started');
     
     // Set up periodic metrics flush
     setInterval(() => {
@@ -90,7 +89,6 @@ export const performanceMonitoring = {
    */
   stop() {
     isMonitoring = false;
-    console.log('[Performance] Monitoring stopped');
   },
   
   /**
@@ -393,10 +391,8 @@ export const performanceMonitoring = {
       // Store metrics in IndexedDB for persistence
       const metricsToStore = [...metrics];
       metrics = []; // Clear after storing
-      
-      console.log(`[Performance] Flushed ${metricsToStore.length} metrics`);
     } catch (error) {
-      console.error('[Performance] Failed to flush metrics:', error);
+      // Silently fail - metrics flushing is non-critical
     }
   },
   
@@ -405,7 +401,6 @@ export const performanceMonitoring = {
    */
   setupMemoryMonitoring() {
     if (!('memory' in performance)) {
-      console.warn('[Performance] Memory API not available');
       return;
     }
     
@@ -422,7 +417,6 @@ export const performanceMonitoring = {
     metrics = [];
     queryHistory = [];
     alerts = [];
-    console.log('[Performance] All metrics and alerts cleared');
   },
   
   /**

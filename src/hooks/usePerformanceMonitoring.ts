@@ -61,8 +61,6 @@ export function usePerformanceMonitoring() {
         memoryUsage
       });
       
-      console.log(`[Performance] ${queryName}: ${duration.toFixed(2)}ms (avg: ${average.toFixed(2)}ms)`);
-      
       return result;
     } catch (error) {
       console.error(`[Performance] ${queryName} failed:`, error);

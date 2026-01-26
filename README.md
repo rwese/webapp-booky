@@ -106,9 +106,9 @@ npm run build
 npm run preview
 
 # Run tests
-npm test              # Unit tests only (216 tests)
+npm test              # Unit tests only (345 tests)
 npm run test:e2e      # E2E tests only (8 essential tests)
-npm test && npm run test:e2e  # All tests (224 tests)
+npm test && npm run test:e2e  # All tests (353 tests)
 ```
 
 ### E2E Test Setup
@@ -276,7 +276,7 @@ docker-compose -f docker-compose.full.yml up -d
 - [x] Performance optimization
 - [x] Accessibility audit
 - [x] Bug fixing and testing
-- [x] **Test Infrastructure** (216 unit + 8 e2e tests)
+- [x] **Test Infrastructure** (345 unit + 8 e2e tests)
 
 ## API Integrations
 
