@@ -366,26 +366,14 @@ export function BookDetailPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-4">
-              
-              <Badge variant="neutral">{book.format}</Badge>
-            </div>
-
             {/* Rating Section */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
-              <div className="flex items-center gap-4">
-                <div>
-                  <StarRating 
-                    rating={currentRating} 
-                    onRatingChange={handleRatingChange}
-                    interactive={true}
-                    size="lg"
-                  />
-                </div>
-                <div className="text-sm text-gray-500">
-                  {currentRating > 0 ? `Your rating: ${currentRating.toFixed(1)} stars` : 'Rate this book'}
-                </div>
-              </div>
+              <StarRating 
+                rating={currentRating} 
+                onRatingChange={handleRatingChange}
+                interactive={true}
+                size="lg"
+              />
               
               {currentReview ? (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
